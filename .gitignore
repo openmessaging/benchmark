@@ -1,0 +1,9 @@
+.classpath
+.project
+.settings
+target
+/.metadata/
+*.pyc
+*.svg
+core/*.json
+*.json

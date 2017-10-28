@@ -1,0 +1,24 @@
+
+name : Pulsar
+driverClass: com.streamlio.messaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
+
+# Pulsar client specific configurations
+
+client:
+    serviceUrl : pulsar://localhost:6650
+    httpUrl : http://localhost:8080
+
+    ioThreads : 8
+    connectionsPerBroker : 8
+    
+    topicPrefix : non-persistent://sample/standalone/ns1/my-topic
+
+# Producer configuration
+producer:
+    batchingEnabled : true
+    batchingMaxPublishDelayMs : 1
+    blockIfQueueFull : true
+    
+   
+   
+    
