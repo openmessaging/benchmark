@@ -27,21 +27,50 @@ def create_charts(test_results):
                      y_label='Rate (msg/s)',
                      time_series=[(x['driver'], x['publishRate']) for x in results])
 
+        create_quantile_chart('Publish latency quantiles',
+                              y_label='Latency (ms)',
+                              time_series=[(x['driver'], x['aggregatedPublishLatencyQuantiles']) for x in results])
+
 
 def create_chart(title, y_label, time_series):
-    line_chart = pygal.Line()
-    line_chart.title = title
+    chart = pygal.XY()
+    chart.title = title
 
-    line_chart.human_readable = True
-    line_chart.y_title = y_label
-    line_chart.x_title = 'Time (seconds)'
-    line_chart.x_labels = [str(10 * x) for x in range(len(time_series[0][1]))]
+    chart.human_readable = True
+    chart.y_title = y_label
+    chart.x_title = 'Time (seconds)'
+    # line_chart.x_labels = [str(10 * x) for x in range(len(time_series[0][1]))]
 
     for label, values in time_series:
-        line_chart.add(label, values)
+        chart.add(label, [(10*x, y) for x, y in enumerate(values)])
 
-    line_chart.range = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
-    line_chart.render_to_file(title + '.svg')
+    chart.range = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
+    chart.render_to_file(title + '.svg')
+
+
+def create_quantile_chart(title, y_label, time_series):
+    import math
+    chart = pygal.XY(  # style=pygal.style.LightColorizedStyle,
+                     # fill=True,
+                     legend_at_bottom=True,
+                     x_value_formatter=lambda x: '{} %'.format(100.0 - (100.0 / (10**x))),
+                     show_dots=True,
+                     dots_size=.3,
+                     show_x_guides=True)
+    chart.title = title
+    # chart.stroke = False
+
+    chart.human_readable = True
+    chart.y_title = y_label
+    chart.x_title = 'Percentile'
+    chart.x_labels = [1, 2, 3, 4, 5]
+
+    for label, values in time_series:
+        values = sorted((float(x), y) for x, y in values.items())
+        xy_values = [(math.log10(100 / (100 - x)), y) for x, y in values if x <= 99.999]
+        chart.add(label, xy_values)
+
+    chart.render_to_file('%s.svg' % title)
 
 
 if __name__ == '__main__':

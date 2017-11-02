@@ -2,6 +2,8 @@ package com.streamlio.messaging.benchmark;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class TestResult {
     public String workload;
@@ -9,7 +11,7 @@ public class TestResult {
 
     public List<Double> publishRate = new ArrayList<>();
     public List<Double> consumeRate = new ArrayList<>();
-    
+
     public List<Double> publishLatencyAvg = new ArrayList<>();
     public List<Double> publishLatency50pct = new ArrayList<>();
     public List<Double> publishLatency75pct = new ArrayList<>();
@@ -27,4 +29,6 @@ public class TestResult {
     public double aggregatedPublishLatency999pct;
     public double aggregatedPublishLatency9999pct;
     public double aggregatedPublishLatencyMax;
+
+    public Map<Double, Double> aggregatedPublishLatencyQuantiles = new TreeMap<>();
 }

@@ -234,6 +234,12 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 result.aggregatedPublishLatency999pct = reportHistogram.getValueAtPercentile(99.9) / 1000.0;
                 result.aggregatedPublishLatency9999pct = reportHistogram.getValueAtPercentile(99.99) / 1000.0;
                 result.aggregatedPublishLatencyMax = reportHistogram.getMaxValue() / 1000.0;
+
+                reportHistogram.percentiles(100).forEach(value -> {
+                    result.aggregatedPublishLatencyQuantiles.put(value.getPercentile(),
+                            value.getValueIteratedTo() / 1000.0);
+                });
+
                 break;
             }
 

@@ -13,6 +13,7 @@
 		<module>driver-api</module>
 
 		<module>pulsar</module>
+		<module>kafka</module>
 	</modules>
 
 	<build>
