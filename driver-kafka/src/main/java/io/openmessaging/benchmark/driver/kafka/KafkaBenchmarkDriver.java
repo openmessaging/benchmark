@@ -31,8 +31,10 @@ import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
-    KafkaProducer<byte[], byte[]> producer;
-    List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
+    private Config config;
+
+    private KafkaProducer<byte[], byte[]> producer;
+    private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
     private Properties producerProperties;
     private Properties consumerProperties;
@@ -41,18 +43,19 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void initialize(File configurationFile) throws IOException {
-        Config config = mapper.readValue(configurationFile, Config.class);
+        config = mapper.readValue(configurationFile, Config.class);
 
         Properties commonProperties = new Properties();
         commonProperties.load(new StringReader(config.commonConfig));
 
-        producerProperties = new Properties(commonProperties);
+        producerProperties = new Properties();
+        commonProperties.forEach((key, value) -> producerProperties.put(key, value));
         producerProperties.load(new StringReader(config.producerConfig));
         producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
 
-        consumerProperties = new Properties(commonProperties);
-        consumerProperties.load(new StringReader(config.consumerConfig));
+        consumerProperties = new Properties();
+        commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
         consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
@@ -70,7 +73,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
         return CompletableFuture.runAsync(() -> {
             try {
-                admin.createTopics(Arrays.asList(new NewTopic(topic, partitions, (short) 3))).all().get();
+                admin.createTopics(Arrays.asList(new NewTopic(topic, partitions, config.replicationFactor))).all()
+                        .get();
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
@@ -85,7 +89,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
             ConsumerCallback consumerCallback) {
-        Properties properties = new Properties(consumerProperties);
+        Properties properties = new Properties();
+        consumerProperties.forEach((key, value) -> properties.put(key, value));
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);
         KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(properties);
         try {

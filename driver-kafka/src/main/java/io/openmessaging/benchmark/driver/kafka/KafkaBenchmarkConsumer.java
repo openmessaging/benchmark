@@ -1,7 +1,7 @@
 package io.openmessaging.benchmark.driver.kafka;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -30,7 +30,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                 for (ConsumerRecord<byte[], byte[]> record : records) {
                     callback.messageReceived(record.value());
 
-                    Map<TopicPartition, OffsetAndMetadata> offsetMap = new TreeMap<>();
+                    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                     offsetMap.put(new TopicPartition(record.topic(), record.partition()),
                             new OffsetAndMetadata(record.offset()));
                     consumer.commitAsync(offsetMap, (offsets, exception) -> {
