@@ -11,7 +11,7 @@ client:
     ioThreads : 8
     connectionsPerBroker : 8
     
-    topicPrefix : non-persistent://sample/standalone/ns1/my-topic
+    topicPrefix : persistent://sample/standalone/ns1/my-topic
 
 # Producer configuration
 producer:

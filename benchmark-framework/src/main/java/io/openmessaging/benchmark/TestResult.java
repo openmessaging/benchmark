@@ -11,6 +11,7 @@ public class TestResult {
 
     public List<Double> publishRate = new ArrayList<>();
     public List<Double> consumeRate = new ArrayList<>();
+    public List<Long> backlog = new ArrayList<>();
 
     public List<Double> publishLatencyAvg = new ArrayList<>();
     public List<Double> publishLatency50pct = new ArrayList<>();

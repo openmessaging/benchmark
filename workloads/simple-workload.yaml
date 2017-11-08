@@ -6,7 +6,7 @@ partitionsPerTopic : 10
 
 messageSize : 1024
 
-subscriptionsPerTopic : 3
+subscriptionsPerTopic : 1
 
 producersPerTopic : 1
 

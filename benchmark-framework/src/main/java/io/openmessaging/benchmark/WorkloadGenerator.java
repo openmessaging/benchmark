@@ -8,11 +8,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
 import org.HdrHistogram.Histogram;
 import org.HdrHistogram.Recorder;
+import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +44,9 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final LongAdder messagesReceived = new LongAdder();
     private final LongAdder bytesReceived = new LongAdder();
 
+    private final LongAdder totalMessagesSent = new LongAdder();
+    private final LongAdder totalMessagesReceived = new LongAdder();
+
     private boolean testCompleted = false;
 
     public WorkloadGenerator(String driverName, BenchmarkDriver benchmarkDriver, Workload workload) {
@@ -55,13 +60,134 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         List<BenchmarkConsumer> consumers = createConsumers(topics);
         List<BenchmarkProducer> producers = createProducers(topics);
 
+        RateLimiter rateLimiter;
+        AtomicBoolean runCompleted = new AtomicBoolean();
+        if (workload.producerRate > 0) {
+            rateLimiter = RateLimiter.create(workload.producerRate);
+        } else {
+            // Producer rate is 0 and we need to discover the sustainable rate
+            rateLimiter = RateLimiter.create(10000);
+
+            executor.execute(() -> {
+                // Run background controller to adjust rate
+                findMaximumSustainableRate(rateLimiter, runCompleted);
+            });
+        }
+
         log.info("----- Starting warm-up traffic ------");
-        generateLoad(producers, TimeUnit.MINUTES.toSeconds(1));
+        generateLoad(producers, TimeUnit.MINUTES.toSeconds(1), rateLimiter);
+        runCompleted.set(true);
 
         log.info("----- Starting benchmark traffic ------");
-        TestResult result = generateLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes));
+        runCompleted.set(false);
+
+        if (workload.producerRate == 0) {
+            // Continue with the feedback system to adjust the publish rate
+            executor.execute(() -> {
+                // Run background controller to adjust rate
+                findMaximumSustainableRate(rateLimiter, runCompleted);
+            });
+        }
+
+        TestResult result = generateLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes),
+                rateLimiter);
+        runCompleted.set(true);
 
         return result;
+    }
+
+    /**
+     * Adjust the publish rate to a level that is sustainable, meaning that we can consume all the messages that are
+     * being produced
+     */
+    private void findMaximumSustainableRate(RateLimiter rateLimiter, AtomicBoolean testCompleted) {
+        double maxRate = Double.MAX_VALUE; // Discovered max sustainable rate
+        double currentRate = rateLimiter.getRate(); // Start with a reasonable number
+        double minRate = 0.1;
+
+        long localTotalMessagesSentCounter = totalMessagesSent.sum();
+        long localTotalMessagesReceivedCounter = totalMessagesReceived.sum();
+
+        int controlPeriodMillis = 3000;
+
+        int successfulPeriods = 0;
+
+        while (!testCompleted.get()) {
+            // Check every few seconds and adjust the rate
+            try {
+                Thread.sleep(controlPeriodMillis);
+            } catch (InterruptedException e) {
+                return;
+            }
+
+            // Consider multiple copies when using mutlple subscriptions
+            long totalMessagesSent = this.totalMessagesSent.sum();
+            long totalMessagesReceived = this.totalMessagesReceived.sum();
+            long messagesPublishedInPeriod = totalMessagesSent - localTotalMessagesSentCounter;
+            long messagesReceivedInPeriod = totalMessagesReceived - localTotalMessagesReceivedCounter;
+            double publishRateInLastPeriod = messagesPublishedInPeriod / (controlPeriodMillis / 1000.0);
+            double receiveRateInLastPeriod = messagesReceivedInPeriod / (controlPeriodMillis / 1000.0);
+
+            localTotalMessagesSentCounter = totalMessagesSent;
+            localTotalMessagesReceivedCounter = totalMessagesReceived;
+
+            log.debug("Current rate:  {} -- Publish rate {} -- Consume Rate: {} -- min-rate: {} -- max-rate: {}",
+                    dec.format(currentRate), dec.format(publishRateInLastPeriod), dec.format(receiveRateInLastPeriod),
+                    dec.format(minRate), dec.format(maxRate));
+
+            if (publishRateInLastPeriod < currentRate * 0.95) {
+                // Producer is not able to publish as fast as requested
+                maxRate = currentRate * 1.1;
+                currentRate = minRate + (currentRate - minRate) / 2;
+
+                log.debug("Publishers are not meeting requested rate. reducing to {}", currentRate);
+            } else if (receiveRateInLastPeriod < publishRateInLastPeriod * 0.98) {
+                // If the consumers are building backlog, we should slow down publish rate
+                maxRate = currentRate;
+                currentRate = minRate + (currentRate - minRate) / 2;
+                log.debug("Consumers are not meeting requested rate. reducing to {}", currentRate);
+
+                // Slows the publishes to let the consumer time to absorb the backlog
+                rateLimiter.setRate(minRate / 10);
+                while (true) {
+                    long backlog = workload.subscriptionsPerTopic * this.totalMessagesSent.sum()
+                            - this.totalMessagesReceived.sum();
+                    if (backlog < 1000) {
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+
+                log.debug("Resuming load at reduced rate");
+                rateLimiter.setRate(currentRate);
+
+                try {
+                    // Wait some more time for the publish rate to catch up
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    return;
+                }
+
+                localTotalMessagesSentCounter = this.totalMessagesSent.sum();
+                localTotalMessagesReceivedCounter = this.totalMessagesReceived.sum();
+
+            } else if (currentRate < maxRate) {
+                minRate = currentRate;
+                currentRate = Math.min(currentRate * 2, maxRate);
+                log.debug("No bottleneck found, increasing the rate to {}", currentRate);
+            } else if (++successfulPeriods > 3) {
+                minRate = currentRate * 0.95;
+                maxRate = currentRate * 1.05;
+                successfulPeriods = 0;
+            }
+
+            rateLimiter.setRate(currentRate);
+        }
     }
 
     @Override
@@ -121,7 +247,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return producers;
     }
 
-    private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds) {
+    private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
+            RateLimiter rateLimiter) {
         Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
         Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
 
@@ -130,7 +257,6 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
         executor.submit(() -> {
             try {
-                RateLimiter rateLimiter = RateLimiter.create(workload.producerRate);
                 byte[] payloadData = new byte[workload.messageSize];
 
                 // Send messages on all topics/producers
@@ -143,6 +269,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
                         producer.sendAsync(payloadData).thenRun(() -> {
                             messagesSent.increment();
+                            totalMessagesSent.increment();
                             bytesSent.add(payloadData.length);
 
                             long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
@@ -190,10 +317,14 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
             reportHistogram = recorder.getIntervalHistogram(reportHistogram);
 
+            long currentBacklog = workload.subscriptionsPerTopic * totalMessagesSent.sum()
+                    - totalMessagesReceived.sum();
+
             log.info(
-                    "Pub rate {} msg/s / {} Mb/s | Cons rate {} msg/s / {} Mb/s | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
+                    "Pub rate {} msg/s / {} Mb/s | Cons rate {} msg/s / {} Mb/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
                     rateFormat.format(publishRate), throughputFormat.format(publishThroughput),
                     rateFormat.format(consumeRate), throughputFormat.format(consumeThroughput),
+                    dec.format(currentBacklog / 1000.0), //
                     dec.format(reportHistogram.getMean() / 1000.0),
                     dec.format(reportHistogram.getValueAtPercentile(50) / 1000.0),
                     dec.format(reportHistogram.getValueAtPercentile(99) / 1000.0),
@@ -202,6 +333,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
             result.publishRate.add(publishRate);
             result.consumeRate.add(consumeRate);
+            result.backlog.add(currentBacklog);
             result.publishLatencyAvg.add(reportHistogram.getMean() / 1000.0);
             result.publishLatency50pct.add(reportHistogram.getValueAtPercentile(50) / 1000.0);
             result.publishLatency75pct.add(reportHistogram.getValueAtPercentile(75) / 1000.0);
@@ -252,6 +384,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     @Override
     public void messageReceived(byte[] data) {
         messagesReceived.increment();
+        totalMessagesReceived.increment();
         bytesReceived.add(data.length);
     }
 
