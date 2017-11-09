@@ -1,6 +1,7 @@
 .classpath
 .project
 .settings
+.pydevproject
 target
 /.metadata/
 *.pyc
