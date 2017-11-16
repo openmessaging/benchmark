@@ -1,0 +1,143 @@
+
+- name: Format and mount disks
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - shell: >
+        mkfs.xfs /dev/nvme0n1 &&
+        mkfs.xfs /dev/nvme1n1 &&
+        mkdir -p /mnt/journal &&
+        mkdir -p /mnt/storage &&
+        mount -o defaults,noatime,discard /dev/nvme0n1 /mnt/journal &&
+        mount -o defaults,noatime,discard /dev/nvme1n1 /mnt/storage &&
+        chown -R ec2-user /mnt/journal /mnt/storage
+      args:
+        creates: /mnt/journal
+
+- name: Pulsar setup
+  hosts: all
+  connection: ssh
+  become: true
+  tasks:
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - wget
+          - java
+          - sysstat
+
+    # - name: Cleanup
+    #   systemd:
+    #     state: stopped
+    #     daemon_reload: yes
+    #     name: "{{ item }}"
+    #   with_items:
+    #     - zookeeper
+    #     - bookkeeper
+    #     - pulsar
+    #   ignore_errors: yes
+
+    - file:
+        path: "/opt/pulsar"
+        state: absent
+    - set_fact:
+        zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
+
+    - name: Download and extract Pulsar
+      unarchive:
+        src: http://apache.mirrors.hoobly.com/incubator/pulsar/pulsar-1.20.0-incubating/apache-pulsar-1.20.0-incubating-bin.tar.gz
+        dest: /opt/pulsar
+        remote_src: yes
+        owner: ec2-user
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        max_heap_memory: "24g"
+        max_direct_memory: "24g"
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+
+- name: Setup ZooKeeper
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
+        max_heap_memory: "512m"
+        max_direct_memory: "512m"
+    - file:
+        path: "/opt/pulsar/{{ item }}"
+        state: directory
+      with_items:
+        - data/zookeeper
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - template:
+        src: "templates/zoo.cfg"
+        dest: "/opt/pulsar/conf/zookeeper.conf"
+    - template:
+        src: templates/myid
+        dest: "/opt/pulsar/data/zookeeper/myid"
+    - template:
+        src: "templates/zookeeper.service"
+        dest: "/etc/systemd/system/zookeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "zookeeper"
+    - command: >
+        bin/pulsar initialize-cluster-metadata --cluster local
+        --zookeeper localhost:2181
+        --global-zookeeper localhost:2181
+        --web-service-url http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/
+        --broker-service-url pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/
+      args:
+        chdir: /opt/pulsar
+      when: groups['zookeeper'][0] == inventory_hostname
+
+- name: Setup Bookkeeper
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - template:
+        src: "templates/bookkeeper.conf"
+        dest: "/opt/pulsar/conf/bookkeeper.conf"
+    - name: Install bookkeeper systemd service
+      template:
+        src: "templates/bookkeeper.service"
+        dest: "/etc/systemd/system/bookkeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "bookkeeper"
+
+- name: Setup Pulsar
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up broker
+      template:
+        src: "templates/broker.conf"
+        dest: "/opt/pulsar/conf/broker.conf"
+    - template:
+        src: "templates/pulsar.service"
+        dest: "/etc/systemd/system/pulsar.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "pulsar"
+
+- name: Setup Pulsar client
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up client config
+      template:
+        src: "templates/client.conf"
+        dest: "/opt/pulsar/conf/client.conf"
