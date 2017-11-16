@@ -8,3 +8,7 @@ target
 *.svg
 core/*.json
 *.json
+*.iml
+*.swp
+*.tar.*
+.idea

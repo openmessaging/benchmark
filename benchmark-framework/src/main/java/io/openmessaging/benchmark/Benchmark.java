@@ -18,6 +18,17 @@
  */
 package io.openmessaging.benchmark;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.openmessaging.benchmark.driver.BenchmarkDriver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -26,31 +37,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
-import io.openmessaging.benchmark.driver.BenchmarkDriver;
-
 public class Benchmark {
 
     static class Arguments {
 
-        @Parameter(names = { "-h", "--help" }, description = "Help message", help = true)
+        @Parameter(names = { "-h", "--help" }, description = "Provide a list of workloads and drivers", help = true)
         boolean help;
 
         @Parameter(names = { "-d",
                 "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml", required = true)
         public List<String> drivers;
 
-        @Parameter(description = "Workloads", required = true)
+        @Parameter(description = "Workloads list. Comma separated", required = true)
         public List<String> workloads;
     }
 

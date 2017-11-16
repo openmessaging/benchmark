@@ -18,6 +18,20 @@
  */
 package io.openmessaging.benchmark;
 
+import com.google.common.io.BaseEncoding;
+import com.google.common.util.concurrent.RateLimiter;
+import io.netty.util.concurrent.DefaultThreadFactory;
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.BenchmarkDriver;
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.utils.PaddingDecimalFormat;
+import io.openmessaging.benchmark.utils.Timer;
+import org.HdrHistogram.Histogram;
+import org.HdrHistogram.Recorder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,23 +43,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
-
-import org.HdrHistogram.Histogram;
-import org.HdrHistogram.Recorder;
-import org.apache.kafka.common.errors.TopicAuthorizationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.io.BaseEncoding;
-import com.google.common.util.concurrent.RateLimiter;
-
-import io.netty.util.concurrent.DefaultThreadFactory;
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.BenchmarkDriver;
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
-import io.openmessaging.benchmark.utils.PaddingDecimalFormat;
-import io.openmessaging.benchmark.utils.Timer;
 
 public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
@@ -93,13 +90,19 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         }
 
         log.info("----- Starting warm-up traffic ------");
-        generateLoad(producers, TimeUnit.MINUTES.toSeconds(1), rateLimiter);
+        generateProducerLoad(producers, TimeUnit.MINUTES.toSeconds(1), 0, rateLimiter);
+        generateConsumerLoad(consumers, TimeUnit.MINUTES.toSeconds(1), 0, rateLimiter);
         runCompleted.set(true);
 
         log.info("----- Starting benchmark traffic ------");
         runCompleted.set(false);
 
-        if (workload.producerRate == 0) {
+        /**
+         * Only invoke sustainable rate if we configure benchmark to have BOTH producers AND producer rate to be zero
+         * In most cases, we want consumers to be on separate physical hosts. The logic below provides extra protection
+         * from a producer being launched if you only want consumers on a host.
+         */
+        if (workload.producerRate == 0 && workload.producersPerTopic > 0) {
             // Continue with the feedback system to adjust the publish rate
             executor.execute(() -> {
                 // Run background controller to adjust rate
@@ -107,8 +110,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             });
         }
 
-        TestResult result = generateLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes),
-                rateLimiter);
+        TestResult result = generateProducerLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes),
+                workload.numTestRuns, rateLimiter);
         runCompleted.set(true);
 
         return result;
@@ -265,8 +268,43 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return producers;
     }
 
-    private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
-            RateLimiter rateLimiter) {
+    private TestResult generateConsumerLoad(List<BenchmarkConsumer> consumers, long testDurationsSeconds,
+                                            int numTestRuns, RateLimiter rateLimiter) {
+        Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+        Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+
+        long startTime = System.nanoTime();
+        this.testCompleted = false;
+
+        executor.submit(() -> {
+            try {
+                // Send messages on all topics/producers
+                while (!testCompleted) {
+                    consumers.forEach(consumer -> {
+                        rateLimiter.acquire();
+                        consumer.receiveAsync(this).thenRun(() -> {
+
+                        }).exceptionally(ex -> {
+                            log.warn("Write error on message", ex);
+                            System.exit(-1);
+                            return null;
+                        });
+                    });
+                }
+            } catch (Throwable t) {
+                log.error("Got error", t);
+            }
+        });
+
+        return getTestResult(testDurationsSeconds, recorder, cumulativeRecorder, startTime);
+    }
+
+    private TestResult generateProducerLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
+                                            int numTestRuns, RateLimiter rateLimiter) {
+        if (producers.size() == 0) {
+            log.info("Skipping producer load generation because no producers were requested");
+            return null;
+        }
         Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
         Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
 
@@ -306,6 +344,10 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             }
         });
 
+        return getTestResult(testDurationsSeconds, recorder, cumulativeRecorder, startTime);
+    }
+
+    private TestResult getTestResult(long testDurationsSeconds, Recorder recorder, Recorder cumulativeRecorder, long startTime) {
         // Print report stats
         long oldTime = System.nanoTime();
 
@@ -395,8 +437,6 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
             oldTime = now;
         }
-
-        return result;
     }
 
     @Override

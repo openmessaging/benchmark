@@ -39,4 +39,6 @@ public class Workload {
     public int producerRate;
     
     public int testDurationMinutes;
+
+    public int numTestRuns;
 }

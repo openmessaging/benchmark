@@ -18,19 +18,19 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
@@ -38,13 +38,31 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
     private final ExecutorService executor;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, ConsumerCallback callback) {
+    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
+    }
+
+    @Override
+    public void close() throws Exception {
+        try {
+            consumer.close();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback, ) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
         this.executor.execute(() -> {
             while (true) {
                 ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
+                // If we ran out of records to consumer, start from beginning.
+                if (records.isEmpty()) {
+                    consumer.seekToBeginning();
+                }
                 for (ConsumerRecord<byte[], byte[]> record : records) {
                     callback.messageReceived(record.value());
 
@@ -52,17 +70,12 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                     offsetMap.put(new TopicPartition(record.topic(), record.partition()),
                             new OffsetAndMetadata(record.offset()));
                     consumer.commitAsync(offsetMap, (offsets, exception) -> {
-                        // Offset committed
+                        // Offset committedfuture.complete(null);
                     });
                 }
             }
+            future.complete(null);
         });
+        return future;
     }
-
-    @Override
-    public void close() throws Exception {
-        consumer.close();
-        executor.shutdownNow();
-    }
-
 }
