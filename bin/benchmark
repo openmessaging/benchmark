@@ -18,11 +18,12 @@
 # under the License.
 #
 
-
-
-CLASSPATH=benchmark-framework/target/classes:`cat benchmark-framework/target/classpath.txt`
+if [ -d "./lib" ]; then
+        CLASSPATH=$CLASSPATH:lib/*
+else
+    CLASSPATH=benchmark-framework/target/classes:`cat benchmark-framework/target/classpath.txt`
+fi
 
 JVM_MEM="-Xms4G -Xmx4G -XX:+UseG1GC"
 
 java -server -cp $CLASSPATH $JVM_MEM io.openmessaging.benchmark.Benchmark $*
-

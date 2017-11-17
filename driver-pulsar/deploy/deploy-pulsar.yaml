@@ -29,8 +29,7 @@
         mkdir -p /mnt/journal &&
         mkdir -p /mnt/storage &&
         mount -o defaults,noatime,discard /dev/nvme0n1 /mnt/journal &&
-        mount -o defaults,noatime,discard /dev/nvme1n1 /mnt/storage &&
-        chown -R ec2-user /mnt/journal /mnt/storage
+        mount -o defaults,noatime,discard /dev/nvme1n1 /mnt/storage
       args:
         creates: /mnt/journal
 
@@ -45,30 +44,24 @@
           - wget
           - java
           - sysstat
+          - vim
 
-    # - name: Cleanup
-    #   systemd:
-    #     state: stopped
-    #     daemon_reload: yes
-    #     name: "{{ item }}"
-    #   with_items:
-    #     - zookeeper
-    #     - bookkeeper
-    #     - pulsar
-    #   ignore_errors: yes
-
-    - file:
-        path: "/opt/pulsar"
-        state: absent
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
+        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
 
-    - name: Download and extract Pulsar
-      unarchive:
-        src: http://apache.mirrors.hoobly.com/incubator/pulsar/pulsar-1.20.0-incubating/apache-pulsar-1.20.0-incubating-bin.tar.gz
-        dest: /opt/pulsar
-        remote_src: yes
-        owner: ec2-user
+    - name: Download Pulsar
+      file:
+        path: "/opt/pulsar"
+        state: directory
+    - get_url:
+        url: http://apache.mirrors.hoobly.com/incubator/pulsar/pulsar-1.20.0-incubating/apache-pulsar-1.20.0-incubating-bin.tar.gz
+        dest: /tmp/pulsar.tgz
+    - command: tar --strip-components=1 -xvf /tmp/pulsar.tgz
+      args:
+        chdir: /opt/pulsar
+
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
@@ -111,8 +104,8 @@
         bin/pulsar initialize-cluster-metadata --cluster local
         --zookeeper localhost:2181
         --global-zookeeper localhost:2181
-        --web-service-url http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/
-        --broker-service-url pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/
+        --web-service-url {{ httpUrl }}
+        --broker-service-url {{ serviceUrl }}
       args:
         chdir: /opt/pulsar
       when: groups['zookeeper'][0] == inventory_hostname
@@ -151,6 +144,17 @@
         daemon_reload: yes
         name: "pulsar"
 
+- name: Get Maven version
+  hosts: localhost
+  tasks:
+     - shell: >
+          cat ../../pom.xml | xmllint --format - \
+            | sed "s/xmlns=\".*\"//g" | xmllint --stream --pattern /project/version --debug - \
+            | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
+       register: maven_version
+     - set_fact:
+         benchmark_version: "{{ maven_version.stdout }}"
+
 - name: Setup Pulsar client
   hosts: client
   connection: ssh
@@ -160,3 +164,36 @@
       template:
         src: "templates/client.conf"
         dest: "/opt/pulsar/conf/client.conf"
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - name: Configure service URL
+      lineinfile:
+         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/driver-pulsar/pulsar.yaml
+         regexp: '^    serviceUrl \: '
+         line: '    serviceUrl : {{ serviceUrl }}'
+    - name: Configure http URL
+      lineinfile:
+         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/driver-pulsar/pulsar.yaml
+         regexp: '^    httpUrl : '
+         line: '    httpUrl : {{ httpUrl }}'
+    - name: Configure http URL
+      lineinfile:
+         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms48G -Xmx48G -XX:+UseShenandoahGC "'
+
+
+- name:  Hosts addresses
+  hosts: localhost
+  tasks:
+    - debug:
+        msg: "Zookeeper servers  {{ item }}"
+      with_items: "{{ groups['zookeeper'] }}"
+    - debug:
+        msg: "Pulsar/BookKeeper servers {{ item }}"
+      with_items: "{{ groups['pulsar'] }}"
+    - debug:
+        msg: "Benchmark client {{ item }}"
+      with_items: "{{ groups['client'] }}"
