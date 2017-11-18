@@ -109,7 +109,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         generateProducerLoad(producers, produceRateLimiter, produceLatencyRecorder, produceCumulativeRecorder);
         generateConsumerLoad(consumers, consumeRateLimiter);
 
-        getTestResult(TimeUnit.MINUTES.toSeconds(1), produceLatencyRecorder, produceCumulativeRecorder,
+        getTestResult(1, produceLatencyRecorder, produceCumulativeRecorder,
                 e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
         e2eLatencyRecorder.reset();
         e2eCumulativeLatencyRecorder.reset();
