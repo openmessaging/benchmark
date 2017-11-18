@@ -18,7 +18,7 @@
  */
 package io.openmessaging.benchmark;
 
-import com.google.common.io.BaseEncoding;
+import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.RateLimiter;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
@@ -32,15 +32,17 @@ import org.HdrHistogram.Recorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
@@ -60,7 +62,13 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final LongAdder bytesReceived = new LongAdder();
 
     private final LongAdder totalMessagesSent = new LongAdder();
+    // TODO: If we have multiple consumers, then we need to have one for each topic
     private final LongAdder totalMessagesReceived = new LongAdder();
+
+    private final LongAdder missedMessages = new LongAdder();
+    private final Recorder e2eLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+    private final Recorder e2eCumulativeLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+
 
     private boolean testCompleted = false;
 
@@ -71,27 +79,40 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     }
 
     public TestResult run() {
-        List<String> topics = createTopics();
-        List<BenchmarkConsumer> consumers = createConsumers(topics);
+        List<String> topics = createTopicsIdempotently(workload.producerRate <= 0);
+        List<BenchmarkConsumer> consumers = createConsumers(topics, workload.partitionsPerTopic);
         List<BenchmarkProducer> producers = createProducers(topics);
 
-        RateLimiter rateLimiter;
+        RateLimiter produceRateLimiter;
         AtomicBoolean runCompleted = new AtomicBoolean();
         if (workload.producerRate > 0) {
-            rateLimiter = RateLimiter.create(workload.producerRate);
+            produceRateLimiter = RateLimiter.create(workload.producerRate);
         } else {
             // Producer rate is 0 and we need to discover the sustainable rate
-            rateLimiter = RateLimiter.create(10000);
+            produceRateLimiter = RateLimiter.create(10000);
 
             executor.execute(() -> {
                 // Run background controller to adjust rate
-                findMaximumSustainableRate(rateLimiter, runCompleted);
+                findMaximumSustainableRate(produceRateLimiter, runCompleted);
             });
         }
+        RateLimiter consumeRateLimiter = RateLimiter.create(workload.consumeRate);
 
         log.info("----- Starting warm-up traffic ------");
-        generateProducerLoad(producers, TimeUnit.MINUTES.toSeconds(1), 0, rateLimiter);
-        generateConsumerLoad(consumers, TimeUnit.MINUTES.toSeconds(1), 0, rateLimiter);
+
+        Recorder produceLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+        Recorder produceCumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+
+        long startTime = System.nanoTime();
+        this.testCompleted = false;
+
+        generateProducerLoad(producers, produceRateLimiter, produceLatencyRecorder, produceCumulativeRecorder);
+        generateConsumerLoad(consumers, consumeRateLimiter);
+
+        getTestResult(TimeUnit.MINUTES.toSeconds(1), produceLatencyRecorder, produceCumulativeRecorder,
+                e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
+        e2eLatencyRecorder.reset();
+        e2eCumulativeLatencyRecorder.reset();
         runCompleted.set(true);
 
         log.info("----- Starting benchmark traffic ------");
@@ -102,16 +123,27 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
          * In most cases, we want consumers to be on separate physical hosts. The logic below provides extra protection
          * from a producer being launched if you only want consumers on a host.
          */
-        if (workload.producerRate == 0 && workload.producersPerTopic > 0) {
+        /*if (workload.producerRate == 0 && workload.producersPerTopic > 0) {
             // Continue with the feedback system to adjust the publish rate
             executor.execute(() -> {
                 // Run background controller to adjust rate
-                findMaximumSustainableRate(rateLimiter, runCompleted);
+                findMaximumSustainableRate(produceRateLimiter, runCompleted);
             });
-        }
+        }*/
 
-        TestResult result = generateProducerLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes),
-                workload.numTestRuns, rateLimiter);
+        produceLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+        produceCumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+
+        startTime = System.nanoTime();
+        this.testCompleted = false;
+
+        generateProducerLoad(producers, produceRateLimiter, produceLatencyRecorder, produceCumulativeRecorder);
+        generateConsumerLoad(consumers, consumeRateLimiter);
+
+        TestResult result = getTestResult(workload.testDurationMinutes,
+                produceLatencyRecorder, produceCumulativeRecorder,
+                e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
+
         runCompleted.set(true);
 
         return result;
@@ -216,7 +248,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         executor.shutdownNow();
     }
 
-    private List<String> createTopics() {
+    private List<String> createTopicsIdempotently(boolean consumerOnly) {
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
         Timer timer = new Timer();
@@ -225,9 +257,9 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
         List<String> topics = new ArrayList<>();
         for (int i = 0; i < workload.topics; i++) {
-            String topic = String.format("%s-%s-%04d", topicPrefix, getRandomString(), i);
+            String topic = String.format("%s-%s", topicPrefix, i);
             topics.add(topic);
-            futures.add(benchmarkDriver.createTopic(topic, workload.partitionsPerTopic));
+            futures.add(benchmarkDriver.createTopic(topic, workload.partitionsPerTopic, consumerOnly));
         }
 
         futures.forEach(CompletableFuture::join);
@@ -236,7 +268,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return topics;
     }
 
-    private List<BenchmarkConsumer> createConsumers(List<String> topics) {
+    private List<BenchmarkConsumer> createConsumers(List<String> topics, int partitionsPerTopic) {
         List<CompletableFuture<BenchmarkConsumer>> futures = new ArrayList<>();
         Timer timer = new Timer();
 
@@ -244,7 +276,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             String subscriptionName = String.format("sub-%03d", i);
 
             for (String topic : topics) {
-                futures.add(benchmarkDriver.createConsumer(topic, subscriptionName, this));
+                futures.add(benchmarkDriver.createConsumer(topic, subscriptionName, this, partitionsPerTopic));
             }
         }
 
@@ -268,23 +300,15 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return producers;
     }
 
-    private TestResult generateConsumerLoad(List<BenchmarkConsumer> consumers, long testDurationsSeconds,
-                                            int numTestRuns, RateLimiter rateLimiter) {
-        Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-        Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-
-        long startTime = System.nanoTime();
-        this.testCompleted = false;
-
+    // Results for consumer are recorded via the callback
+    private void generateConsumerLoad(List<BenchmarkConsumer> consumers, RateLimiter rateLimiter) {
         executor.submit(() -> {
             try {
-                // Send messages on all topics/producers
+                // Consume messages on all topics/producers
                 while (!testCompleted) {
                     consumers.forEach(consumer -> {
                         rateLimiter.acquire();
-                        consumer.receiveAsync(this).thenRun(() -> {
-
-                        }).exceptionally(ex -> {
+                        consumer.receiveAsync(this).exceptionally(ex -> {
                             log.warn("Write error on message", ex);
                             System.exit(-1);
                             return null;
@@ -295,34 +319,58 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 log.error("Got error", t);
             }
         });
-
-        return getTestResult(testDurationsSeconds, recorder, cumulativeRecorder, startTime);
     }
 
-    private TestResult generateProducerLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
-                                            int numTestRuns, RateLimiter rateLimiter) {
+    /**
+     * Generate a string that is sufficently large so that we can build messages on uniform text for validation purposes.
+     *
+     * @return
+     */
+    private byte[] getComparisonStr(int sizeBytes) {
+        StringBuilder stringBuilder = new StringBuilder();
+        char[] alphabet = "abcdefghijklmnopqrstuvwxyz".toCharArray();
+        // Message number (long) + producer hashcode (int) + createTimestamp (long) + trim last char (char)
+        int overhead = 8 + 4 + 8;
+        int sizeMinusOverhead = sizeBytes - overhead;
+        for (int i = 0; i < sizeMinusOverhead; i++) {
+            stringBuilder.append(alphabet[i%(alphabet.length-1)]);
+        }
+        return stringBuilder.toString().getBytes();
+    }
+
+    private void generateProducerLoad(List<BenchmarkProducer> producers, RateLimiter rateLimiter,
+                                            Recorder recorder, Recorder cumulativeRecorder) {
         if (producers.size() == 0) {
             log.info("Skipping producer load generation because no producers were requested");
-            return null;
+            return;
         }
-        Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-        Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-
-        long startTime = System.nanoTime();
-        this.testCompleted = false;
+        byte[] comparisonStr = getComparisonStr(workload.messageSize);
 
         executor.submit(() -> {
             try {
-                byte[] payloadData = new byte[workload.messageSize];
-
                 // Send messages on all topics/producers
+                AtomicLong messageNumber = new AtomicLong(totalMessagesSent.longValue() + 1);
                 while (!testCompleted) {
-                    for (int i = 0; i < producers.size(); i++) {
-                        BenchmarkProducer producer = producers.get(i);
+                    for (BenchmarkProducer producer : producers) {
                         rateLimiter.acquire();
 
+                        final byte[] payloadData = new byte[workload.messageSize];
+                        byte[] messageNumberBytes = Longs.toByteArray(messageNumber.longValue());
+                        for (int i = 0; i < 8; i++) {
+                            payloadData[i] = messageNumberBytes[i];
+                        }
+                        byte[] produceHashCodeBytes = ByteBuffer.allocate(4).putInt(producer.hashCode()).array();
+                        for (int i = 0; i < 4; i++) {
+                            payloadData[i+8] = produceHashCodeBytes[i];
+                        }
+                        byte[] produceTimestampBytes = Longs.toByteArray(System.nanoTime());
+                        for (int i = 0; i < 8; i++) {
+                            payloadData[i+12] = produceTimestampBytes[i];
+                        }
+                        for (int i = 0; i < comparisonStr.length; i++) {
+                            payloadData[i+20] = comparisonStr[i];
+                        }
                         final long sendTime = System.nanoTime();
-
                         producer.sendAsync(payloadData).thenRun(() -> {
                             messagesSent.increment();
                             totalMessagesSent.increment();
@@ -331,33 +379,34 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                             long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
                             recorder.recordValue(latencyMicros);
                             cumulativeRecorder.recordValue(latencyMicros);
-
                         }).exceptionally(ex -> {
                             log.warn("Write error on message", ex);
                             System.exit(-1);
                             return null;
                         });
                     }
+                    messageNumber.incrementAndGet();
                 }
             } catch (Throwable t) {
                 log.error("Got error", t);
             }
         });
-
-        return getTestResult(testDurationsSeconds, recorder, cumulativeRecorder, startTime);
     }
 
-    private TestResult getTestResult(long testDurationsSeconds, Recorder recorder, Recorder cumulativeRecorder, long startTime) {
+    private TestResult getTestResult(long testDurationMins, Recorder produceLatencyRecorder,
+                                     Recorder produceCumulativeLatencyRecorder, Recorder e2eLatencyRecorder,
+                                     Recorder e2eCumulativeLatencyRecorder, long startTime) {
         // Print report stats
         long oldTime = System.nanoTime();
 
-        long testEndTime = startTime + TimeUnit.SECONDS.toNanos(testDurationsSeconds);
+        long testEndTime = startTime + TimeUnit.MINUTES.toNanos(testDurationMins);
 
         TestResult result = new TestResult();
         result.workload = workload.name;
         result.driver = driverName;
 
-        Histogram reportHistogram = null;
+        Histogram reportProduceLatencyHistogram = null;
+        Histogram reportE2eLatencyHistogram = null;
 
         while (true) {
             try {
@@ -372,91 +421,139 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             double publishRate = messagesSent.sumThenReset() / elapsed;
             double publishThroughput = bytesSent.sumThenReset() / elapsed / 1024 / 1024;
 
+            double completenessRate = 0;
+            long missedMsgCount = missedMessages.longValue();
+            if (messagesReceived.longValue() != 0) {
+                completenessRate = (1 - (missedMessages.sumThenReset() / messagesReceived.longValue())) * 100;
+            }
+
             double consumeRate = messagesReceived.sumThenReset() / elapsed;
             double consumeThroughput = bytesReceived.sumThenReset() / elapsed / 1024 / 1024;
 
-            reportHistogram = recorder.getIntervalHistogram(reportHistogram);
+            reportProduceLatencyHistogram = produceLatencyRecorder.getIntervalHistogram(reportProduceLatencyHistogram);
+            reportE2eLatencyHistogram = e2eLatencyRecorder.getIntervalHistogram(reportE2eLatencyHistogram);
 
             long currentBacklog = workload.subscriptionsPerTopic * totalMessagesSent.sum()
                     - totalMessagesReceived.sum();
 
             log.info(
-                    "Pub rate {} msg/s / {} Mb/s | Cons rate {} msg/s / {} Mb/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
+                    "Total produced/consumed {}/{} | Pub rate {} msg/s / {} Mb/s |  | Cons rate {} msg/s / {} Mb/s | Ordered completeness {} %: missed message count {} | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | E2E Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
+                    totalMessagesSent, totalMessagesReceived,
                     rateFormat.format(publishRate), throughputFormat.format(publishThroughput),
                     rateFormat.format(consumeRate), throughputFormat.format(consumeThroughput),
+                    completenessRate, missedMsgCount,
                     dec.format(currentBacklog / 1000.0), //
-                    dec.format(reportHistogram.getMean() / 1000.0),
-                    dec.format(reportHistogram.getValueAtPercentile(50) / 1000.0),
-                    dec.format(reportHistogram.getValueAtPercentile(99) / 1000.0),
-                    dec.format(reportHistogram.getValueAtPercentile(99.9) / 1000.0),
-                    throughputFormat.format(reportHistogram.getMaxValue() / 1000.0));
+                    dec.format(reportProduceLatencyHistogram.getMean() / 1000.0),
+                    dec.format(reportProduceLatencyHistogram.getValueAtPercentile(50) / 1000.0),
+                    dec.format(reportProduceLatencyHistogram.getValueAtPercentile(99) / 1000.0),
+                    dec.format(reportProduceLatencyHistogram.getValueAtPercentile(99.9) / 1000.0),
+                    throughputFormat.format(reportProduceLatencyHistogram.getMaxValue() / 1000.0),
+                    dec.format(reportE2eLatencyHistogram.getMean() / 1000.0),
+                    dec.format(reportE2eLatencyHistogram.getValueAtPercentile(50) / 1000.0),
+                    dec.format(reportE2eLatencyHistogram.getValueAtPercentile(99) / 1000.0),
+                    dec.format(reportE2eLatencyHistogram.getValueAtPercentile(99.9) / 1000.0),
+                    throughputFormat.format(reportE2eLatencyHistogram.getMaxValue() / 1000.0));
 
             result.publishRate.add(publishRate);
             result.consumeRate.add(consumeRate);
             result.backlog.add(currentBacklog);
-            result.publishLatencyAvg.add(reportHistogram.getMean() / 1000.0);
-            result.publishLatency50pct.add(reportHistogram.getValueAtPercentile(50) / 1000.0);
-            result.publishLatency75pct.add(reportHistogram.getValueAtPercentile(75) / 1000.0);
-            result.publishLatency95pct.add(reportHistogram.getValueAtPercentile(95) / 1000.0);
-            result.publishLatency99pct.add(reportHistogram.getValueAtPercentile(99) / 1000.0);
-            result.publishLatency999pct.add(reportHistogram.getValueAtPercentile(99.9) / 1000.0);
-            result.publishLatency9999pct.add(reportHistogram.getValueAtPercentile(99.99) / 1000.0);
-            result.publishLatencyMax.add(reportHistogram.getMaxValue() / 1000.0);
+            result.publishLatencyAvg.add(reportProduceLatencyHistogram.getMean() / 1000.0);
+            result.publishLatency50pct.add(reportProduceLatencyHistogram.getValueAtPercentile(50) / 1000.0);
+            result.publishLatency75pct.add(reportProduceLatencyHistogram.getValueAtPercentile(75) / 1000.0);
+            result.publishLatency95pct.add(reportProduceLatencyHistogram.getValueAtPercentile(95) / 1000.0);
+            result.publishLatency99pct.add(reportProduceLatencyHistogram.getValueAtPercentile(99) / 1000.0);
+            result.publishLatency999pct.add(reportProduceLatencyHistogram.getValueAtPercentile(99.9) / 1000.0);
+            result.publishLatency9999pct.add(reportProduceLatencyHistogram.getValueAtPercentile(99.99) / 1000.0);
+            result.publishLatencyMax.add(reportProduceLatencyHistogram.getMaxValue() / 1000.0);
+            result.e2eLatencyAvg.add(reportE2eLatencyHistogram.getMean() / 1000.0);
+            result.e2eLatency50pct.add(reportE2eLatencyHistogram.getValueAtPercentile(50) / 1000.0);
+            result.e2eLatency75pct.add(reportE2eLatencyHistogram.getValueAtPercentile(75) / 1000.0);
+            result.e2eLatency95pct.add(reportE2eLatencyHistogram.getValueAtPercentile(95) / 1000.0);
+            result.e2eLatency99pct.add(reportE2eLatencyHistogram.getValueAtPercentile(99) / 1000.0);
+            result.e2eLatency999pct.add(reportE2eLatencyHistogram.getValueAtPercentile(99.9) / 1000.0);
+            result.e2eLatency9999pct.add(reportE2eLatencyHistogram.getValueAtPercentile(99.99) / 1000.0);
+            result.e2eLatencyMax.add(reportE2eLatencyHistogram.getMaxValue() / 1000.0);
 
-            reportHistogram.reset();
+            reportProduceLatencyHistogram.reset();
 
             if (now >= testEndTime) {
                 testCompleted = true;
-                reportHistogram = cumulativeRecorder.getIntervalHistogram();
+                reportProduceLatencyHistogram = produceCumulativeLatencyRecorder.getIntervalHistogram();
+                reportE2eLatencyHistogram = e2eCumulativeLatencyRecorder.getIntervalHistogram();
+
                 log.info(
                         "----- Aggregated Pub Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {}",
-                        dec.format(reportHistogram.getMean() / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(50) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(95) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(99) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(99.9) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(99.99) / 1000.0),
-                        throughputFormat.format(reportHistogram.getMaxValue() / 1000.0));
+                        dec.format(reportProduceLatencyHistogram.getMean() / 1000.0),
+                        dec.format(reportProduceLatencyHistogram.getValueAtPercentile(50) / 1000.0),
+                        dec.format(reportProduceLatencyHistogram.getValueAtPercentile(95) / 1000.0),
+                        dec.format(reportProduceLatencyHistogram.getValueAtPercentile(99) / 1000.0),
+                        dec.format(reportProduceLatencyHistogram.getValueAtPercentile(99.9) / 1000.0),
+                        dec.format(reportProduceLatencyHistogram.getValueAtPercentile(99.99) / 1000.0),
+                        throughputFormat.format(reportProduceLatencyHistogram.getMaxValue() / 1000.0),
+                        dec.format(reportE2eLatencyHistogram.getMean() / 1000.0),
+                        dec.format(reportE2eLatencyHistogram.getValueAtPercentile(50) / 1000.0),
+                        dec.format(reportE2eLatencyHistogram.getValueAtPercentile(95) / 1000.0),
+                        dec.format(reportE2eLatencyHistogram.getValueAtPercentile(99) / 1000.0),
+                        dec.format(reportE2eLatencyHistogram.getValueAtPercentile(99.9) / 1000.0),
+                        dec.format(reportE2eLatencyHistogram.getValueAtPercentile(99.99) / 1000.0),
+                        throughputFormat.format(reportE2eLatencyHistogram.getMaxValue() / 1000.0));
 
-                result.aggregatedPublishLatencyAvg = reportHistogram.getMean() / 1000.0;
-                result.aggregatedPublishLatency50pct = reportHistogram.getValueAtPercentile(50) / 1000.0;
-                result.aggregatedPublishLatency75pct = reportHistogram.getValueAtPercentile(75) / 1000.0;
-                result.aggregatedPublishLatency95pct = reportHistogram.getValueAtPercentile(95) / 1000.0;
-                result.aggregatedPublishLatency99pct = reportHistogram.getValueAtPercentile(99) / 1000.0;
-                result.aggregatedPublishLatency999pct = reportHistogram.getValueAtPercentile(99.9) / 1000.0;
-                result.aggregatedPublishLatency9999pct = reportHistogram.getValueAtPercentile(99.99) / 1000.0;
-                result.aggregatedPublishLatencyMax = reportHistogram.getMaxValue() / 1000.0;
+                result.aggregatedPublishLatencyAvg = reportProduceLatencyHistogram.getMean() / 1000.0;
+                result.aggregatedPublishLatency50pct = reportProduceLatencyHistogram.getValueAtPercentile(50) / 1000.0;
+                result.aggregatedPublishLatency75pct = reportProduceLatencyHistogram.getValueAtPercentile(75) / 1000.0;
+                result.aggregatedPublishLatency95pct = reportProduceLatencyHistogram.getValueAtPercentile(95) / 1000.0;
+                result.aggregatedPublishLatency99pct = reportProduceLatencyHistogram.getValueAtPercentile(99) / 1000.0;
+                result.aggregatedPublishLatency999pct = reportProduceLatencyHistogram.getValueAtPercentile(99.9) / 1000.0;
+                result.aggregatedPublishLatency9999pct = reportProduceLatencyHistogram.getValueAtPercentile(99.99) / 1000.0;
+                result.aggregatedPublishLatencyMax = reportProduceLatencyHistogram.getMaxValue() / 1000.0;
+                result.aggregatedE2eLatencyAvg = reportE2eLatencyHistogram.getMean() / 1000.0;
+                result.aggregatedE2eLatency50pct = reportE2eLatencyHistogram.getValueAtPercentile(50) / 1000.0;
+                result.aggregatedE2eLatency75pct = reportE2eLatencyHistogram.getValueAtPercentile(75) / 1000.0;
+                result.aggregatedE2eLatency95pct = reportE2eLatencyHistogram.getValueAtPercentile(95) / 1000.0;
+                result.aggregatedE2eLatency99pct = reportE2eLatencyHistogram.getValueAtPercentile(99) / 1000.0;
+                result.aggregatedE2eLatency999pct = reportE2eLatencyHistogram.getValueAtPercentile(99.9) / 1000.0;
+                result.aggregatedE2eLatency9999pct = reportE2eLatencyHistogram.getValueAtPercentile(99.99) / 1000.0;
+                result.aggregatedE2eLatencyMax = reportE2eLatencyHistogram.getMaxValue() / 1000.0;
 
-                reportHistogram.percentiles(100).forEach(value -> {
+                reportProduceLatencyHistogram.percentiles(100).forEach(value -> {
                     result.aggregatedPublishLatencyQuantiles.put(value.getPercentile(),
                             value.getValueIteratedTo() / 1000.0);
                 });
-
+                reportE2eLatencyHistogram.percentiles(100).forEach(value -> {
+                    result.aggregatedE2eLatencyQuantiles.put(value.getPercentile(),
+                            value.getValueIteratedTo() / 1000.0);
+                });
                 break;
             }
 
             oldTime = now;
         }
+        return result;
     }
 
     @Override
-    public void messageReceived(byte[] data) {
+    public void messageReceived(byte[] data, long messageReceivedTimestamp) {
         messagesReceived.increment();
         totalMessagesReceived.increment();
         bytesReceived.add(data.length);
+
+        Long messageId = Longs.fromByteArray(Arrays.copyOfRange(data, 0, 8));
+        if (messageId != totalMessagesReceived.longValue() + missedMessages.longValue()) {
+            long numMessagesMissed = messageId - totalMessagesReceived.longValue();
+            missedMessages.add(numMessagesMissed);
+        }
+        Long messageCreatedTimestamp = Longs.fromByteArray(Arrays.copyOfRange(data, 12, 20));
+        Long e2eLatencyNanos = messageReceivedTimestamp - messageCreatedTimestamp;
+        Long e2eLatencyMicros = TimeUnit.NANOSECONDS.toMicros(e2eLatencyNanos);
+        e2eLatencyRecorder.recordValue(e2eLatencyMicros);
+        e2eCumulativeLatencyRecorder.recordValue(e2eLatencyMicros);
+
+        // TODO: Validate message str to ensure no data corruption
     }
 
     private static final DecimalFormat rateFormat = new PaddingDecimalFormat("0.0", 7);
     private static final DecimalFormat throughputFormat = new PaddingDecimalFormat("0.0", 4);
     private static final DecimalFormat dec = new PaddingDecimalFormat("0.0", 4);
-
-    private static final Random random = new Random();
-
-    private static final String getRandomString() {
-        byte[] buffer = new byte[5];
-        random.nextBytes(buffer);
-        return BaseEncoding.base64Url().omitPadding().encode(buffer);
-    }
 
     private static final Logger log = LoggerFactory.getLogger(WorkloadGenerator.class);
 }

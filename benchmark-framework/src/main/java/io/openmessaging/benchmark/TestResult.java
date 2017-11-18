@@ -50,4 +50,24 @@ public class TestResult {
     public double aggregatedPublishLatencyMax;
 
     public Map<Double, Double> aggregatedPublishLatencyQuantiles = new TreeMap<>();
+
+    public List<Double> e2eLatencyAvg = new ArrayList<>();
+    public List<Double> e2eLatency50pct = new ArrayList<>();
+    public List<Double> e2eLatency75pct = new ArrayList<>();
+    public List<Double> e2eLatency95pct = new ArrayList<>();
+    public List<Double> e2eLatency99pct = new ArrayList<>();
+    public List<Double> e2eLatency999pct = new ArrayList<>();
+    public List<Double> e2eLatency9999pct = new ArrayList<>();
+    public List<Double> e2eLatencyMax = new ArrayList<>();
+
+    public Map<Double, Double> aggregatedE2eLatencyQuantiles = new TreeMap<>();
+
+    public double aggregatedE2eLatencyAvg;
+    public double aggregatedE2eLatency50pct;
+    public double aggregatedE2eLatency75pct;
+    public double aggregatedE2eLatency95pct;
+    public double aggregatedE2eLatency99pct;
+    public double aggregatedE2eLatency999pct;
+    public double aggregatedE2eLatency9999pct;
+    public double aggregatedE2eLatencyMax;
 }

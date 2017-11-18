@@ -23,10 +23,11 @@ driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client specific configurations
 
-replicationFactor: 3
+replicationFactor: 1
 
+#bootstrap.servers=kafka.cdp:9092
 commonConfig: >
-    bootstrap.servers=kafka.cdp:9092
+    bootstrap.servers=localhost:9092
 
 producerConfig: >
     acks=all

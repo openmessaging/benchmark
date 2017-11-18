@@ -37,7 +37,9 @@ public class Workload {
     public int consumerPerSubscription;
 
     public int producerRate;
-    
+
+    public int consumeRate;
+
     public int testDurationMinutes;
 
     public int numTestRuns;

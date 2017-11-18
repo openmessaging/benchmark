@@ -18,31 +18,25 @@
  */
 package io.openmessaging.benchmark.driver.pulsar;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.pulsar.client.admin.PulsarAdmin;
-import org.apache.pulsar.client.api.ClientConfiguration;
-import org.apache.pulsar.client.api.ConsumerConfiguration;
-import org.apache.pulsar.client.api.ProducerConfiguration;
-import org.apache.pulsar.client.api.PulsarClient;
-import org.apache.pulsar.client.api.SubscriptionType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.openmessaging.benchmark.driver.pulsar.config.PulsarConfig;
+import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
@@ -80,7 +74,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    public CompletableFuture<Void> createTopic(String topic, int partitions, boolean consumerOnly) {
         if (partitions == 1) {
             // No-op
             return CompletableFuture.completedFuture(null);
@@ -97,11 +91,11 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
+                                                               ConsumerCallback consumerCallback, int partitionsPerTopic) {
         ConsumerConfiguration conf = new ConsumerConfiguration();
         conf.setSubscriptionType(SubscriptionType.Failover);
         conf.setMessageListener((consumer, msg) -> {
-            consumerCallback.messageReceived(msg.getData());
+            consumerCallback.messageReceived(msg.getData(), System.nanoTime());
             consumer.acknowledgeAsync(msg);
         });
 

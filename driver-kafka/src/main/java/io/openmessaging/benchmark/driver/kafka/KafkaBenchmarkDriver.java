@@ -25,12 +25,12 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -42,6 +42,7 @@ import java.io.StringReader;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkDriver.class);
@@ -86,15 +87,58 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    public CompletableFuture<Void> createTopic(String topic, int partitions, boolean onlyValidate) {
         return CompletableFuture.runAsync(() -> {
             try {
-                admin.createTopics(Arrays.asList(new NewTopic(topic, partitions, config.replicationFactor))).all()
-                        .get();
+                ListTopicsResult allTopics = admin.listTopics();
+                Set<String> topicsStrs = allTopics.names().get();
+                if (topicsStrs.contains(topic)) {
+                    if (!onlyValidate) {
+                        DeleteTopicsResult deleteResult = admin.deleteTopics(Collections.singleton(topic));
+                        deleteResult.all().get();
+                        Thread.sleep(TimeUnit.SECONDS.toMillis(3)); // TODO: Grrrr...more polling
+                        createNewKafkaTopic(topic, partitions);
+                    }
+                } else {
+                    createNewKafkaTopic(topic, partitions);
+                }
+
+
+                // Make sure topic gets a leader
+                int leaderElectedCount = 0;
+                while (leaderElectedCount != partitions) {
+                    DescribeTopicsResult existingTopics = admin.describeTopics(Collections.singleton(topic));
+                    Map<String, TopicDescription> topicDescriptionMap = existingTopics.all().get();
+                    /*TopicDescription topicDescription = topicDescriptionMap.get(topic);
+                    if (topicDescription.partitions().size() != partitions) {
+                        throw new RuntimeException(String.format("Topic %s doesn't have declared number of partitions " +
+                                "(want: %s have: %s)", topic, partitions, topicDescription.partitions().size()));
+                    }
+                    if (topicDescription.partitions().get(0).replicas().size() != config.replicationFactor) {
+                        throw new RuntimeException(String.format("Topic %s doesn't have declared replication " +
+                                "(want: %s have: %s)", topic, config.replicationFactor,
+                                topicDescription.partitions().get(0).replicas().size()));
+                    }*/
+                    for (TopicPartitionInfo topicPartition : topicDescriptionMap.get(topic).partitions()) {
+                        if (topicPartition.leader().isEmpty()) {
+                            log.info("Leader not elected for topic {} partition {}; waiting 1 second");
+                            leaderElectedCount = 0;
+                            Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+                            break; // Loop back and check everything again
+                        } else {
+                            leaderElectedCount++;
+                        }
+                    }
+                }
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    private void createNewKafkaTopic(String topic, int partitions) throws InterruptedException, ExecutionException {
+        admin.createTopics(Collections.singleton(new NewTopic(topic, partitions, config.replicationFactor))).all()
+                .get();
     }
 
     @Override
@@ -104,7 +148,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
+                                                               ConsumerCallback consumerCallback, int partitionsPerTopic) {
         Properties properties = new Properties();
         consumerProperties.forEach(properties::put);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);
@@ -112,24 +156,33 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         try {
             consumer.subscribe(Arrays.asList(topic));
             CompletableFuture<BenchmarkConsumer> completedConsumerFuture =
-                    CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer));
+                    CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer, topic, partitionsPerTopic));
             consumers.add(completedConsumerFuture.get());
             return completedConsumerFuture;
         } catch (Throwable t) {
-            consumer.close();
-            CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
-            future.completeExceptionally(t);
-            return future;
+            try {
+                consumer.close();
+            } finally {
+                CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
+                future.completeExceptionally(t);
+                return future;
+            }
         }
 
     }
 
     @Override
     public void close() throws Exception {
-        producer.close();
-
-        for (BenchmarkConsumer consumer : consumers) {
-            consumer.close();
+        try {
+            producer.close();
+        } finally {
+            for (BenchmarkConsumer consumer : consumers) {
+                try {
+                    consumer.close();
+                } catch (Exception e) {
+                    log.warn("Error while closing consumer", e);
+                }
+            }
         }
     }
 

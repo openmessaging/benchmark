@@ -35,11 +35,15 @@ import java.util.concurrent.Executors;
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
     private final KafkaConsumer<byte[], byte[]> consumer;
+    private final String topic;
 
     private final ExecutorService executor;
+    private int partitions;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer) {
+    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, String topic, int partitions) {
         this.consumer = consumer;
+        this.topic = topic;
+        this.partitions = partitions;
         this.executor = Executors.newSingleThreadExecutor();
     }
 
@@ -53,28 +57,35 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     @Override
-    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback, ) {
+    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-
         this.executor.execute(() -> {
             while (true) {
+
                 ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
-                // If we ran out of records to consumer, start from beginning.
+
+                // If we ran out of records to consume, start from beginning (TODO?).
+                /*if (records.isEmpty()) {
+                    for (int partition = 0; partition < partitions; partition++) {
+                        consumer.seekToBeginning(Collections.singleton(new TopicPartition(topic, partition)));
+                    }
+                    records = consumer.poll(100);
+                }*/
+                // For now, for simplicity just stop and wait for results to record
                 if (records.isEmpty()) {
-                    consumer.seekToBeginning();
+                    break;
                 }
                 for (ConsumerRecord<byte[], byte[]> record : records) {
-                    callback.messageReceived(record.value());
+                    callback.messageReceived(record.value(), System.nanoTime());
 
                     Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                     offsetMap.put(new TopicPartition(record.topic(), record.partition()),
                             new OffsetAndMetadata(record.offset()));
                     consumer.commitAsync(offsetMap, (offsets, exception) -> {
-                        // Offset committedfuture.complete(null);
+                        // Offset committed
                     });
                 }
             }
-            future.complete(null);
         });
         return future;
     }

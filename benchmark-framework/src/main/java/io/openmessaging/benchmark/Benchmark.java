@@ -97,19 +97,26 @@ public class Benchmark {
 
         workloads.forEach((workloadName, workload) -> {
             drivers.forEach((driverName, driver) -> {
-                log.info("--------------- WORKLOAD : {} --- DRIVER : {}---------------", workload.name, driverName);
+                log.info("--------------- WORKLOAD : {} --- DRIVER : {} ---------------", workload.name, driverName);
 
                 WorkloadGenerator generator = new WorkloadGenerator(driverName, driver, workload);
                 try {
-                    TestResult result = generator.run();
+                    if (workload.numTestRuns == 0) {
+                        workload.numTestRuns = 1;
+                    }
+                    for (int run = 1; run <= workload.numTestRuns; run++) {
+                        try {
+                            TestResult result = generator.run();
 
-                    String fileName = String.format("%s-%s-%s.json", workloadName, driverName,
-                            dateFormat.format(new Date()));
+                            String fileName = String.format("%s-%s-%s.json", workloadName, driverName,
+                                    dateFormat.format(new Date()));
 
-                    log.info("Writing test result into {}", fileName);
-                    writer.writeValue(new File(fileName), result);
-
-                    generator.close();
+                            log.info("Writing test result into {} for run number {}", fileName, run);
+                            writer.writeValue(new File(fileName), result);
+                        } finally {
+                            generator.close();
+                        }
+                    }
                 } catch (Exception e) {
                     log.error("Failed to run the workload '{}' for driver '{}'", workload.name, driverName, e);
                 }
