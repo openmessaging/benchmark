@@ -74,6 +74,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
         consumerProperties = new Properties();
         commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
+        consumerProperties.load(new StringReader(config.consumerConfig));
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
         consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 

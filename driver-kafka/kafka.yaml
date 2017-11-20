@@ -29,7 +29,7 @@ commonConfig: >
     bootstrap.servers=localhost:9092
 
 producerConfig: >
-    a=b
-    
+    acks=all
+
 consumerConfig: >
-    a=b
+    enable.auto.commit=false
