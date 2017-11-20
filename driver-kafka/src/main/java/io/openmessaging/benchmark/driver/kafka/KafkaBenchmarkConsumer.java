@@ -61,20 +61,8 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
         CompletableFuture<Void> future = new CompletableFuture<>();
         this.executor.execute(() -> {
             while (true) {
-
                 ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
 
-                // If we ran out of records to consume, start from beginning (TODO?).
-                /*if (records.isEmpty()) {
-                    for (int partition = 0; partition < partitions; partition++) {
-                        consumer.seekToBeginning(Collections.singleton(new TopicPartition(topic, partition)));
-                    }
-                    records = consumer.poll(100);
-                }*/
-                // For now, for simplicity just stop and wait for results to record
-                if (records.isEmpty()) {
-                    break;
-                }
                 for (ConsumerRecord<byte[], byte[]> record : records) {
                     callback.messageReceived(record.value(), System.nanoTime());
 

@@ -66,9 +66,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final LongAdder totalMessagesReceived = new LongAdder();
 
     private final LongAdder missedMessages = new LongAdder();
-    private final Recorder e2eLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-    private final Recorder e2eCumulativeLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-
+    private final Recorder e2eLatencyRecorder = new Recorder(5);
+    private final Recorder e2eCumulativeLatencyRecorder = new Recorder(5);
 
     private boolean testCompleted = false;
 
