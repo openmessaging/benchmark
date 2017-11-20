@@ -17,19 +17,19 @@
 # under the License.
 #
 
-
 - name: Format and mount disks
   hosts: pulsar
   connection: ssh
   become: true
   tasks:
     - shell: >
+        sudo tuned-adm profile latency-performance &&
         mkfs.xfs /dev/nvme0n1 &&
         mkfs.xfs /dev/nvme1n1 &&
         mkdir -p /mnt/journal &&
         mkdir -p /mnt/storage &&
-        mount -o defaults,noatime,discard /dev/nvme0n1 /mnt/journal &&
-        mount -o defaults,noatime,discard /dev/nvme1n1 /mnt/storage
+        mount -o defaults,noatime,nodiscard,nobarrier /dev/nvme0n1 /mnt/journal &&
+        mount -o defaults,noatime,nodiscard,nobarrier /dev/nvme1n1 /mnt/storage
       args:
         creates: /mnt/journal
 
@@ -182,7 +182,7 @@
       lineinfile:
          dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms48G -Xmx48G -XX:+UseShenandoahGC "'
+         line: 'JVM_MEM="-Xms48G -Xmx48G -XX:+UseShenandoahGC -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
 
 
 - name:  Hosts addresses
