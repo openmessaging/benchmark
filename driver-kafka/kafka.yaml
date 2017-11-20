@@ -31,6 +31,5 @@ commonConfig: >
 
 producerConfig: >
     acks=all
-    
 consumerConfig: >
-    a=b
+    enable.auto.commit=false

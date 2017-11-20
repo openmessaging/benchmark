@@ -1,0 +1,14 @@
+[Unit]
+Description=Kafka
+After=network.target
+
+[Service]
+ExecStart=/opt/kafka/bin/kafka-server-start.sh config/server.properties
+Environment='KAFKA_HEAP_OPTS=-Xms6g -Xmx6g -XX:MetaspaceSize=96m'
+WorkingDirectory=/opt/kafka
+RestartSec=1s
+Restart=on-failure
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
