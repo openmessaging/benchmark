@@ -8,6 +8,10 @@ target
 *.svg
 core/*.json
 *.json
+*.iml
+*.swp
+*.tar.*
+.idea
 *.retry
 **/.terraform
 **/terraform.tfstate

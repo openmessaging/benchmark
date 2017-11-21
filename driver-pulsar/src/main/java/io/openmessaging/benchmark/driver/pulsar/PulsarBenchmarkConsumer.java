@@ -18,9 +18,12 @@
  */
 package io.openmessaging.benchmark.driver.pulsar;
 
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.apache.pulsar.client.api.Consumer;
 
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+
+import java.util.concurrent.CompletableFuture;
 
 public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
 
@@ -35,4 +38,12 @@ public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
         consumer.close();
     }
 
+    @Override
+    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback) {
+        // TODO:
+        if (callback == null) {
+            throw new RuntimeException("Unimplemented consumer for pulsar");
+        }
+        return null;
+    }
 }

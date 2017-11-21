@@ -45,7 +45,7 @@ public interface BenchmarkDriver extends AutoCloseable {
     /**
      * Create a new topic with a given number of partitions
      */
-    CompletableFuture<Void> createTopic(String topic, int partitions);
+    CompletableFuture<Void> createTopic(String topic, int partitions, boolean onlyValidate);
 
     /**
      * Create a producer for a given topic
@@ -61,8 +61,9 @@ public interface BenchmarkDriver extends AutoCloseable {
      * @param topic
      * @param subscriptionName
      * @param consumerCallback
+     * @param partitionsPerTopic
      * @return
      */
     CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback);
+                                                        ConsumerCallback consumerCallback, int partitionsPerTopic);
 }

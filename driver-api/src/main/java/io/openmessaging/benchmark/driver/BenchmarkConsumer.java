@@ -18,6 +18,15 @@
  */
 package io.openmessaging.benchmark.driver;
 
-public interface BenchmarkConsumer extends AutoCloseable {
+import java.util.concurrent.CompletableFuture;
 
+public interface BenchmarkConsumer extends AutoCloseable {
+    /**
+     * Start listening for messages and return a callback to track the completion of the
+     * operation.
+     *
+     * @param callback
+     * @return
+     */
+    CompletableFuture<Void> receiveAsync(ConsumerCallback callback);
 }

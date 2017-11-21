@@ -25,11 +25,11 @@ driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 replicationFactor: 1
 
+#bootstrap.servers=kafka.cdp:9092
 commonConfig: >
     bootstrap.servers=localhost:9092
 
 producerConfig: >
     acks=all
-
 consumerConfig: >
     enable.auto.commit=false
