@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 
 import org.HdrHistogram.Histogram;
 import org.HdrHistogram.Recorder;
-import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +77,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         List<BenchmarkConsumer> consumers = createConsumers(topics);
         List<BenchmarkProducer> producers = createProducers(topics);
 
+        ensureTopicsAreReady(producers, consumers);
+
         RateLimiter rateLimiter;
         AtomicBoolean runCompleted = new AtomicBoolean();
         if (workload.producerRate > 0) {
@@ -112,6 +113,27 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         runCompleted.set(true);
 
         return result;
+    }
+
+    private void ensureTopicsAreReady(List<BenchmarkProducer> producers, List<BenchmarkConsumer> consumers) {
+        log.info("Waiting for consumers to be ready");
+        // This is work around the fact that there's no way to have a consumer ready in Kafka without first publishing
+        // some message on the topic, which will then trigger the partitions assignement to the consumers
+
+        // In this case we just publish 1 message and then wait for consumers to receive the data
+        producers.forEach(producer -> producer.sendAsync(new byte[10]).thenRun(() -> totalMessagesSent.increment()));
+
+        long expectedMessages = workload.subscriptionsPerTopic * producers.size();
+
+        while (totalMessagesReceived.sum() < expectedMessages) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        log.info("All consumers are ready");
     }
 
     /**
@@ -246,6 +268,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         }
 
         List<BenchmarkConsumer> consumers = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
+
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
         return consumers;
     }
