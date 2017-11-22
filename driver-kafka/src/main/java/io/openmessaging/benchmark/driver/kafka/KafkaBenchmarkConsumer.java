@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkConsumer.class);
@@ -50,6 +51,9 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     public void close() throws Exception {
         try {
             // We try to close the consumer in the load generator thread because consumer is not thread-safe.
+            executor.shutdown();
+            executor.awaitTermination(10, TimeUnit.SECONDS);
+            executor.shutdownNow();
             consumer.close();
         } catch (IllegalStateException e) {
             if (e.getMessage().contains("This consumer has already been closed.")) {
@@ -57,8 +61,6 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
             } else {
                 log.error("Failed consumer close", e);
             }
-        } finally {
-            executor.shutdownNow();
         }
     }
 

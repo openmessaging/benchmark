@@ -143,7 +143,6 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 produceLatencyRecorder, produceCumulativeRecorder,
                 e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
 
-        executor.shutdownNow();
         runCompleted.set(true);
 
         return result;
@@ -245,7 +244,11 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        executor.shutdownNow();
+        executor.shutdown();
+        executor.awaitTermination(10, TimeUnit.SECONDS);
+        if (!executor.isShutdown()) {
+            executor.shutdownNow();
+        }
     }
 
     private List<String> createTopicsIdempotently(boolean consumerOnly) {
