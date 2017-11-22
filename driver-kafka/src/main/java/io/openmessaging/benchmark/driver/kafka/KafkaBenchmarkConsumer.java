@@ -71,9 +71,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                 }
 
                 if (!offsetMap.isEmpty()) {
-                    consumer.commitAsync(offsetMap, (offsets, exception) -> {
-                        // Offset committed
-                    });
+                    consumer.commitSync(offsetMap);
                 }
             }
         });
