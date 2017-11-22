@@ -37,6 +37,15 @@ public class Workload {
     public int consumerPerSubscription;
 
     public int producerRate;
-    
+
+    /**
+     * If the consumer backlog is > 0, the generator will accumulate messages until the requested amount of storage is
+     * retained and then it will start the consumers to drain it.
+     * 
+     * The testDurationMinutes will be overruled to allow the test to complete when the consumer has drained all the
+     * backlog and it's on par with the producer
+     */
+    public long consumerBacklogSizeGB = 0;
+
     public int testDurationMinutes;
 }

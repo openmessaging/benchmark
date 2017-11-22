@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -37,13 +38,15 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private final KafkaConsumer<byte[], byte[]> consumer;
 
     private final ExecutorService executor;
+    private final Future<?> consumerTask;
+    private volatile boolean closing = false;
 
     public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, ConsumerCallback callback) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
 
-        this.executor.execute(() -> {
-            while (true) {
+        this.consumerTask = this.executor.submit(() -> {
+            while (!closing) {
                 ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
 
                 Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
@@ -63,8 +66,10 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
     @Override
     public void close() throws Exception {
+        closing = true;
+        executor.shutdown();
+        consumerTask.get();
         consumer.close();
-        executor.shutdownNow();
     }
 
 }

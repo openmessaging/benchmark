@@ -65,14 +65,19 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final LongAdder totalMessagesReceived = new LongAdder();
 
     private boolean testCompleted = false;
+    private volatile boolean needToWaitForBacklogDraining = false;
 
     public WorkloadGenerator(String driverName, BenchmarkDriver benchmarkDriver, Workload workload) {
         this.driverName = driverName;
         this.benchmarkDriver = benchmarkDriver;
         this.workload = workload;
+
+        if (workload.consumerBacklogSizeGB > 0 && workload.producerRate == 0) {
+            throw new IllegalArgumentException("Cannot probe producer sustainable rate when building backlog");
+        }
     }
 
-    public TestResult run() {
+    public TestResult run() throws Exception {
         List<String> topics = createTopics();
         List<BenchmarkConsumer> consumers = createConsumers(topics);
         List<BenchmarkProducer> producers = createProducers(topics);
@@ -96,6 +101,17 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         log.info("----- Starting warm-up traffic ------");
         generateLoad(producers, TimeUnit.MINUTES.toSeconds(1), rateLimiter);
         runCompleted.set(true);
+
+        if (workload.consumerBacklogSizeGB > 0) {
+            log.info("Stopping all consumers to build backlog");
+            for (BenchmarkConsumer consumer : consumers) {
+                consumer.close();
+            }
+
+            executor.execute(() -> {
+                buildAndDrainBacklog(topics);
+            });
+        }
 
         log.info("----- Starting benchmark traffic ------");
         runCompleted.set(false);
@@ -288,6 +304,49 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return producers;
     }
 
+    private void buildAndDrainBacklog(List<String> topics) {
+        this.needToWaitForBacklogDraining = true;
+
+        long requestedBacklogSize = workload.consumerBacklogSizeGB * 1024 * 1024 * 1024;
+
+        while (true) {
+            long currentBacklogSize = (workload.subscriptionsPerTopic * totalMessagesSent.sum()
+                    - totalMessagesReceived.sum()) * workload.messageSize;
+
+            if (currentBacklogSize >= requestedBacklogSize) {
+                break;
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        log.info("--- Start draining backlog ---");
+
+        createConsumers(topics);
+
+        final long minBacklog = 1000;
+
+        while (true) {
+            long currentBacklog = workload.subscriptionsPerTopic * totalMessagesSent.sum()
+                    - totalMessagesReceived.sum();
+            if (currentBacklog <= minBacklog) {
+                log.info("--- Completed backlog draining ---");
+                needToWaitForBacklogDraining = false;
+                return;
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
             RateLimiter rateLimiter) {
         Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
@@ -386,7 +445,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
             reportHistogram.reset();
 
-            if (now >= testEndTime) {
+            if (now >= testEndTime && !needToWaitForBacklogDraining) {
                 testCompleted = true;
                 reportHistogram = cumulativeRecorder.getIntervalHistogram();
                 log.info(
