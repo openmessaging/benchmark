@@ -31,9 +31,9 @@ producersPerTopic : 1
 
 consumerPerSubscription : 1
 
-producerRate : 10000
+producerRate : 10
 
-consumeRate : 10000
+consumeRate : 10
 
 testDurationMinutes : 1
 

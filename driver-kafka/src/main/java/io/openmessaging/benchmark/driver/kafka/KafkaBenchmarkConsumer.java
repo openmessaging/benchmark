@@ -25,6 +25,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,25 +35,28 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
+    private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkConsumer.class);
 
     private final KafkaConsumer<byte[], byte[]> consumer;
-    private final String topic;
 
     private final ExecutorService executor;
-    private int partitions;
-    private boolean testCompleted;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, String topic, int partitions) {
+    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer) {
         this.consumer = consumer;
-        this.topic = topic;
-        this.partitions = partitions;
         this.executor = Executors.newSingleThreadExecutor();
     }
 
     @Override
     public void close() throws Exception {
         try {
+            // We try to close the consumer in the load generator thread because consumer is not thread-safe.
             consumer.close();
+        } catch (IllegalStateException e) {
+            if (e.getMessage().contains("This consumer has already been closed.")) {
+                log.info("Successfully closed consumer");
+            } else {
+                log.error("Failed consumer close", e);
+            }
         } finally {
             executor.shutdownNow();
         }
@@ -59,22 +64,27 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
     @Override
     public CompletableFuture<Void> receiveAsync(ConsumerCallback callback, final boolean testCompleted) {
-        this.testCompleted = testCompleted;
         CompletableFuture<Void> future = new CompletableFuture<>();
         this.executor.execute(() -> {
-            while (!testCompleted) {
-                ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
-                Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
-                for (ConsumerRecord<byte[], byte[]> record : records) {
-                    callback.messageReceived(record.value(), System.nanoTime());
+            try {
+                while (!testCompleted) {
+                    ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
+                    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
+                    for (ConsumerRecord<byte[], byte[]> record : records) {
+                        callback.messageReceived(record.value(), System.nanoTime());
 
-                    offsetMap.put(new TopicPartition(record.topic(), record.partition()),
-                            new OffsetAndMetadata(record.offset()));
+                        offsetMap.put(new TopicPartition(record.topic(), record.partition()),
+                                new OffsetAndMetadata(record.offset()));
+                    }
+
+                    if (!offsetMap.isEmpty()) {
+                        consumer.commitSync(offsetMap);
+                    }
                 }
 
-                if (!offsetMap.isEmpty()) {
-                    consumer.commitSync(offsetMap);
-                }
+                consumer.close();
+            } catch (Throwable e) {
+                future.completeExceptionally(e);
             }
             future.complete(null);
         });

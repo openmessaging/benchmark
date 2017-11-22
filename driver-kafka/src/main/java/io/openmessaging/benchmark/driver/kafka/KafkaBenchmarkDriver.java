@@ -149,15 +149,15 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-                                                               ConsumerCallback consumerCallback, int partitionsPerTopic) {
+                                                               ConsumerCallback callback) {
         Properties properties = new Properties();
         consumerProperties.forEach(properties::put);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);
         KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(properties);
         try {
-            consumer.subscribe(Arrays.asList(topic));
+            consumer.subscribe(Collections.singletonList(topic));
             CompletableFuture<BenchmarkConsumer> completedConsumerFuture =
-                    CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer, topic, partitionsPerTopic));
+                    CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer));
             consumers.add(completedConsumerFuture.get());
             return completedConsumerFuture;
         } catch (Throwable t) {

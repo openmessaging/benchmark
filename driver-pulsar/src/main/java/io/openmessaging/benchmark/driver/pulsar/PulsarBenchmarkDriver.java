@@ -91,7 +91,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-                                                               ConsumerCallback consumerCallback, int partitionsPerTopic) {
+                                                               ConsumerCallback consumerCallback) {
         ConsumerConfiguration conf = new ConsumerConfiguration();
         conf.setSubscriptionType(SubscriptionType.Failover);
         conf.setMessageListener((consumer, msg) -> {

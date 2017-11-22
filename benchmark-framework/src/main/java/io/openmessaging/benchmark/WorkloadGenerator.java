@@ -143,7 +143,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 produceLatencyRecorder, produceCumulativeRecorder,
                 e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
 
-        executor.awaitTermination(10, TimeUnit.SECONDS);
+        executor.shutdownNow();
         runCompleted.set(true);
 
         return result;
@@ -276,7 +276,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             String subscriptionName = String.format("sub-%03d", i);
 
             for (String topic : topics) {
-                futures.add(benchmarkDriver.createConsumer(topic, subscriptionName, this, partitionsPerTopic));
+                futures.add(benchmarkDriver.createConsumer(topic, subscriptionName, this));
             }
         }
 
@@ -315,6 +315,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                         });
                     });
                 }
+
             } catch (Throwable t) {
                 log.error("Got error", t);
             }
@@ -544,7 +545,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             missedMessages.add(numMessagesMissed);
         }
         Long messageCreatedTimestamp = Longs.fromByteArray(Arrays.copyOfRange(data, 12, 20));
-        Long e2eLatencyNanos = messageReceivedTimestamp - messageCreatedTimestamp;
+        // If messages are flowing fairly fast and there is clock skew, record the latency as zero
+        Long e2eLatencyNanos = Math.max(0, messageReceivedTimestamp - messageCreatedTimestamp);
         Long e2eLatencyMicros = TimeUnit.NANOSECONDS.toMicros(e2eLatencyNanos);
         e2eLatencyRecorder.recordValue(e2eLatencyMicros);
         e2eCumulativeLatencyRecorder.recordValue(e2eLatencyMicros);

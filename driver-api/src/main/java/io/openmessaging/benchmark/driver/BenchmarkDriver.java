@@ -60,10 +60,8 @@ public interface BenchmarkDriver extends AutoCloseable {
      * 
      * @param topic
      * @param subscriptionName
-     * @param consumerCallback
-     * @param partitionsPerTopic
      * @return
      */
     CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-                                                        ConsumerCallback consumerCallback, int partitionsPerTopic);
+                                                        ConsumerCallback consumerCallback);
 }
