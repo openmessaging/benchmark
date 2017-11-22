@@ -124,7 +124,11 @@ public class Benchmark {
         });
 
         for (BenchmarkDriver driver : drivers.values()) {
-            driver.close();
+            try {
+                driver.close();
+            } catch (Throwable e) {
+                log.error("Failed to close driver", e);
+            }
         }
     }
 

@@ -39,7 +39,7 @@ public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     @Override
-    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback) {
+    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback, final boolean testCompleted) {
         // TODO:
         if (callback == null) {
             throw new RuntimeException("Unimplemented consumer for pulsar");

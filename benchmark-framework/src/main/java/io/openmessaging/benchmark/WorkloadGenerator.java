@@ -77,7 +77,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         this.workload = workload;
     }
 
-    public TestResult run() {
+    public TestResult run() throws InterruptedException {
         List<String> topics = createTopicsIdempotently(workload.producerRate <= 0);
         List<BenchmarkConsumer> consumers = createConsumers(topics, workload.partitionsPerTopic);
         List<BenchmarkProducer> producers = createProducers(topics);
@@ -143,6 +143,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 produceLatencyRecorder, produceCumulativeRecorder,
                 e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
 
+        executor.awaitTermination(10, TimeUnit.SECONDS);
         runCompleted.set(true);
 
         return result;
@@ -307,7 +308,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 while (!testCompleted) {
                     consumers.forEach(consumer -> {
                         rateLimiter.acquire();
-                        consumer.receiveAsync(this).exceptionally(ex -> {
+                        consumer.receiveAsync(this, testCompleted).exceptionally(ex -> {
                             log.warn("Write error on message", ex);
                             System.exit(-1);
                             return null;
@@ -321,7 +322,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     }
 
     /**
-     * Generate a string that is sufficently large so that we can build messages on uniform text for validation purposes.
+     * Generate a string that is sufficiently large so that we can build messages on uniform text for validation purposes.
      *
      * @return
      */
@@ -344,6 +345,10 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             return;
         }
         byte[] comparisonStr = getComparisonStr(workload.messageSize);
+        final byte[] payloadData = new byte[workload.messageSize];
+        for (int i = 0; i < comparisonStr.length; i++) {
+            payloadData[i+20] = comparisonStr[i];
+        }
 
         executor.submit(() -> {
             try {
@@ -353,7 +358,6 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                     for (BenchmarkProducer producer : producers) {
                         rateLimiter.acquire();
 
-                        final byte[] payloadData = new byte[workload.messageSize];
                         byte[] messageNumberBytes = Longs.toByteArray(messageNumber.longValue());
                         for (int i = 0; i < 8; i++) {
                             payloadData[i] = messageNumberBytes[i];
@@ -365,9 +369,6 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                         byte[] produceTimestampBytes = Longs.toByteArray(System.nanoTime());
                         for (int i = 0; i < 8; i++) {
                             payloadData[i+12] = produceTimestampBytes[i];
-                        }
-                        for (int i = 0; i < comparisonStr.length; i++) {
-                            payloadData[i+20] = comparisonStr[i];
                         }
                         final long sendTime = System.nanoTime();
                         producer.sendAsync(payloadData).thenRun(() -> {
@@ -481,7 +482,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 reportE2eLatencyHistogram = e2eCumulativeLatencyRecorder.getIntervalHistogram();
 
                 log.info(
-                        "----- Aggregated Pub Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {}",
+                        "----- Aggregated Pub Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {}" +
+                                " ----- Aggregated E2e Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {}",
                         dec.format(reportProduceLatencyHistogram.getMean() / 1000.0),
                         dec.format(reportProduceLatencyHistogram.getValueAtPercentile(50) / 1000.0),
                         dec.format(reportProduceLatencyHistogram.getValueAtPercentile(95) / 1000.0),

@@ -28,5 +28,5 @@ public interface BenchmarkConsumer extends AutoCloseable {
      * @param callback
      * @return
      */
-    CompletableFuture<Void> receiveAsync(ConsumerCallback callback);
+    CompletableFuture<Void> receiveAsync(ConsumerCallback callback, final boolean testCompleted);
 }

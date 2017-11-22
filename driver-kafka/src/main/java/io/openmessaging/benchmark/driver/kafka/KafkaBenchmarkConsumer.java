@@ -39,6 +39,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
     private final ExecutorService executor;
     private int partitions;
+    private boolean testCompleted;
 
     public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, String topic, int partitions) {
         this.consumer = consumer;
@@ -57,10 +58,11 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     @Override
-    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback) {
+    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback, final boolean testCompleted) {
+        this.testCompleted = testCompleted;
         CompletableFuture<Void> future = new CompletableFuture<>();
         this.executor.execute(() -> {
-            while (true) {
+            while (!testCompleted) {
                 ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
                 Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                 for (ConsumerRecord<byte[], byte[]> record : records) {
@@ -74,6 +76,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                     consumer.commitSync(offsetMap);
                 }
             }
+            future.complete(null);
         });
         return future;
     }
