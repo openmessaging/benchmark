@@ -20,6 +20,7 @@ package io.openmessaging.benchmark;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +36,7 @@ import org.HdrHistogram.Recorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.common.io.BaseEncoding;
 import com.google.common.util.concurrent.RateLimiter;
 
@@ -355,38 +357,44 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         long startTime = System.nanoTime();
         this.testCompleted = false;
 
-        executor.submit(() -> {
-            try {
-                byte[] payloadData = new byte[workload.messageSize];
+        int processors = Runtime.getRuntime().availableProcessors();
+        Collections.shuffle(producers);
 
-                // Send messages on all topics/producers
-                while (!testCompleted) {
-                    for (int i = 0; i < producers.size(); i++) {
-                        BenchmarkProducer producer = producers.get(i);
-                        rateLimiter.acquire();
+        // Divide the producers across multiple different threads
+        for (List<BenchmarkProducer> producersPerThread : Lists.partition(producers, processors)) {
+            executor.submit(() -> {
+                try {
+                    byte[] payloadData = new byte[workload.messageSize];
 
-                        final long sendTime = System.nanoTime();
+                    // Send messages on all topics/producers
+                    while (!testCompleted) {
+                        for (int i = 0; i < producersPerThread.size(); i++) {
+                            BenchmarkProducer producer = producersPerThread.get(i);
+                            rateLimiter.acquire();
 
-                        producer.sendAsync(payloadData).thenRun(() -> {
-                            messagesSent.increment();
-                            totalMessagesSent.increment();
-                            bytesSent.add(payloadData.length);
+                            final long sendTime = System.nanoTime();
 
-                            long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
-                            recorder.recordValue(latencyMicros);
-                            cumulativeRecorder.recordValue(latencyMicros);
+                            producer.sendAsync(payloadData).thenRun(() -> {
+                                messagesSent.increment();
+                                totalMessagesSent.increment();
+                                bytesSent.add(payloadData.length);
 
-                        }).exceptionally(ex -> {
-                            log.warn("Write error on message", ex);
-                            System.exit(-1);
-                            return null;
-                        });
+                                long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
+                                recorder.recordValue(latencyMicros);
+                                cumulativeRecorder.recordValue(latencyMicros);
+
+                            }).exceptionally(ex -> {
+                                log.warn("Write error on message", ex);
+                                System.exit(-1);
+                                return null;
+                            });
+                        }
                     }
+                } catch (Throwable t) {
+                    log.error("Got error", t);
                 }
-            } catch (Throwable t) {
-                log.error("Got error", t);
-            }
-        });
+            });
+        }
 
         // Print report stats
         long oldTime = System.nanoTime();
