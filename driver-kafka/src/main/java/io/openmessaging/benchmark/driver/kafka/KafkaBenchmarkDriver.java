@@ -88,18 +88,13 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions, boolean onlyValidate) {
+    public CompletableFuture<Void> createTopic(String topic, int partitions) {
         return CompletableFuture.runAsync(() -> {
             try {
                 ListTopicsResult allTopics = admin.listTopics();
                 Set<String> topicsStrs = allTopics.names().get();
                 if (topicsStrs.contains(topic)) {
-                    if (!onlyValidate) {
-                        DeleteTopicsResult deleteResult = admin.deleteTopics(Collections.singleton(topic));
-                        deleteResult.all().get();
-                        Thread.sleep(TimeUnit.SECONDS.toMillis(3)); // TODO: Grrrr...more polling
-                        createNewKafkaTopic(topic, partitions);
-                    }
+                    // TODO: Delete topic if workload is geared for separate host consumer and producer
                 } else {
                     createNewKafkaTopic(topic, partitions);
                 }
@@ -157,7 +152,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         try {
             consumer.subscribe(Collections.singletonList(topic));
             CompletableFuture<BenchmarkConsumer> completedConsumerFuture =
-                    CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer));
+                    CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer, callback));
             consumers.add(completedConsumerFuture.get());
             return completedConsumerFuture;
         } catch (Throwable t) {

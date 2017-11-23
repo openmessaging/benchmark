@@ -37,6 +37,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,17 +71,24 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final Recorder e2eCumulativeLatencyRecorder = new Recorder(5);
 
     private boolean testCompleted = false;
+    private volatile boolean needToWaitForBacklogDraining = false;
 
     public WorkloadGenerator(String driverName, BenchmarkDriver benchmarkDriver, Workload workload) {
         this.driverName = driverName;
         this.benchmarkDriver = benchmarkDriver;
         this.workload = workload;
+
+        if (workload.consumerBacklogSizeGB > 0 && workload.producerRate == 0) {
+            throw new IllegalArgumentException("Cannot probe producer sustainable rate when building backlog");
+        }
     }
 
-    public TestResult run() throws InterruptedException {
-        List<String> topics = createTopicsIdempotently(workload.producerRate <= 0);
-        List<BenchmarkConsumer> consumers = createConsumers(topics, workload.partitionsPerTopic);
+    public TestResult run() throws Exception {
+        List<String> topics = createTopics();
+        List<BenchmarkConsumer> consumers = createConsumers(topics);
         List<BenchmarkProducer> producers = createProducers(topics);
+
+        ensureTopicsAreReady(producers, consumers);
 
         RateLimiter produceRateLimiter;
         AtomicBoolean runCompleted = new AtomicBoolean();
@@ -95,57 +103,59 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 findMaximumSustainableRate(produceRateLimiter, runCompleted);
             });
         }
-        RateLimiter consumeRateLimiter = RateLimiter.create(workload.consumeRate);
 
         log.info("----- Starting warm-up traffic ------");
-
-        Recorder produceLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-        Recorder produceCumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-
-        long startTime = System.nanoTime();
-        this.testCompleted = false;
-
-        generateProducerLoad(producers, produceRateLimiter, produceLatencyRecorder, produceCumulativeRecorder);
-        generateConsumerLoad(consumers, consumeRateLimiter);
-
-        getTestResult(1, produceLatencyRecorder, produceCumulativeRecorder,
-                e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
-        e2eLatencyRecorder.reset();
-        e2eCumulativeLatencyRecorder.reset();
+        generateLoad(producers, TimeUnit.MINUTES.toSeconds(1), produceRateLimiter);
         runCompleted.set(true);
+
+        if (workload.consumerBacklogSizeGB > 0) {
+            log.info("Stopping all consumers to build backlog");
+            for (BenchmarkConsumer consumer : consumers) {
+                consumer.close();
+            }
+
+            executor.execute(() -> {
+                buildAndDrainBacklog(topics);
+            });
+        }
 
         log.info("----- Starting benchmark traffic ------");
         runCompleted.set(false);
 
-        /**
-         * Only invoke sustainable rate if we configure benchmark to have BOTH producers AND producer rate to be zero
-         * In most cases, we want consumers to be on separate physical hosts. The logic below provides extra protection
-         * from a producer being launched if you only want consumers on a host.
-         */
-        /*if (workload.producerRate == 0 && workload.producersPerTopic > 0) {
+        if (workload.producerRate == 0) {
             // Continue with the feedback system to adjust the publish rate
             executor.execute(() -> {
                 // Run background controller to adjust rate
                 findMaximumSustainableRate(produceRateLimiter, runCompleted);
             });
-        }*/
+        }
 
-        produceLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-        produceCumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
-
-        startTime = System.nanoTime();
-        this.testCompleted = false;
-
-        generateProducerLoad(producers, produceRateLimiter, produceLatencyRecorder, produceCumulativeRecorder);
-        generateConsumerLoad(consumers, consumeRateLimiter);
-
-        TestResult result = getTestResult(workload.testDurationMinutes,
-                produceLatencyRecorder, produceCumulativeRecorder,
-                e2eLatencyRecorder, e2eCumulativeLatencyRecorder, startTime);
-
+        TestResult result = generateLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes),
+                produceRateLimiter);
         runCompleted.set(true);
 
         return result;
+    }
+
+    private void ensureTopicsAreReady(List<BenchmarkProducer> producers, List<BenchmarkConsumer> consumers) {
+        log.info("Waiting for consumers to be ready");
+        // This is work around the fact that there's no way to have a consumer ready in Kafka without first publishing
+        // some message on the topic, which will then trigger the partitions assignement to the consumers
+
+        // In this case we just publish 1 message and then wait for consumers to receive the data
+        producers.forEach(producer -> producer.sendAsync(new byte[10]).thenRun(() -> totalMessagesSent.increment()));
+
+        long expectedMessages = workload.subscriptionsPerTopic * producers.size();
+
+        while (totalMessagesReceived.sum() < expectedMessages) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        log.info("All consumers are ready");
     }
 
     /**
@@ -244,14 +254,10 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        executor.shutdown();
-        executor.awaitTermination(10, TimeUnit.SECONDS);
-        if (!executor.isShutdown()) {
-            executor.shutdownNow();
-        }
+        executor.shutdownNow();
     }
 
-    private List<String> createTopicsIdempotently(boolean consumerOnly) {
+    private List<String> createTopics() {
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
         Timer timer = new Timer();
@@ -260,9 +266,9 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
         List<String> topics = new ArrayList<>();
         for (int i = 0; i < workload.topics; i++) {
-            String topic = String.format("%s-%s", topicPrefix, i);
+            String topic = String.format("%s-%s-%04d", topicPrefix, UUID.randomUUID().toString(), i);
             topics.add(topic);
-            futures.add(benchmarkDriver.createTopic(topic, workload.partitionsPerTopic, consumerOnly));
+            futures.add(benchmarkDriver.createTopic(topic, workload.partitionsPerTopic));
         }
 
         futures.forEach(CompletableFuture::join);
@@ -271,7 +277,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return topics;
     }
 
-    private List<BenchmarkConsumer> createConsumers(List<String> topics, int partitionsPerTopic) {
+    private List<BenchmarkConsumer> createConsumers(List<String> topics) {
         List<CompletableFuture<BenchmarkConsumer>> futures = new ArrayList<>();
         Timer timer = new Timer();
 
@@ -284,6 +290,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         }
 
         List<BenchmarkConsumer> consumers = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
+
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
         return consumers;
     }
@@ -303,26 +310,47 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return producers;
     }
 
-    // Results for consumer are recorded via the callback
-    private void generateConsumerLoad(List<BenchmarkConsumer> consumers, RateLimiter rateLimiter) {
-        executor.submit(() -> {
-            try {
-                // Consume messages on all topics/producers
-                while (!testCompleted) {
-                    consumers.forEach(consumer -> {
-                        rateLimiter.acquire();
-                        consumer.receiveAsync(this, testCompleted).exceptionally(ex -> {
-                            log.warn("Write error on message", ex);
-                            System.exit(-1);
-                            return null;
-                        });
-                    });
-                }
+    private void buildAndDrainBacklog(List<String> topics) {
+        this.needToWaitForBacklogDraining = true;
 
-            } catch (Throwable t) {
-                log.error("Got error", t);
+        long requestedBacklogSize = workload.consumerBacklogSizeGB * 1024 * 1024 * 1024;
+
+        while (true) {
+            long currentBacklogSize = (workload.subscriptionsPerTopic * totalMessagesSent.sum()
+                    - totalMessagesReceived.sum()) * workload.messageSize;
+
+            if (currentBacklogSize >= requestedBacklogSize) {
+                break;
             }
-        });
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        log.info("--- Start draining backlog ---");
+
+        createConsumers(topics);
+
+        final long minBacklog = 1000;
+
+        while (true) {
+            long currentBacklog = workload.subscriptionsPerTopic * totalMessagesSent.sum()
+                    - totalMessagesReceived.sum();
+            if (currentBacklog <= minBacklog) {
+                log.info("--- Completed backlog draining ---");
+                needToWaitForBacklogDraining = false;
+                return;
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -342,12 +370,13 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return stringBuilder.toString().getBytes();
     }
 
-    private void generateProducerLoad(List<BenchmarkProducer> producers, RateLimiter rateLimiter,
-                                            Recorder recorder, Recorder cumulativeRecorder) {
-        if (producers.size() == 0) {
-            log.info("Skipping producer load generation because no producers were requested");
-            return;
-        }
+    private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationMins, RateLimiter rateLimiter) {
+        Recorder produceLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+        Recorder produceCumulativeLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+
+        long startTime = System.nanoTime();
+        this.testCompleted = false;
+
         byte[] comparisonStr = getComparisonStr(workload.messageSize);
         final byte[] payloadData = new byte[workload.messageSize];
         for (int i = 0; i < comparisonStr.length; i++) {
@@ -375,14 +404,16 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                             payloadData[i+12] = produceTimestampBytes[i];
                         }
                         final long sendTime = System.nanoTime();
+
                         producer.sendAsync(payloadData).thenRun(() -> {
                             messagesSent.increment();
                             totalMessagesSent.increment();
                             bytesSent.add(payloadData.length);
 
                             long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
-                            recorder.recordValue(latencyMicros);
-                            cumulativeRecorder.recordValue(latencyMicros);
+                            produceLatencyRecorder.recordValue(latencyMicros);
+                            produceCumulativeLatencyRecorder.recordValue(latencyMicros);
+
                         }).exceptionally(ex -> {
                             log.warn("Write error on message", ex);
                             System.exit(-1);
@@ -395,11 +426,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 log.error("Got error", t);
             }
         });
-    }
 
-    private TestResult getTestResult(long testDurationMins, Recorder produceLatencyRecorder,
-                                     Recorder produceCumulativeLatencyRecorder, Recorder e2eLatencyRecorder,
-                                     Recorder e2eCumulativeLatencyRecorder, long startTime) {
         // Print report stats
         long oldTime = System.nanoTime();
 
@@ -480,7 +507,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
             reportProduceLatencyHistogram.reset();
 
-            if (now >= testEndTime) {
+            if (now >= testEndTime && !needToWaitForBacklogDraining) {
                 testCompleted = true;
                 reportProduceLatencyHistogram = produceCumulativeLatencyRecorder.getIntervalHistogram();
                 reportE2eLatencyHistogram = e2eCumulativeLatencyRecorder.getIntervalHistogram();
@@ -533,6 +560,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
             oldTime = now;
         }
+
         return result;
     }
 

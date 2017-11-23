@@ -21,7 +21,7 @@
 name: Simple Workload 1 producer on 1 topic
 
 topics : 1
-partitionsPerTopic : 1
+partitionsPerTopic : 10
 
 messageSize : 1024
 
@@ -31,10 +31,10 @@ producersPerTopic : 1
 
 consumerPerSubscription : 1
 
-producerRate : 10
+producerRate : 10000
 
-consumeRate : 10
+consumeRate : 10000
 
-testDurationMinutes : 1
+consumerBacklogSizeGB : 0
 
-
+testDurationMinutes : 5

@@ -18,78 +18,58 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
-    private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkConsumer.class);
 
     private final KafkaConsumer<byte[], byte[]> consumer;
 
     private final ExecutorService executor;
+    private final Future<?> consumerTask;
+    private volatile boolean closing = false;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer) {
+    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, ConsumerCallback callback) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
+
+        this.consumerTask = this.executor.submit(() -> {
+            while (!closing) {
+                ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
+
+                Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
+                for (ConsumerRecord<byte[], byte[]> record : records) {
+                    callback.messageReceived(record.value(), System.nanoTime());
+
+                    offsetMap.put(new TopicPartition(record.topic(), record.partition()),
+                            new OffsetAndMetadata(record.offset()));
+                }
+
+                if (!offsetMap.isEmpty()) {
+                    consumer.commitSync(offsetMap);
+                }
+            }
+        });
     }
 
     @Override
     public void close() throws Exception {
-        try {
-            // We try to close the consumer in the load generator thread because consumer is not thread-safe.
-            executor.shutdown();
-            executor.awaitTermination(10, TimeUnit.SECONDS);
-            executor.shutdownNow();
-            consumer.close();
-        } catch (IllegalStateException e) {
-            if (e.getMessage().contains("This consumer has already been closed.")) {
-                log.info("Successfully closed consumer");
-            } else {
-                log.error("Failed consumer close", e);
-            }
-        }
+        closing = true;
+        executor.shutdown();
+        consumerTask.get();
+        consumer.close();
     }
 
-    @Override
-    public CompletableFuture<Void> receiveAsync(ConsumerCallback callback, final boolean testCompleted) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        this.executor.execute(() -> {
-            try {
-                while (!testCompleted) {
-                    ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
-                    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
-                    for (ConsumerRecord<byte[], byte[]> record : records) {
-                        callback.messageReceived(record.value(), System.nanoTime());
-
-                        offsetMap.put(new TopicPartition(record.topic(), record.partition()),
-                                new OffsetAndMetadata(record.offset()));
-                    }
-
-                    if (!offsetMap.isEmpty()) {
-                        consumer.commitSync(offsetMap);
-                    }
-                }
-
-                consumer.close();
-            } catch (Throwable e) {
-                future.completeExceptionally(e);
-            }
-            future.complete(null);
-        });
-        return future;
-    }
 }
