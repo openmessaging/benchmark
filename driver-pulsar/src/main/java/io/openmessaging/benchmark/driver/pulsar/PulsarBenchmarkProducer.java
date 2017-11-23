@@ -20,6 +20,8 @@ package io.openmessaging.benchmark.driver.pulsar;
 
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.MessageBuilder;
 import org.apache.pulsar.client.api.Producer;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
@@ -38,8 +40,9 @@ public class PulsarBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(byte[] message) {
-        return producer.sendAsync(message).thenApply(msgId -> null);
+    public CompletableFuture<Void> sendAsync(String key, byte[] payload) {
+        Message msg = MessageBuilder.create().setKey(key).setContent(payload).build();
+        return producer.sendAsync(msg).thenApply(msgId -> null);
     }
 
 }

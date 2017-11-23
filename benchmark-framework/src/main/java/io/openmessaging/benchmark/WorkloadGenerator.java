@@ -139,7 +139,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         // some message on the topic, which will then trigger the partitions assignement to the consumers
 
         // In this case we just publish 1 message and then wait for consumers to receive the data
-        producers.forEach(producer -> producer.sendAsync(new byte[10]).thenRun(() -> totalMessagesSent.increment()));
+        producers.forEach(
+                producer -> producer.sendAsync("key", new byte[10]).thenRun(() -> totalMessagesSent.increment()));
 
         long expectedMessages = workload.subscriptionsPerTopic * producers.size();
 
@@ -374,8 +375,9 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                             rateLimiter.acquire();
 
                             final long sendTime = System.nanoTime();
+                            String key = randomKeys[(int) sendTime % randomKeys.length];
 
-                            producer.sendAsync(payloadData).thenRun(() -> {
+                            producer.sendAsync(key, payloadData).thenRun(() -> {
                                 messagesSent.increment();
                                 totalMessagesSent.increment();
                                 bytesSent.add(payloadData.length);
@@ -507,6 +509,17 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         byte[] buffer = new byte[5];
         random.nextBytes(buffer);
         return BaseEncoding.base64Url().omitPadding().encode(buffer);
+    }
+
+    private static final String[] randomKeys = new String[10000];
+
+    static {
+        // Generate a number of random keys to be used when publishing
+        byte[] buffer = new byte[7];
+        for (int i = 0; i < randomKeys.length; i++) {
+            random.nextBytes(buffer);
+            randomKeys[i] = BaseEncoding.base64Url().omitPadding().encode(buffer);
+        }
     }
 
     private static final Logger log = LoggerFactory.getLogger(WorkloadGenerator.class);

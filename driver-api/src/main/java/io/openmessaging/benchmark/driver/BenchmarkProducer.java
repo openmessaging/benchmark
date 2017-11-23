@@ -22,13 +22,15 @@ import java.util.concurrent.CompletableFuture;
 
 public interface BenchmarkProducer extends AutoCloseable {
 
-	/**
-	 * Publish a message and return a callback to track the completion of the
-	 * operation.
-	 * 
-	 * @param message
-	 * @return
-	 */
-	CompletableFuture<Void> sendAsync(byte[] message);
+    /**
+     * Publish a message and return a callback to track the completion of the operation.
+     * 
+     * @param key
+     *            the key associated with this message
+     * @param payload
+     *            the message payload
+     * @return a future that will be triggered when the message is successfully published
+     */
+    CompletableFuture<Void> sendAsync(String key, byte[] payload);
 
 }
