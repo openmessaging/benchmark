@@ -18,9 +18,8 @@
  */
 package io.openmessaging.benchmark.driver.pulsar;
 
-import org.apache.pulsar.client.api.Consumer;
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import org.apache.pulsar.client.api.Consumer;
 
 public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
 
@@ -34,5 +33,4 @@ public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
     public void close() throws Exception {
         consumer.close();
     }
-
 }

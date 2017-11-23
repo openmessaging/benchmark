@@ -33,8 +33,8 @@ consumerPerSubscription : 1
 
 producerRate : 10000
 
+consumeRate : 10000
+
 consumerBacklogSizeGB : 0
 
 testDurationMinutes : 5
-
-

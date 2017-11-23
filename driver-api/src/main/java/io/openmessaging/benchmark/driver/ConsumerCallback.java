@@ -19,5 +19,5 @@
 package io.openmessaging.benchmark.driver;
 
 public interface ConsumerCallback {
-	void messageReceived(byte[] payload);
+	void messageReceived(byte[] payload, long receivedTimestamp);
 }
