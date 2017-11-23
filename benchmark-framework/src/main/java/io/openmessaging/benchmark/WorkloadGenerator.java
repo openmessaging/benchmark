@@ -360,13 +360,14 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         int processors = Runtime.getRuntime().availableProcessors();
         Collections.shuffle(producers);
 
+        final byte[] payloadData = new byte[workload.messageSize];
+
         // Divide the producers across multiple different threads
         for (List<BenchmarkProducer> producersPerThread : Lists.partition(producers, processors)) {
             executor.submit(() -> {
                 try {
-                    byte[] payloadData = new byte[workload.messageSize];
 
-                    // Send messages on all topics/producers
+                    // Send messages on all topics/producers assigned to this thread
                     while (!testCompleted) {
                         for (int i = 0; i < producersPerThread.size(); i++) {
                             BenchmarkProducer producer = producersPerThread.get(i);
