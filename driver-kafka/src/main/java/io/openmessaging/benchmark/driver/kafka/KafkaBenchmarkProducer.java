@@ -27,17 +27,17 @@ import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
-    private final KafkaProducer<byte[], byte[]> producer;
+    private final KafkaProducer<String, byte[]> producer;
     private final String topic;
 
-    public KafkaBenchmarkProducer(KafkaProducer<byte[], byte[]> producer, String topic) {
+    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]> producer, String topic) {
         this.producer = producer;
         this.topic = topic;
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(byte[] message) {
-        ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(topic, message);
+    public CompletableFuture<Void> sendAsync(String key, byte[] payload) {
+        ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key, payload);
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 

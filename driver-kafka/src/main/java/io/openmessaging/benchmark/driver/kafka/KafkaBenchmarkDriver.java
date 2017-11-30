@@ -51,7 +51,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     private Config config;
 
-    private KafkaProducer<byte[], byte[]> producer;
+    private KafkaProducer<String, byte[]> producer;
     private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
     private Properties producerProperties;
