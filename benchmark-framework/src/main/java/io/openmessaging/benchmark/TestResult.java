@@ -55,22 +55,22 @@ public class TestResult {
     // Latencies are expressed in milliseconds (without decimals)
 
     public List<Double> endToEndLatencyAvg = new ArrayList<>();
-    public List<Long> endToEndLatency50pct = new ArrayList<>();
-    public List<Long> endToEndLatency75pct = new ArrayList<>();
-    public List<Long> endToEndLatency95pct = new ArrayList<>();
-    public List<Long> endToEndLatency99pct = new ArrayList<>();
-    public List<Long> endToEndLatency999pct = new ArrayList<>();
-    public List<Long> endToEndLatency9999pct = new ArrayList<>();
-    public List<Long> endToEndLatencyMax = new ArrayList<>();
+    public List<Double> endToEndLatency50pct = new ArrayList<>();
+    public List<Double> endToEndLatency75pct = new ArrayList<>();
+    public List<Double> endToEndLatency95pct = new ArrayList<>();
+    public List<Double> endToEndLatency99pct = new ArrayList<>();
+    public List<Double> endToEndLatency999pct = new ArrayList<>();
+    public List<Double> endToEndLatency9999pct = new ArrayList<>();
+    public List<Double> endToEndLatencyMax = new ArrayList<>();
 
-    public Map<Double, Long> aggregatedEndToEndLatencyQuantiles = new TreeMap<>();
+    public Map<Double, Double> aggregatedEndToEndLatencyQuantiles = new TreeMap<>();
 
     public double aggregatedEndToEndLatencyAvg;
-    public long aggregatedEndToEndLatency50pct;
-    public long aggregatedEndToEndLatency75pct;
-    public long aggregatedEndToEndLatency95pct;
-    public long aggregatedEndToEndLatency99pct;
-    public long aggregatedEndToEndLatency999pct;
-    public long aggregatedEndToEndLatency9999pct;
-    public long aggregatedEndToEndLatencyMax;
+    public double aggregatedEndToEndLatency50pct;
+    public double aggregatedEndToEndLatency75pct;
+    public double aggregatedEndToEndLatency95pct;
+    public double aggregatedEndToEndLatency99pct;
+    public double aggregatedEndToEndLatency999pct;
+    public double aggregatedEndToEndLatency9999pct;
+    public double aggregatedEndToEndLatencyMax;
 }
