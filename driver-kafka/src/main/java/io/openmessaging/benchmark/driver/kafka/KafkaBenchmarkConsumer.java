@@ -35,22 +35,22 @@ import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
 
-    private final KafkaConsumer<byte[], byte[]> consumer;
+    private final KafkaConsumer<String, byte[]> consumer;
 
     private final ExecutorService executor;
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<byte[], byte[]> consumer, ConsumerCallback callback) {
+    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, ConsumerCallback callback) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
 
         this.consumerTask = this.executor.submit(() -> {
             while (!closing) {
-                ConsumerRecords<byte[], byte[]> records = consumer.poll(100);
+                ConsumerRecords<String, byte[]> records = consumer.poll(100);
 
                 Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
-                for (ConsumerRecord<byte[], byte[]> record : records) {
+                for (ConsumerRecord<String, byte[]> record : records) {
                     callback.messageReceived(record.value(), record.timestamp());
 
                     offsetMap.put(new TopicPartition(record.topic(), record.partition()),

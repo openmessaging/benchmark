@@ -37,6 +37,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,13 +71,13 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         producerProperties = new Properties();
         commonProperties.forEach((key, value) -> producerProperties.put(key, value));
         producerProperties.load(new StringReader(config.producerConfig));
-        producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+        producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
 
         consumerProperties = new Properties();
         commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
         consumerProperties.load(new StringReader(config.consumerConfig));
-        consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
         admin = AdminClient.create(commonProperties);
@@ -111,7 +113,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         Properties properties = new Properties();
         consumerProperties.forEach((key, value) -> properties.put(key, value));
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);
-        KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(properties);
+        KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(properties);
         try {
             consumer.subscribe(Arrays.asList(topic));
             return CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer, consumerCallback));
