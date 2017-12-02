@@ -69,6 +69,9 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private boolean testCompleted = false;
     private volatile boolean needToWaitForBacklogDraining = false;
 
+    private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMillis(12), 5);
+    private final Recorder endToEndCumulativeLatencyRecorder = new Recorder(TimeUnit.HOURS.toMillis(12), 5);
+
     public WorkloadGenerator(String driverName, BenchmarkDriver benchmarkDriver, Workload workload) {
         this.driverName = driverName;
         this.benchmarkDriver = benchmarkDriver;
@@ -125,6 +128,9 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                 findMaximumSustainableRate(rateLimiter, runCompleted);
             });
         }
+
+        endToEndLatencyRecorder.reset();
+        endToEndCumulativeLatencyRecorder.reset();
 
         TestResult result = generateLoad(producers, TimeUnit.MINUTES.toSeconds(workload.testDurationMinutes),
                 rateLimiter);
@@ -352,7 +358,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
     private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
             RateLimiter rateLimiter) {
-        Recorder recorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
+        Recorder publishRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
         Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
 
         long startTime = System.nanoTime();
@@ -375,7 +381,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                             rateLimiter.acquire();
 
                             final long sendTime = System.nanoTime();
-                            String key = randomKeys[(int) sendTime % randomKeys.length];
+                            String key = randomKeys[Math.abs(((int) sendTime)) % randomKeys.length];
 
                             producer.sendAsync(key, payloadData).thenRun(() -> {
                                 messagesSent.increment();
@@ -383,7 +389,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                                 bytesSent.add(payloadData.length);
 
                                 long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
-                                recorder.recordValue(latencyMicros);
+                                publishRecorder.recordValue(latencyMicros);
                                 cumulativeRecorder.recordValue(latencyMicros);
 
                             }).exceptionally(ex -> {
@@ -408,7 +414,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         result.workload = workload.name;
         result.driver = driverName;
 
-        Histogram reportHistogram = null;
+        Histogram publishReportHistogram = null;
+        Histogram endToEndReportHistogram = null;
 
         while (true) {
             try {
@@ -426,7 +433,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             double consumeRate = messagesReceived.sumThenReset() / elapsed;
             double consumeThroughput = bytesReceived.sumThenReset() / elapsed / 1024 / 1024;
 
-            reportHistogram = recorder.getIntervalHistogram(reportHistogram);
+            publishReportHistogram = publishRecorder.getIntervalHistogram(publishReportHistogram);
+            endToEndReportHistogram = endToEndLatencyRecorder.getIntervalHistogram(endToEndReportHistogram);
 
             long currentBacklog = workload.subscriptionsPerTopic * totalMessagesSent.sum()
                     - totalMessagesReceived.sum();
@@ -436,51 +444,76 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
                     rateFormat.format(publishRate), throughputFormat.format(publishThroughput),
                     rateFormat.format(consumeRate), throughputFormat.format(consumeThroughput),
                     dec.format(currentBacklog / 1000.0), //
-                    dec.format(reportHistogram.getMean() / 1000.0),
-                    dec.format(reportHistogram.getValueAtPercentile(50) / 1000.0),
-                    dec.format(reportHistogram.getValueAtPercentile(99) / 1000.0),
-                    dec.format(reportHistogram.getValueAtPercentile(99.9) / 1000.0),
-                    throughputFormat.format(reportHistogram.getMaxValue() / 1000.0));
+                    dec.format(microsToMillis(publishReportHistogram.getMean())),
+                    dec.format(microsToMillis(publishReportHistogram.getValueAtPercentile(50))),
+                    dec.format(microsToMillis(publishReportHistogram.getValueAtPercentile(99))),
+                    dec.format(microsToMillis(publishReportHistogram.getValueAtPercentile(99.9))),
+                    throughputFormat.format(microsToMillis(publishReportHistogram.getMaxValue())));
 
             result.publishRate.add(publishRate);
             result.consumeRate.add(consumeRate);
             result.backlog.add(currentBacklog);
-            result.publishLatencyAvg.add(reportHistogram.getMean() / 1000.0);
-            result.publishLatency50pct.add(reportHistogram.getValueAtPercentile(50) / 1000.0);
-            result.publishLatency75pct.add(reportHistogram.getValueAtPercentile(75) / 1000.0);
-            result.publishLatency95pct.add(reportHistogram.getValueAtPercentile(95) / 1000.0);
-            result.publishLatency99pct.add(reportHistogram.getValueAtPercentile(99) / 1000.0);
-            result.publishLatency999pct.add(reportHistogram.getValueAtPercentile(99.9) / 1000.0);
-            result.publishLatency9999pct.add(reportHistogram.getValueAtPercentile(99.99) / 1000.0);
-            result.publishLatencyMax.add(reportHistogram.getMaxValue() / 1000.0);
+            result.publishLatencyAvg.add(microsToMillis(publishReportHistogram.getMean()));
+            result.publishLatency50pct.add(microsToMillis(publishReportHistogram.getValueAtPercentile(50)));
+            result.publishLatency75pct.add(microsToMillis(publishReportHistogram.getValueAtPercentile(75)));
+            result.publishLatency95pct.add(microsToMillis(publishReportHistogram.getValueAtPercentile(95)));
+            result.publishLatency99pct.add(microsToMillis(publishReportHistogram.getValueAtPercentile(99)));
+            result.publishLatency999pct.add(microsToMillis(publishReportHistogram.getValueAtPercentile(99.9)));
+            result.publishLatency9999pct.add(microsToMillis(publishReportHistogram.getValueAtPercentile(99.99)));
+            result.publishLatencyMax.add(microsToMillis(publishReportHistogram.getMaxValue()));
 
-            reportHistogram.reset();
+            result.endToEndLatencyAvg.add(microsToMillis(endToEndReportHistogram.getMean()));
+            result.endToEndLatency50pct.add(microsToMillis(endToEndReportHistogram.getValueAtPercentile(50)));
+            result.endToEndLatency75pct.add(microsToMillis(endToEndReportHistogram.getValueAtPercentile(75)));
+            result.endToEndLatency95pct.add(microsToMillis(endToEndReportHistogram.getValueAtPercentile(95)));
+            result.endToEndLatency99pct.add(microsToMillis(endToEndReportHistogram.getValueAtPercentile(99)));
+            result.endToEndLatency999pct.add(microsToMillis(endToEndReportHistogram.getValueAtPercentile(99.9)));
+            result.endToEndLatency9999pct.add(microsToMillis(endToEndReportHistogram.getValueAtPercentile(99.99)));
+            result.endToEndLatencyMax.add(microsToMillis(endToEndReportHistogram.getMaxValue()));
+
+            publishReportHistogram.reset();
+            endToEndReportHistogram.reset();
 
             if (now >= testEndTime && !needToWaitForBacklogDraining) {
                 testCompleted = true;
-                reportHistogram = cumulativeRecorder.getIntervalHistogram();
+                publishReportHistogram = cumulativeRecorder.getIntervalHistogram();
+                endToEndReportHistogram = endToEndCumulativeLatencyRecorder.getIntervalHistogram();
                 log.info(
                         "----- Aggregated Pub Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {}",
-                        dec.format(reportHistogram.getMean() / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(50) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(95) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(99) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(99.9) / 1000.0),
-                        dec.format(reportHistogram.getValueAtPercentile(99.99) / 1000.0),
-                        throughputFormat.format(reportHistogram.getMaxValue() / 1000.0));
+                        dec.format(publishReportHistogram.getMean() / 1000.0),
+                        dec.format(publishReportHistogram.getValueAtPercentile(50) / 1000.0),
+                        dec.format(publishReportHistogram.getValueAtPercentile(95) / 1000.0),
+                        dec.format(publishReportHistogram.getValueAtPercentile(99) / 1000.0),
+                        dec.format(publishReportHistogram.getValueAtPercentile(99.9) / 1000.0),
+                        dec.format(publishReportHistogram.getValueAtPercentile(99.99) / 1000.0),
+                        throughputFormat.format(publishReportHistogram.getMaxValue() / 1000.0));
 
-                result.aggregatedPublishLatencyAvg = reportHistogram.getMean() / 1000.0;
-                result.aggregatedPublishLatency50pct = reportHistogram.getValueAtPercentile(50) / 1000.0;
-                result.aggregatedPublishLatency75pct = reportHistogram.getValueAtPercentile(75) / 1000.0;
-                result.aggregatedPublishLatency95pct = reportHistogram.getValueAtPercentile(95) / 1000.0;
-                result.aggregatedPublishLatency99pct = reportHistogram.getValueAtPercentile(99) / 1000.0;
-                result.aggregatedPublishLatency999pct = reportHistogram.getValueAtPercentile(99.9) / 1000.0;
-                result.aggregatedPublishLatency9999pct = reportHistogram.getValueAtPercentile(99.99) / 1000.0;
-                result.aggregatedPublishLatencyMax = reportHistogram.getMaxValue() / 1000.0;
+                result.aggregatedPublishLatencyAvg = publishReportHistogram.getMean() / 1000.0;
+                result.aggregatedPublishLatency50pct = publishReportHistogram.getValueAtPercentile(50) / 1000.0;
+                result.aggregatedPublishLatency75pct = publishReportHistogram.getValueAtPercentile(75) / 1000.0;
+                result.aggregatedPublishLatency95pct = publishReportHistogram.getValueAtPercentile(95) / 1000.0;
+                result.aggregatedPublishLatency99pct = publishReportHistogram.getValueAtPercentile(99) / 1000.0;
+                result.aggregatedPublishLatency999pct = publishReportHistogram.getValueAtPercentile(99.9) / 1000.0;
+                result.aggregatedPublishLatency9999pct = publishReportHistogram.getValueAtPercentile(99.99) / 1000.0;
+                result.aggregatedPublishLatencyMax = publishReportHistogram.getMaxValue() / 1000.0;
 
-                reportHistogram.percentiles(100).forEach(value -> {
+                result.aggregatedEndToEndLatencyAvg = endToEndReportHistogram.getMean();
+                result.aggregatedEndToEndLatency50pct = endToEndReportHistogram.getValueAtPercentile(50);
+                result.aggregatedEndToEndLatency75pct = endToEndReportHistogram.getValueAtPercentile(75);
+                result.aggregatedEndToEndLatency95pct = endToEndReportHistogram.getValueAtPercentile(95);
+                result.aggregatedEndToEndLatency99pct = endToEndReportHistogram.getValueAtPercentile(99);
+                result.aggregatedEndToEndLatency999pct = endToEndReportHistogram.getValueAtPercentile(99.9);
+                result.aggregatedEndToEndLatency9999pct = endToEndReportHistogram.getValueAtPercentile(99.99);
+                result.aggregatedEndToEndLatencyMax = endToEndReportHistogram.getMaxValue();
+
+                publishReportHistogram.percentiles(100).forEach(value -> {
                     result.aggregatedPublishLatencyQuantiles.put(value.getPercentile(),
                             value.getValueIteratedTo() / 1000.0);
+                });
+
+                endToEndReportHistogram.percentiles(100).forEach(value -> {
+                    result.aggregatedEndToEndLatencyQuantiles.put(value.getPercentile(),
+                            microsToMillis(value.getValueIteratedTo()));
                 });
 
                 break;
@@ -493,10 +526,15 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     }
 
     @Override
-    public void messageReceived(byte[] data) {
+    public void messageReceived(byte[] data, long publishTimestamp) {
         messagesReceived.increment();
         totalMessagesReceived.increment();
         bytesReceived.add(data.length);
+
+        long now = System.currentTimeMillis();
+        long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);
+        endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
+        endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
     }
 
     private static final DecimalFormat rateFormat = new PaddingDecimalFormat("0.0", 7);
@@ -520,6 +558,14 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
             random.nextBytes(buffer);
             randomKeys[i] = BaseEncoding.base64Url().omitPadding().encode(buffer);
         }
+    }
+
+    private static double microsToMillis(double timeInMicros) {
+        return timeInMicros / 1000.0;
+    }
+
+    private static double microsToMillis(long timeInMicros) {
+        return timeInMicros / 1000.0;
     }
 
     private static final Logger log = LoggerFactory.getLogger(WorkloadGenerator.class);

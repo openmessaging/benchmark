@@ -50,4 +50,27 @@ public class TestResult {
     public double aggregatedPublishLatencyMax;
 
     public Map<Double, Double> aggregatedPublishLatencyQuantiles = new TreeMap<>();
+
+    // End to end latencies (from producer to consumer)
+    // Latencies are expressed in milliseconds (without decimals)
+
+    public List<Double> endToEndLatencyAvg = new ArrayList<>();
+    public List<Double> endToEndLatency50pct = new ArrayList<>();
+    public List<Double> endToEndLatency75pct = new ArrayList<>();
+    public List<Double> endToEndLatency95pct = new ArrayList<>();
+    public List<Double> endToEndLatency99pct = new ArrayList<>();
+    public List<Double> endToEndLatency999pct = new ArrayList<>();
+    public List<Double> endToEndLatency9999pct = new ArrayList<>();
+    public List<Double> endToEndLatencyMax = new ArrayList<>();
+
+    public Map<Double, Double> aggregatedEndToEndLatencyQuantiles = new TreeMap<>();
+
+    public double aggregatedEndToEndLatencyAvg;
+    public double aggregatedEndToEndLatency50pct;
+    public double aggregatedEndToEndLatency75pct;
+    public double aggregatedEndToEndLatency95pct;
+    public double aggregatedEndToEndLatency99pct;
+    public double aggregatedEndToEndLatency999pct;
+    public double aggregatedEndToEndLatency9999pct;
+    public double aggregatedEndToEndLatencyMax;
 }

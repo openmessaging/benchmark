@@ -101,7 +101,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         ConsumerConfiguration conf = new ConsumerConfiguration();
         conf.setSubscriptionType(SubscriptionType.Failover);
         conf.setMessageListener((consumer, msg) -> {
-            consumerCallback.messageReceived(msg.getData());
+            consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
             consumer.acknowledgeAsync(msg);
         });
 
