@@ -18,6 +18,8 @@
  */
 package io.openmessaging.benchmark.driver.pulsar.config;
 
+import org.apache.pulsar.common.naming.DestinationDomain;
+
 public class PulsarClientConfig {
     public String serviceUrl;
 
@@ -27,5 +29,17 @@ public class PulsarClientConfig {
 
     public int connectionsPerBroker = 8;
 
-    public String topicPrefix;
+    public String namespacePrefix;
+
+    public DestinationDomain topicType = DestinationDomain.persistent;
+
+    public PersistenceConfiguration persistence = new PersistenceConfiguration();
+
+    public static class PersistenceConfiguration {
+        public int ensembleSize = 3;
+        public int writeQuorum = 3;
+        public int ackQuorum = 2;
+
+        public boolean deduplicationEnabled = false;
+    }
 }

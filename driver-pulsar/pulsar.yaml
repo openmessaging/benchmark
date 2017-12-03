@@ -29,15 +29,18 @@ client:
 
     ioThreads : 8
     connectionsPerBroker : 8
-    
-    topicPrefix : persistent://sample/standalone/ns1/my-topic
+
+    namespacePrefix : benchmark/local/ns
+
+    topicType: persistent
+
+    persistence:
+      ensembleSize : 3
+      writeQuorum : 3
+      ackQuorum : 2
 
 # Producer configuration
 producer:
     batchingEnabled : true
     batchingMaxPublishDelayMs : 1
     blockIfQueueFull : true
-    
-   
-   
-    

@@ -21,15 +21,20 @@ package io.openmessaging.benchmark.driver.pulsar;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Collections;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.ClientConfiguration;
 import org.apache.pulsar.client.api.ConsumerConfiguration;
 import org.apache.pulsar.client.api.ProducerConfiguration;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.apache.pulsar.common.policies.data.PersistencePolicies;
+import org.apache.pulsar.common.policies.data.PropertyAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,12 +42,15 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.common.collect.Sets;
+import com.google.common.io.BaseEncoding;
 
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.openmessaging.benchmark.driver.pulsar.config.PulsarConfig;
+import io.openmessaging.benchmark.driver.pulsar.config.PulsarClientConfig.PersistenceConfiguration;
 
 public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
@@ -52,6 +60,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     private PulsarConfig config;
 
     private ProducerConfiguration producerConfiguration;
+
+    private String namespace;
 
     public void initialize(File configurationFile) throws IOException {
         this.config = readConfig(configurationFile);
@@ -72,11 +82,32 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         producerConfiguration.setBatchingMaxPublishDelay(config.producer.batchingMaxPublishDelayMs,
                 TimeUnit.MILLISECONDS);
         producerConfiguration.setBlockIfQueueFull(config.producer.blockIfQueueFull);
+
+        try {
+            // Create namespace and set the configuration
+            String property = config.client.namespacePrefix.split("/")[0];
+            String cluster = config.client.namespacePrefix.split("/")[1];
+            if (!adminClient.properties().getProperties().contains(property)) {
+                adminClient.properties().createProperty(property,
+                        new PropertyAdmin(Collections.emptyList(), Sets.newHashSet(cluster)));
+            }
+
+            this.namespace = config.client.namespacePrefix + "-" + getRandomString();
+            adminClient.namespaces().createNamespace(namespace);
+
+            PersistenceConfiguration p = config.client.persistence;
+            adminClient.namespaces().setPersistence(namespace,
+                    new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
+            adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
+
+        } catch (PulsarAdminException e) {
+            throw new IOException(e);
+        }
     }
 
     @Override
     public String getTopicNamePrefix() {
-        return config.client.topicPrefix;
+        return config.client.topicType + "://" + namespace + "/test";
     }
 
     @Override
@@ -125,6 +156,14 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     private static PulsarConfig readConfig(File configurationFile) throws IOException {
         return mapper.readValue(configurationFile, PulsarConfig.class);
+    }
+
+    private static final Random random = new Random();
+
+    private static final String getRandomString() {
+        byte[] buffer = new byte[5];
+        random.nextBytes(buffer);
+        return BaseEncoding.base64Url().omitPadding().encode(buffer);
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
