@@ -56,7 +56,7 @@
         path: "/opt/pulsar"
         state: directory
     - get_url:
-        url: http://apache.mirrors.hoobly.com/incubator/pulsar/pulsar-1.20.0-incubating/apache-pulsar-1.20.0-incubating-bin.tar.gz
+        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-1.21.0-incubating-candidate-2/apache-pulsar-1.21.0-incubating-bin.tar.gz
         dest: /tmp/pulsar.tgz
     - command: tar --strip-components=1 -xvf /tmp/pulsar.tgz
       args:
@@ -168,21 +168,22 @@
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
-         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/driver-pulsar/pulsar.yaml
+         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
          regexp: '^    serviceUrl \: '
          line: '    serviceUrl : {{ serviceUrl }}'
     - name: Configure http URL
       lineinfile:
-         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/driver-pulsar/pulsar.yaml
+         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
          regexp: '^    httpUrl : '
          line: '    httpUrl : {{ httpUrl }}'
     - name: Configure http URL
       lineinfile:
-         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/bin/benchmark
+         dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms48G -Xmx48G -XX:+UseShenandoahGC -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
 
 
 - name:  Hosts addresses
