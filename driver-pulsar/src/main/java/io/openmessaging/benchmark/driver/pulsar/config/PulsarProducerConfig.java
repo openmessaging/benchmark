@@ -22,4 +22,6 @@ public class PulsarProducerConfig {
     public boolean batchingEnabled = true;
     public boolean blockIfQueueFull = true;
     public int batchingMaxPublishDelayMs = 1;
+
+    public int pendingQueueSize = 1000;
 }

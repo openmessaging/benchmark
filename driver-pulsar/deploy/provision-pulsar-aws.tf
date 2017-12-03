@@ -9,6 +9,7 @@ DESCRIPTION
 }
 
 variable "key_name" {
+  default = "pulsar-benchmark-key"
   description = "Desired name of AWS key pair"
 }
 

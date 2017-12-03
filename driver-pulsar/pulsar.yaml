@@ -38,6 +38,7 @@ client:
       ensembleSize : 3
       writeQuorum : 3
       ackQuorum : 2
+      deduplicationEnabled : false
 
 # Producer configuration
 producer:
