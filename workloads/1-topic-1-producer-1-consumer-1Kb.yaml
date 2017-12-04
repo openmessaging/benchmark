@@ -24,6 +24,6 @@ partitionsPerTopic : 1
 messageSize : 1024
 subscriptionsPerTopic : 1
 producersPerTopic : 1
-producerRate : 15000
+producerRate : 10000
 consumerBacklogSizeGB : 0
 testDurationMinutes : 15
