@@ -28,8 +28,8 @@
         mkfs.xfs /dev/nvme1n1 &&
         mkdir -p /mnt/journal &&
         mkdir -p /mnt/storage &&
-        mount -o defaults,noatime,nodiscard,nobarrier /dev/nvme0n1 /mnt/journal &&
-        mount -o defaults,noatime,nodiscard,nobarrier /dev/nvme1n1 /mnt/storage
+        mount -o defaults,noatime,nodiscard /dev/nvme0n1 /mnt/journal &&
+        mount -o defaults,noatime,nodiscard /dev/nvme1n1 /mnt/storage
       args:
         creates: /mnt/journal
 
@@ -168,7 +168,9 @@
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
-    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: >
+        sudo tuned-adm profile latency-performance &&
+        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
          dest: /opt/benchmark/driver-pulsar/pulsar.yaml

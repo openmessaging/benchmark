@@ -24,9 +24,10 @@
   become: true
   tasks:
     - shell: >
+        sudo tuned-adm profile latency-performance &&
         mkfs.xfs /dev/nvme0n1 &&
         mkdir -p /mnt/data &&
-        mount -o defaults,noatime /dev/nvme0n1 /mnt/data
+        mount -o defaults,noatime,nodiscard /dev/nvme0n1 /mnt/data
       args:
         creates: /mnt/data
 
@@ -52,7 +53,7 @@
         path: "/opt/kafka"
         state: directory
     - get_url:
-        url: http://mirrors.ocf.berkeley.edu/apache/kafka/1.0.0/kafka_2.12-1.0.0.tgz
+        url: http://mirrors.ocf.berkeley.edu/apache/kafka/1.0.0/kafka_2.11-1.0.0.tgz
         dest: /tmp/kafka.tgz
     - command: tar --strip-components=1 -xvf /tmp/kafka.tgz
       args:
@@ -114,16 +115,19 @@
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
+    - shell: >
+        sudo tuned-adm profile latency-performance &&
+        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure URL
       lineinfile:
-         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/driver-kafka/kafka.yaml
+         dest: /opt/benchmark/driver-kafka/kafka.yaml
          regexp: '^    bootstrap.servers='
          line: '    bootstrap.servers={{ boostrapServers }}'
     - name: Configure http URL
       lineinfile:
-         dest: /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/bin/benchmark
+         dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms48G -Xmx48G -XX:+UseShenandoahGC "'
+         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
 
 
 - name:  Hosts addresses
