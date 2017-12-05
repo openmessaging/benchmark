@@ -9,6 +9,7 @@ DESCRIPTION
 }
 
 variable "key_name" {
+  default = "kafka-benchmark-key"
   description = "Desired name of AWS key pair"
 }
 
