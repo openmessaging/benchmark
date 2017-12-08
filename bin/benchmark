@@ -18,13 +18,9 @@
 # under the License.
 #
 
-if [ -d "./lib" ]; then
-        CLASSPATH=$CLASSPATH:lib/*
-else
-    CLASSPATH=benchmark-framework/target/classes:`cat benchmark-framework/target/classpath.txt`
-fi
+base_path="$(dirname "$(realpath "$0")")"/..
 
 JVM_MEM="-Xms4G -Xmx4G -XX:+UseG1GC"
 JVM_GC_LOG=" -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime  -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=64m  -Xloggc:/dev/shm/benchmark-client-gc_%p.log"
 
-java -server -cp $CLASSPATH $JVM_MEM io.openmessaging.benchmark.Benchmark $*
+java -server -jar ${JVM_MEM} ${JVM_GC_LOG} ${base_path}/benchmark-framework/target/benchmark.jar $*
