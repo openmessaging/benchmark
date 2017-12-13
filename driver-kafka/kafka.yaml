@@ -25,6 +25,9 @@ driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 replicationFactor: 3
 
+topicConfig: |
+	min.insync.replicas=2
+
 commonConfig: |
     bootstrap.servers=localhost:9092
 
