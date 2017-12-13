@@ -33,6 +33,8 @@ producerConfig: |
     max.in.flight.requests.per.connection=1
     retries=2147483647
     acks=all
+    linger.ms=1
+    batch.size=131072
 
 consumerConfig: |
     auto.offset.reset=earliest
