@@ -56,7 +56,7 @@
         path: "/opt/pulsar"
         state: directory
     - get_url:
-        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-1.21.0-incubating-candidate-2/apache-pulsar-1.21.0-incubating-bin.tar.gz
+        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-1.21.0-incubating-candidate-3/apache-pulsar-1.21.0-incubating-bin.tar.gz
         dest: /tmp/pulsar.tgz
     - command: tar --strip-components=1 -xvf /tmp/pulsar.tgz
       args:
