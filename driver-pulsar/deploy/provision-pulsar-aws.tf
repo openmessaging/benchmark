@@ -1,10 +1,11 @@
 variable "public_key_path" {
+  default = "~/.ssh/id_rsa.pub"
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/terraform.pub
+Example: ~/.ssh/id_rsa.pub
 DESCRIPTION
 }
 
@@ -128,4 +129,8 @@ resource "aws_instance" "client" {
     tags {
         Name = "pulsar-client-${count.index}"
     }
+}
+
+output "client_ssh_host" {
+  value = "${aws_instance.client.0.public_ip}"
 }
