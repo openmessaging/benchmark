@@ -23,7 +23,7 @@
   become: true
   tasks:
     - shell: >
-        sudo tuned-adm profile latency-performance &&
+        tuned-adm profile latency-performance &&
         mkfs.xfs /dev/nvme0n1 &&
         mkfs.xfs /dev/nvme1n1 &&
         mkdir -p /mnt/journal &&
@@ -50,13 +50,14 @@
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        pulsarVersion: "1.21.0-incubating"
 
     - name: Download Pulsar
       file:
         path: "/opt/pulsar"
         state: directory
     - get_url:
-        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-1.21.0-incubating-candidate-3/apache-pulsar-1.21.0-incubating-bin.tar.gz
+        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-{{ pulsarVersion }}-candidate-3/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz
         dest: /tmp/pulsar.tgz
     - command: tar --strip-components=1 -xvf /tmp/pulsar.tgz
       args:
@@ -169,7 +170,7 @@
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: >
-        sudo tuned-adm profile latency-performance &&
+        tuned-adm profile latency-performance &&
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
@@ -190,6 +191,7 @@
 
 - name:  Hosts addresses
   hosts: localhost
+  become: false
   tasks:
     - debug:
         msg: "Zookeeper servers  {{ item }}"
