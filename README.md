@@ -117,10 +117,10 @@ ok: [localhost] => (item=54.212.205.198) => {
 You can SSH into the machine where the benchmark client was installed:
 
 ```shell
-ssh ec2-user@${CLIENT_IP}
+ssh ec2-user@$(terraform output client_ssh_host)
 ```
 
-Start the load
+Start the load:
 
 ```shell
 cd /opt/benchmark
