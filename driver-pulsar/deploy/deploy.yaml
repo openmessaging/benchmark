@@ -147,6 +147,7 @@
 
 - name: Get Maven version
   hosts: localhost
+  become: False
   tasks:
      - shell: >
           cat ../../pom.xml | xmllint --format - \
