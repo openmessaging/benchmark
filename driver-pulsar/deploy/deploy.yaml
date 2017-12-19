@@ -166,13 +166,13 @@
       template:
         src: "templates/client.conf"
         dest: "/opt/pulsar/conf/client.conf"
-    - name: Clone benchmark code
-      git:
-        repo: https://github.com/streamlio/messaging-benchmark
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: >
         tuned-adm profile latency-performance &&
-        mv /opt/messaging-benchmark /opt/benchmark
+        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
@@ -188,16 +188,6 @@
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
          line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
-    - name: Pulsar property and namespace setup
-      connection: ssh
-      become: true
-      command: >
-        bin/pulsar-admin {{ item }}
-      with_items:
-      - properties create benchmark -r all -c local
-      - namespaces create benchmark/local/ns
-      args:
-        chdir: /opt/pulsar
 
 - name:  Hosts addresses
   hosts: localhost
