@@ -166,13 +166,13 @@
       template:
         src: "templates/client.conf"
         dest: "/opt/pulsar/conf/client.conf"
-    - name: Copy benchmark code
-      unarchive:
-        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+    - name: Clone benchmark code
+      git:
+        repo: https://github.com/streamlio/messaging-benchmark
         dest: /opt
     - shell: >
         tuned-adm profile latency-performance &&
-        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+        mv /opt/messaging-benchmark /opt/benchmark
     - name: Configure service URL
       lineinfile:
         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
