@@ -52,17 +52,16 @@
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
         pulsarVersion: "1.21.0-incubating"
 
-    - name: Download Pulsar
+    - name: Create Pulsar directory
       file:
         path: "/opt/pulsar"
         state: directory
-    - get_url:
-        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-{{ pulsarVersion }}-candidate-3/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz
-        dest: /tmp/pulsar.tgz
-    - command: tar --strip-components=1 -xvf /tmp/pulsar.tgz
-      args:
-        chdir: /opt/pulsar
-
+    - name: Download Pulsar binary package
+      unarchive:
+        src: https://github.com/apache/incubator-pulsar/releases/download/v{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz
+        remote_src: yes
+        dest: /opt/pulsar
+        extra_opts: ["--strip-components=1"]
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
@@ -71,7 +70,7 @@
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
 
-- name: Setup ZooKeeper
+- name: ZooKeeper setup
   hosts: zookeeper
   connection: ssh
   become: true
@@ -101,7 +100,9 @@
         state: restarted
         daemon_reload: yes
         name: "zookeeper"
-    - command: >
+    - name: Initialize cluster metadata
+      run_once: true
+      command: >
         bin/pulsar initialize-cluster-metadata --cluster local
         --zookeeper localhost:2181
         --global-zookeeper localhost:2181
@@ -111,7 +112,7 @@
         chdir: /opt/pulsar
       when: groups['zookeeper'][0] == inventory_hostname
 
-- name: Setup Bookkeeper
+- name: Bookkeeper setup
   hosts: pulsar
   connection: ssh
   become: true
@@ -128,7 +129,7 @@
         daemon_reload: yes
         name: "bookkeeper"
 
-- name: Setup Pulsar
+- name: Pulsar setup (part 2)
   hosts: pulsar
   connection: ssh
   become: true
@@ -147,6 +148,7 @@
 
 - name: Get Maven version
   hosts: localhost
+  become: false
   tasks:
      - shell: >
           cat ../../pom.xml | xmllint --format - \
@@ -154,9 +156,9 @@
             | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
        register: maven_version
      - set_fact:
-         benchmark_version: "{{ maven_version.stdout }}"
+        benchmark_version: "{{ maven_version.stdout }}"
 
-- name: Setup Pulsar client
+- name: Pulsar client setup
   hosts: client
   connection: ssh
   become: true
@@ -174,20 +176,19 @@
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
-         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
-         regexp: '^    serviceUrl \: '
-         line: '    serviceUrl : {{ serviceUrl }}'
+        dest: /opt/benchmark/driver-pulsar/pulsar.yaml
+        regexp: '^    serviceUrl \: '
+        line: '    serviceUrl : {{ serviceUrl }}'
     - name: Configure http URL
       lineinfile:
-         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
-         regexp: '^    httpUrl : '
-         line: '    httpUrl : {{ httpUrl }}'
+        dest: /opt/benchmark/driver-pulsar/pulsar.yaml
+        regexp: '^    httpUrl : '
+        line: '    httpUrl : {{ httpUrl }}'
     - name: Configure http URL
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
          line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
-
 
 - name:  Hosts addresses
   hosts: localhost
