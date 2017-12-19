@@ -101,7 +101,6 @@
         daemon_reload: yes
         name: "zookeeper"
     - name: Initialize cluster metadata
-      run_once: true
       command: >
         bin/pulsar initialize-cluster-metadata --cluster local
         --zookeeper localhost:2181
@@ -189,6 +188,16 @@
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
          line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Pulsar property and namespace setup
+      connection: ssh
+      become: true
+      command: >
+        bin/pulsar-admin {{ item }}
+      with_items:
+      - properties create benchmark -r all -c local
+      - namespaces create benchmark/local/ns
+      args:
+        chdir: /opt/pulsar
 
 - name:  Hosts addresses
   hosts: localhost
