@@ -1,11 +1,11 @@
 variable "public_key_path" {
-  default = "~/.ssh/id_rsa.pub"
+  default = "~/.ssh/pulsar_aws.pub"
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/id_rsa.pub
+Example: ~/.ssh/terraform_pulsar.pub
 DESCRIPTION
 }
 
