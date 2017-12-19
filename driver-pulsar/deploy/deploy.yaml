@@ -22,16 +22,16 @@
   connection: ssh
   become: true
   tasks:
-    - shell: >
-        tuned-adm profile latency-performance &&
-        mkfs.xfs /dev/nvme0n1 &&
-        mkfs.xfs /dev/nvme1n1 &&
-        mkdir -p /mnt/journal &&
-        mkdir -p /mnt/storage &&
-        mount -o defaults,noatime,nodiscard /dev/nvme0n1 /mnt/journal &&
-        mount -o defaults,noatime,nodiscard /dev/nvme1n1 /mnt/storage
-      args:
-        creates: /mnt/journal
+    - name: Create and mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: default,noatime,nodiscard
+        state: present
+      with_items:
+        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
 
 - name: Pulsar setup
   hosts: all
@@ -51,14 +51,13 @@
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
         pulsarVersion: "1.21.0-incubating"
-
     - name: Create Pulsar directory
       file:
-        path: "/opt/pulsar"
+        path: /opt/pulsar
         state: directory
     - name: Download Pulsar binary package
       unarchive:
-        src: https://github.com/apache/incubator-pulsar/releases/download/v{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz
+        src: "http://archive.apache.org/dist/incubator/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
@@ -70,7 +69,7 @@
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
 
-- name: ZooKeeper setup
+- name: Setup ZooKeeper
   hosts: zookeeper
   connection: ssh
   become: true
@@ -100,8 +99,7 @@
         state: restarted
         daemon_reload: yes
         name: "zookeeper"
-    - name: Initialize cluster metadata
-      command: >
+    - command: >
         bin/pulsar initialize-cluster-metadata --cluster local
         --zookeeper localhost:2181
         --global-zookeeper localhost:2181
@@ -111,7 +109,7 @@
         chdir: /opt/pulsar
       when: groups['zookeeper'][0] == inventory_hostname
 
-- name: Bookkeeper setup
+- name: Setup Bookkeeper
   hosts: pulsar
   connection: ssh
   become: true
@@ -128,7 +126,7 @@
         daemon_reload: yes
         name: "bookkeeper"
 
-- name: Pulsar setup (part 2)
+- name: Setup Pulsar
   hosts: pulsar
   connection: ssh
   become: true
@@ -155,9 +153,9 @@
             | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
        register: maven_version
      - set_fact:
-        benchmark_version: "{{ maven_version.stdout }}"
+         benchmark_version: "{{ maven_version.stdout }}"
 
-- name: Pulsar client setup
+- name: Setup Pulsar client
   hosts: client
   connection: ssh
   become: true
@@ -175,26 +173,27 @@
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
-        dest: /opt/benchmark/driver-pulsar/pulsar.yaml
-        regexp: '^    serviceUrl \: '
-        line: '    serviceUrl : {{ serviceUrl }}'
+         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
+         regexp: '^    serviceUrl \: '
+         line: '    serviceUrl : {{ serviceUrl }}'
     - name: Configure http URL
       lineinfile:
-        dest: /opt/benchmark/driver-pulsar/pulsar.yaml
-        regexp: '^    httpUrl : '
-        line: '    httpUrl : {{ httpUrl }}'
+         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
+         regexp: '^    httpUrl : '
+         line: '    httpUrl : {{ httpUrl }}'
     - name: Configure http URL
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
          line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
 
+
 - name:  Hosts addresses
   hosts: localhost
   become: false
   tasks:
     - debug:
-        msg: "Zookeeper servers  {{ item }}"
+        msg: "Zookeeper servers {{ item }}"
       with_items: "{{ groups['zookeeper'] }}"
     - debug:
         msg: "Pulsar/BookKeeper servers {{ item }}"
