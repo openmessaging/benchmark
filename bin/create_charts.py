@@ -35,24 +35,26 @@ def create_charts(test_results):
             workload_results[result['workload']] = []
         workload_results[result['workload']].append(result)
 
-    for name, results in workload_results.items():
-        print 'Generating charts for', name
+    for workload, results in workload_results.items():
+        print 'Generating charts for', workload
+        workload = workload.replace('/', '-')
 
-        create_chart('Publish latency 99pct',
+        create_chart(workload, 'Publish latency 99pct',
                      y_label='Latency (ms)',
                      time_series=[(x['driver'], x['publishLatency99pct']) for x in results])
 
-        create_chart('Publish rate',
+        create_chart(workload, 'Publish rate',
                      y_label='Rate (msg/s)',
                      time_series=[(x['driver'], x['publishRate']) for x in results])
 
-        create_quantile_chart('Publish latency quantiles',
+        create_quantile_chart(workload, 'Publish latency quantiles',
                               y_label='Latency (ms)',
                               time_series=[(x['driver'], x['aggregatedPublishLatencyQuantiles']) for x in results])
 
 
-def create_chart(title, y_label, time_series):
-    chart = pygal.XY()
+def create_chart(workload, title, y_label, time_series):
+    chart = pygal.XY(dots_size=.3,
+                     legend_at_bottom=True,)
     chart.title = title
 
     chart.human_readable = True
@@ -64,10 +66,10 @@ def create_chart(title, y_label, time_series):
         chart.add(label, [(10*x, y) for x, y in enumerate(values)])
 
     chart.range = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
-    chart.render_to_file(title + '.svg')
+    chart.render_to_file('%s - %s.svg' % (workload, title))
 
 
-def create_quantile_chart(title, y_label, time_series):
+def create_quantile_chart(workload, title, y_label, time_series):
     import math
     chart = pygal.XY(  # style=pygal.style.LightColorizedStyle,
                      # fill=True,
@@ -89,7 +91,7 @@ def create_quantile_chart(title, y_label, time_series):
         xy_values = [(math.log10(100 / (100 - x)), y) for x, y in values if x <= 99.999]
         chart.add(label, xy_values)
 
-    chart.render_to_file('%s.svg' % title)
+    chart.render_to_file('%s - %s.svg' % (workload, title))
 
 
 if __name__ == '__main__':
