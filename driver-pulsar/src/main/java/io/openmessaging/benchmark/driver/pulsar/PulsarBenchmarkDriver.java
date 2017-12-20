@@ -73,9 +73,12 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
         // Disable internal stats since we're already collecting in the framework
         clientConfiguration.setStatsInterval(0, TimeUnit.SECONDS);
+        log.info("Set Pulsar client configuration: {}", writer.writeValueAsString(clientConfiguration));
 
         client = PulsarClient.create(config.client.serviceUrl, clientConfiguration);
+        log.info("Created Pulsar client for service URL {}", config.client.serviceUrl);
         adminClient = new PulsarAdmin(new URL(config.client.httpUrl), clientConfiguration);
+        log.info("Created Pulsar admin client for HTTP URL {}", config.client.httpUrl);
 
         producerConfiguration = new ProducerConfiguration();
         producerConfiguration.setBatchingEnabled(config.producer.batchingEnabled);
@@ -83,6 +86,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                 TimeUnit.MILLISECONDS);
         producerConfiguration.setBlockIfQueueFull(config.producer.blockIfQueueFull);
         producerConfiguration.setMaxPendingMessages(config.producer.pendingQueueSize);
+        log.info("Set producer configuration: {}", writer.writeValueAsString(producerConfiguration));
 
         try {
             // Create namespace and set the configuration
@@ -92,14 +96,18 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                 adminClient.properties().createProperty(property,
                         new PropertyAdmin(Collections.emptyList(), Sets.newHashSet(cluster)));
             }
+            log.info("Created Pulsar property {} with allowed cluster {}", property, cluster);
 
             this.namespace = config.client.namespacePrefix + "-" + getRandomString();
             adminClient.namespaces().createNamespace(namespace);
+            log.info("Created Pulsar namespace {}/{}/{}", property, cluster, namespace);
 
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
                     new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
             adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
+            log.info("Applied persistence configuration for namespace {}/{}/{}: {}",
+                    property, cluster, namespace, writer.writeValueAsString(p));
 
         } catch (PulsarAdminException e) {
             throw new IOException(e);
@@ -143,6 +151,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
+        log.info("Shutting down Pulsar benchmark driver");
+
         if (client != null) {
             client.close();
         }
@@ -150,6 +160,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         if (adminClient != null) {
             adminClient.close();
         }
+
+        log.info("Pulsar benchmark driver successfully shut down");
     }
 
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
