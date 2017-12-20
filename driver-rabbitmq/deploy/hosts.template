@@ -1,0 +1,4 @@
+[rabbitmq]
+192.168.153.133 rabbitmq_master=true
+192.168.153.132 rabbitmq_slave=true rabbitslave1=true
+192.168.153.131 rabbitmq_slave=true rabbitslave2=true
