@@ -2,8 +2,17 @@
 
 This folder houses all of the assets necessary to run benchmarks for [Apache Pulsar](https://pulsar.incubator.apache.org). In order to run these benchmarks, you'll need to:
 
-* [stand up a Pulsar cluster](#creating-a-pulsar-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
+* [Create the necessary local artifacts](#creating-local-artifacts)
+* [Stand up a Pulsar cluster](#creating-a-pulsar-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+
+## Creating local artifacts
+
+In order to create the local artifacts necessary to run the Pulsar benchmarks in AWS, you'll need to have [Maven](https://maven.apache.org/install.html) installed. Once Maven's installed, you can create the necessary artifacts with a single Maven command:
+
+```bash
+$ mvn install
+```
 
 ## Creating a Pulsar cluster on Amazon Web Services (AWS) using Terraform and Ansible
 
@@ -57,4 +66,18 @@ Once the installation is complete, you will see a confirmation message listing t
 
 ## SSHing into the client host
 
+In the [output](https://www.terraform.io/intro/getting-started/outputs.html) produced by Terraform, there's a `client_ssh_host` variable that provides the IP address for the client EC2 host from which benchmarks can be run. You can SSH into that host using this command:
+
+```bash
+$ ssh ec2-user@$(terraform output client_ssh_host)
+```
+
 ## Running the benchmarks from the client host
+
+Once you've successfully SSHed into the client host, you can run the benchmarks like this:
+
+```bash
+$ cd /opt/benchmark
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/*.yaml
+```
+
