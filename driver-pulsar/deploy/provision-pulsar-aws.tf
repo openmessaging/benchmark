@@ -1,11 +1,11 @@
 variable "public_key_path" {
-  default = "~/.ssh/id_rsa.pub"
+  default = "~/.ssh/pulsar_aws.pub"
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/id_rsa.pub
+Example: ~/.ssh/terraform_pulsar.pub
 DESCRIPTION
 }
 
@@ -15,15 +15,15 @@ variable "key_name" {
 }
 
 variable "region" {
-    default = "us-west-2"
+  default = "us-west-2"
 }
 
 variable "ami" {
-    default = "ami-9fa343e7" // RHEL-7.4
+  default = "ami-9fa343e7" // RHEL-7.4
 }
 
 provider "aws" {
-    region     = "${var.region}"
+  region = "${var.region}"
 }
 
 # Create a VPC to launch our instances into
@@ -31,7 +31,7 @@ resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags {
-      Name = "Benchmark-VPC"
+    Name = "Benchmark-VPC"
   }
 }
 
@@ -93,42 +93,42 @@ resource "aws_key_pair" "auth" {
 }
 
 resource "aws_instance" "zookeeper" {
-    ami           = "${var.ami}"
-    instance_type = "t2.small"
-    key_name      = "${aws_key_pair.auth.id}"
-    subnet_id     = "${aws_subnet.benchmark_subnet.id}"
-    vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = 3
+  ami           = "${var.ami}"
+  instance_type = "t2.small"
+  key_name      = "${aws_key_pair.auth.id}"
+  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count         = 3
 
-    tags {
-        Name = "zk-${count.index}"
-    }
+  tags {
+      Name = "zk-${count.index}"
+  }
 }
 
 resource "aws_instance" "pulsar" {
-    ami           = "${var.ami}"
-    instance_type = "i3.4xlarge"
-    key_name      = "${aws_key_pair.auth.id}"
-    subnet_id     = "${aws_subnet.benchmark_subnet.id}"
-    vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = 3
+  ami           = "${var.ami}"
+  instance_type = "i3.4xlarge"
+  key_name      = "${aws_key_pair.auth.id}"
+  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count         = 3
 
-    tags {
-        Name = "pulsar-${count.index}"
-    }
+  tags {
+      Name = "pulsar-${count.index}"
+  }
 }
 
 resource "aws_instance" "client" {
-    ami           = "${var.ami}"
-    instance_type = "c4.8xlarge"
-    key_name      = "${aws_key_pair.auth.id}"
-    subnet_id     = "${aws_subnet.benchmark_subnet.id}"
-    vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = 1
+  ami           = "${var.ami}"
+  instance_type = "c4.8xlarge"
+  key_name      = "${aws_key_pair.auth.id}"
+  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count         = 1
 
-    tags {
-        Name = "pulsar-client-${count.index}"
-    }
+  tags {
+      Name = "pulsar-client-${count.index}"
+  }
 }
 
 output "client_ssh_host" {
