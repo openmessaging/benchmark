@@ -17,19 +17,20 @@
 # under the License.
 #
 
-
-- name: Format and mount disks
+- name: Format and mount disks Kafka hosts
   hosts: kafka
   connection: ssh
   become: true
   tasks:
-    - shell: >
-        sudo tuned-adm profile latency-performance &&
-        mkfs.xfs /dev/nvme0n1 &&
-        mkdir -p /mnt/data &&
-        mount -o defaults,noatime,nodiscard /dev/nvme0n1 /mnt/data
-      args:
-        creates: /mnt/data
+    - command: >
+        sudo tuned-adm profile latency-performance
+    - name: Create and mount disks
+      mount:
+        path: /mnt/data
+        src: /dev/nvme0n1
+        fstype: xfs
+        opts: default,noatime,nodiscard
+        state: present
 
 - name: Kafka setup
   hosts: all
@@ -47,18 +48,13 @@
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         boostrapServers: "{{ hostvars[groups['kafka'][0]].private_ip }}:9092"
-
-    - name: Download Kafka
-      file:
-        path: "/opt/kafka"
-        state: directory
-    - get_url:
-        url: http://mirrors.ocf.berkeley.edu/apache/kafka/1.0.0/kafka_2.11-1.0.0.tgz
-        dest: /tmp/kafka.tgz
-    - command: tar --strip-components=1 -xvf /tmp/kafka.tgz
-      args:
-        chdir: /opt/kafka
-
+        kafkaVersion: "1.0.0"
+    - name: Download Kafka package
+      unarchive:
+        src: http://mirrors.ocf.berkeley.edu/apache/kafka/{{ kafkaVersion }}/kafka_2.11-{{ kafkaVersion }}.tgz
+        remote_src: yes
+        dest: /opt/kafka
+        extra_opts: ["--strip-components=1"]
     - set_fact:
         privateIp: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
@@ -116,7 +112,7 @@
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: >
-        sudo tuned-adm profile latency-performance &&
+        tuned-adm profile latency-performance &&
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure URL
       lineinfile:
@@ -132,10 +128,10 @@
 
 - name:  Hosts addresses
   hosts: localhost
-  become: False
+  become: false
   tasks:
     - debug:
-        msg: "Zookeeper servers  {{ item }}"
+        msg: "Zookeeper servers {{ item }}"
       with_items: "{{ groups['zookeeper'] }}"
     - debug:
         msg: "Kafka brokers {{ item }}"
