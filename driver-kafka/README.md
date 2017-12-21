@@ -56,7 +56,7 @@ That will install the following [EC2](https://aws.amazon.com/ec2) instances (plu
 
 Resource | Description | Count
 :--------|:------------|:-----
-Pulsar/BookKeeper instances | The VMs on which a Pulsar broker and BookKeeper bookie will run | 3
+Kafka instances | The VMs on which a Kafka broker will run | 3
 ZooKeeper instances | The VMs on which a ZooKeeper node will run | 3
 Client instance | The VM from which the benchmarking suite itself will be run | 1
 
@@ -69,7 +69,7 @@ Once the installation is complete, you will see a confirmation message listing t
 In the [output](https://www.terraform.io/intro/getting-started/outputs.html) produced by Terraform, there's a `client_ssh_host` variable that provides the IP address for the client EC2 host from which benchmarks can be run. You can SSH into that host using this command:
 
 ```bash
-$ ssh ec2-user@$(terraform output client_ssh_host)
+$ ssh -i ~/.ssh/kafka_aws ec2-user@$(terraform output client_ssh_host)
 ```
 
 ## Running the benchmarks from the client host
@@ -78,6 +78,6 @@ Once you've successfully SSHed into the client host, you can run the benchmarks 
 
 ```bash
 $ cd /opt/benchmark
-$ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/*.yaml
+$ sudo bin/benchmark --drivers driver-kafka/kafka.yaml workloads/*.yaml
 ```
 

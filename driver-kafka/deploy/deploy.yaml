@@ -44,7 +44,9 @@
           - java
           - sysstat
           - vim
-
+    - file:
+        path: /opt/kafka
+        state: directory
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         boostrapServers: "{{ hostvars[groups['kafka'][0]].private_ip }}:9092"
@@ -81,7 +83,6 @@
         state: restarted
         daemon_reload: yes
         name: "zookeeper"
-
 
 - name: Setup Kafka
   hosts: kafka

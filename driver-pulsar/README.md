@@ -69,7 +69,7 @@ Once the installation is complete, you will see a confirmation message listing t
 In the [output](https://www.terraform.io/intro/getting-started/outputs.html) produced by Terraform, there's a `client_ssh_host` variable that provides the IP address for the client EC2 host from which benchmarks can be run. You can SSH into that host using this command:
 
 ```bash
-$ ssh ec2-user@$(terraform output client_ssh_host)
+$ ssh -i ~/.ssh/pulsar_aws ec2-user@$(terraform output client_ssh_host)
 ```
 
 ## Running the benchmarks from the client host
