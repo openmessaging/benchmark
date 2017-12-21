@@ -17,23 +17,23 @@
 # under the License.
 #
 
-- name: Format and mount disks for Pulsar/BookKeeper hosts
+- name: Format and mount disks
   hosts: pulsar
   connection: ssh
   become: true
   tasks:
-    - name: Create and mount disks
-      mount:
-        path: "{{ item.path }}"
-        src: "{{ item.src }}"
-        fstype: xfs
-        opts: default,noatime,nodiscard
-        state: present
-      with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
-        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
+    - shell: >
+        tuned-adm profile latency-performance &&
+        mkfs.xfs /dev/nvme0n1 &&
+        mkfs.xfs /dev/nvme1n1 &&
+        mkdir -p /mnt/journal &&
+        mkdir -p /mnt/storage &&
+        mount -o defaults,noatime,nodiscard /dev/nvme0n1 /mnt/journal &&
+        mount -o defaults,noatime,nodiscard /dev/nvme1n1 /mnt/storage
+      args:
+        creates: /mnt/journal
 
-- name: Pulsar installation
+- name: Pulsar setup
   hosts: all
   connection: ssh
   become: true
@@ -45,21 +45,24 @@
           - java
           - sysstat
           - vim
+
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
         pulsarVersion: "1.21.0-incubating"
-    - name: Create Pulsar directory
+
+    - name: Download Pulsar
       file:
-        path: /opt/pulsar
+        path: "/opt/pulsar"
         state: directory
-    - name: Download Pulsar binary package
-      unarchive:
-        src: "http://archive.apache.org/dist/incubator/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
-        remote_src: yes
-        dest: /opt/pulsar
-        extra_opts: ["--strip-components=1"]
+    - get_url:
+        url: https://dist.apache.org/repos/dist/dev/incubator/pulsar/pulsar-{{ pulsarVersion }}-candidate-3/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz
+        dest: /tmp/pulsar.tgz
+    - command: tar --strip-components=1 -xvf /tmp/pulsar.tgz
+      args:
+        chdir: /opt/pulsar
+
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
@@ -68,7 +71,7 @@
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
 
-- name: ZooKeeper setup
+- name: Setup ZooKeeper
   hosts: zookeeper
   connection: ssh
   become: true
@@ -108,7 +111,7 @@
         chdir: /opt/pulsar
       when: groups['zookeeper'][0] == inventory_hostname
 
-- name: BookKeeper setup
+- name: Setup Bookkeeper
   hosts: pulsar
   connection: ssh
   become: true
@@ -125,7 +128,7 @@
         daemon_reload: yes
         name: "bookkeeper"
 
-- name: Pulsar configuration and systemd setup
+- name: Setup Pulsar
   hosts: pulsar
   connection: ssh
   become: true
@@ -144,7 +147,7 @@
 
 - name: Get Maven version
   hosts: localhost
-  become: false
+  become: False
   tasks:
      - shell: >
           cat ../../pom.xml | xmllint --format - \
@@ -154,7 +157,7 @@
      - set_fact:
          benchmark_version: "{{ maven_version.stdout }}"
 
-- name: Pulsar benchmarking client setup
+- name: Setup Pulsar client
   hosts: client
   connection: ssh
   become: true
@@ -187,12 +190,12 @@
          line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
 
 
-- name: List host addresses
+- name:  Hosts addresses
   hosts: localhost
   become: false
   tasks:
     - debug:
-        msg: "Zookeeper servers {{ item }}"
+        msg: "Zookeeper servers  {{ item }}"
       with_items: "{{ groups['zookeeper'] }}"
     - debug:
         msg: "Pulsar/BookKeeper servers {{ item }}"
