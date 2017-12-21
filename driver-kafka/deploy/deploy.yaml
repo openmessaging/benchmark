@@ -17,13 +17,13 @@
 # under the License.
 #
 
-- name: Format and mount disks Kafka hosts
+- name: Format and mount disks for Kafka hosts
   hosts: kafka
   connection: ssh
   become: true
   tasks:
     - command: >
-        sudo tuned-adm profile latency-performance
+        tuned-adm profile latency-performance
     - name: Create and mount disks
       mount:
         path: /mnt/data
