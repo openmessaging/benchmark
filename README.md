@@ -15,7 +15,7 @@ For each platform, the suite includes easy-to-use scripts for deploying the plat
 
 In order to add a new platform for benchmarking, you need to provide the following:
 
-* A [Terraform](https://terraform.io) configuration for creating the necessary AWS resources
-* An [Ansible playbook](http://docs.ansible.com/ansible/latest/playbooks.html) for installing and starting the platform on AWS
-* An implementation of the Java [`driver-api`](https://github.com/streamlio/messaging-benchmark/tree/master/driver-api) library 
-* A YAML configuration file like [this one](https://github.com/streamlio/messaging-benchmark/blob/master/driver-pulsar/pulsar.yaml) that provides any necessary client configuration info
+* A [Terraform](https://terraform.io) configuration for creating the necessary AWS resources ([example](https://github.com/streamlio/messaging-benchmark/blob/lperkins/readme-changes/driver-kafka/deploy/provision-kafka-aws.tf))
+* An [Ansible playbook](http://docs.ansible.com/ansible/latest/playbooks.html) for installing and starting the platform on AWS ([example](https://github.com/streamlio/messaging-benchmark/blob/lperkins/readme-changes/driver-pulsar/deploy/deploy.yaml))
+* An implementation of the Java [`driver-api`](https://github.com/streamlio/messaging-benchmark/tree/master/driver-api) library ([example](https://github.com/streamlio/messaging-benchmark/tree/lperkins/readme-changes/driver-kafka/src/main/java/io/openmessaging/benchmark/driver/kafka))
+* A YAML configuration file that provides any necessary client configuration info ([example](https://github.com/streamlio/messaging-benchmark/blob/master/driver-pulsar/pulsar.yaml))
