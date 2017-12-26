@@ -14,3 +14,5 @@ core/*.json
 **/terraform.tfstate.backup
 **/*.lock.info
 .DS_Store
+*.iml
+.idea/
