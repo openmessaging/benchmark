@@ -1,15 +1,25 @@
-
-# The OpenMessaging Benchmark framework
+# The OpenMessaging Benchmark Framework
 
 This repository houses user-friendly, cloud-ready benchmarking suites for the following messaging platforms:
 
 * [Apache Kafka](https://kafka.apache.org)
 * [Apache Pulsar (incubating)](https://pulsar.incubator.apache.org)
 
+> A benchmarking suite for [RabbitMQ](https://www.rabbitmq.com) will be available soon.
+
 For each platform, the suite includes easy-to-use scripts for deploying the platform on [Amazon Web Services](https://aws.amazon.com) (AWS). For instructions on running the benchmarks, see platform-specific docs for:
 
 * [Kafka](driver-kafka/README.md)
 * [Pulsar](driver-pulsar/README.md)
+
+## Project goals
+
+The goal of the OpenMessaging Benchmark Framework is to provide benchmarking suites for an ever-expanding variety of messaging platforms. These suites are intended to be:
+
+* **Cloud friendly** --- All benchmarks are run on cloud infrastructure, not on your laptop
+* **Easy to use** --- Just a few CLI commands get you from zero to completed benchmarks
+* **Transparent** --- All benchmarking code is open source, with pull requests very welcome
+* **Realistic** --- Benchmarks should be largely oriented toward standard use cases rather than bizarre edge cases
 
 ## Adding a new platform
 
