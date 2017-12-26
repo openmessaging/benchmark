@@ -17,31 +17,25 @@
 # under the License.
 #
 
-
-name : Pulsar-exactly-once
+name: Pulsar-exactly-once
 driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
 
-# Pulsar client specific configurations
-
+# Pulsar client-specific configuration
 client:
-    serviceUrl : pulsar://localhost:6650
-    httpUrl : http://localhost:8080
-
-    ioThreads : 8
-    connectionsPerBroker : 8
-
-    namespacePrefix : benchmark/local/ns
-
-    topicType: persistent
-
-    persistence:
-      ensembleSize : 3
-      writeQuorum : 3
-      ackQuorum : 2
-      deduplicationEnabled : true
+  serviceUrl: pulsar://localhost:6650
+  httpUrl: http://localhost:8080
+  ioThreads: 8
+  connectionsPerBroker: 8
+  namespacePrefix: benchmark/local/ns
+  topicType: persistent
+  persistence:
+    ensembleSize: 3
+    writeQuorum: 3
+    ackQuorum: 2
+    deduplicationEnabled: true
 
 # Producer configuration
 producer:
-    batchingEnabled : true
-    batchingMaxPublishDelayMs : 1
-    blockIfQueueFull : true
+  batchingEnabled: true
+  batchingMaxPublishDelayMs: 1
+  blockIfQueueFull: true
