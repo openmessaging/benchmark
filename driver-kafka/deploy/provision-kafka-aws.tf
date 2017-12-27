@@ -82,7 +82,7 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-      Name = "Benchmark-Security-Group"
+    Name = "Benchmark-Security-Group"
   }
 }
 
@@ -97,7 +97,7 @@ resource "aws_instance" "zookeeper" {
   key_name      = "${aws_key_pair.auth.id}"
   subnet_id     = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = 3
+  count         = "${var.num_instances["zookeeper"]}"
 
   tags {
     Name = "kafka-zk-${count.index}"
@@ -110,7 +110,7 @@ resource "aws_instance" "kafka" {
   key_name      = "${aws_key_pair.auth.id}"
   subnet_id     = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = 3
+  count         = "${var.num_instances["kafka"]}"
 
   tags {
     Name = "kafka-${count.index}"

@@ -7,3 +7,8 @@ instance_types = {
   "zookeeper" = "t2.small"
   "client"    = "c4.8xlarge"
 }
+
+num_instances = {
+  "pulsar"    = 3
+  "zookeeper" = 3
+}
