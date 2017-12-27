@@ -54,8 +54,8 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name        = "terraform"
-  vpc_id      = "${aws_vpc.benchmark_vpc.id}"
+  name   = "terraform"
+  vpc_id = "${aws_vpc.benchmark_vpc.id}"
 
   # SSH access from anywhere
   ingress {
@@ -92,12 +92,12 @@ resource "aws_key_pair" "auth" {
 }
 
 resource "aws_instance" "zookeeper" {
-  ami           = "${var.ami}"
-  instance_type = "${var.instance_types["zookeeper"]}"
-  key_name      = "${aws_key_pair.auth.id}"
-  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["zookeeper"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = "${var.num_instances["zookeeper"]}"
+  count                  = "${var.num_instances["zookeeper"]}"
 
   tags {
     Name = "kafka-zk-${count.index}"
@@ -105,12 +105,12 @@ resource "aws_instance" "zookeeper" {
 }
 
 resource "aws_instance" "kafka" {
-  ami           = "${var.ami}"
-  instance_type = "${var.instance_types["kafka"]}"
-  key_name      = "${aws_key_pair.auth.id}"
-  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["kafka"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = "${var.num_instances["kafka"]}"
+  count                  = "${var.num_instances["kafka"]}"
 
   tags {
     Name = "kafka-${count.index}"
@@ -118,12 +118,12 @@ resource "aws_instance" "kafka" {
 }
 
 resource "aws_instance" "client" {
-  ami           = "${var.ami}"
-  instance_type = "${var.instance_types["client"]}"
-  key_name      = "${aws_key_pair.auth.id}"
-  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["client"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = 1
+  count                  = 1
 
   tags {
     Name = "kafka-client-${count.index}"
