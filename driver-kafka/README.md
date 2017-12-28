@@ -107,3 +107,10 @@ $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-kafka/kafka.yaml workloads/*.yaml
 ```
 
+There are multiple Kafka "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-kafka` folder.
+
+Mode | Description | Config file
+:----|:------------|:-----------
+Standard | Kafka with message idempotence disabled (at-least-once semantics) | `kafka.yaml`
+Exactly once | Kafka with message idempotence enabled ("exactly-once" semantics) | `kafka-exactly-once.yaml`
+Sync | Kafka with durability enabled (all published messages synced to disk) | `kafka-sync.yaml`
