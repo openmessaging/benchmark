@@ -34,7 +34,7 @@ In addition, you will need to:
 * [Install the `aws` CLI tool](https://aws.amazon.com/cli/)
 * [Configure the `aws` CLI tool](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
 
-Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/aws_pulsar` (private) and `~/.ssh/aws_pulsar.pub` (public), respectively.
+Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/kafka_aws` (private) and `~/.ssh/kafka_aws.pub` (public), respectively.
 
 ```bash
 $ ssh-keygen -f ~/.ssh/kafka_aws
@@ -63,6 +63,32 @@ Client instance | The VM from which the benchmarking suite itself will be run | 
 When you run `terraform apply`, you will be prompted to type `yes`. Type `yes` to continue with the installation or anything else to quit.
 
 Once the installation is complete, you will see a confirmation message listing the resources that have been installed.
+
+### Variables
+
+There's a handful of configurable parameters related to the Terraform deployment that you can alter by modifying the defaults in the `terraform.tfvars` file.
+
+Variable | Description | Default
+:--------|:------------|:-------
+`region` | The AWS region in which the Kafka cluster will be deployed | `us-west-2`
+`public_key_path` | The path to the SSH public key that you've generated | `~/.ssh/kafka_aws.pub`
+`ami` | The [Amazon Machine Image](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) (AWI) to be used by the cluster's machines | [`ami-9fa343e7`](https://access.redhat.com/articles/3135091)
+`instance_types` | The EC2 instance types used by the various components | `i3.4xlarge` (Kafka brokers), `t2.small` (ZooKeeper), `c4.8xlarge` (benchmarking client)
+
+> If you modify the `public_key_path`, make sure that you point to the appropriate SSH key path when running the [Ansible playbook](#running-the-ansible-playbook).
+
+### Running the Ansible playbook
+
+With the appropriate infrastructure in place, you can install and start the Kafka cluster using Ansible with just one command:
+
+```bash
+$ ansible-playbook \
+  --user ec2-user \
+  --inventory `which terraform-inventory` \
+  deploy.yaml
+```
+
+> If you're using an SSH private key path different from `~/.ssh/kafka_aws`, you can specify that path using the `--private-key` flag, for example `--private-key=~/.ssh/my_key`.
 
 ## SSHing into the client host
 

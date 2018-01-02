@@ -1,5 +1,4 @@
 variable "public_key_path" {
-  default = "~/.ssh/kafka_aws.pub"
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
@@ -10,16 +9,16 @@ DESCRIPTION
 }
 
 variable "key_name" {
-  default = "kafka-benchmark-key"
+  default     = "kafka-benchmark-key"
   description = "Desired name of AWS key pair"
 }
 
-variable "region" {
-  default = "us-west-2"
-}
+variable "region" {}
 
-variable "ami" {
-  default = "ami-9fa343e7" // RHEL-7.4
+variable "ami" {}
+
+variable "instance_types" {
+  type = "map"
 }
 
 provider "aws" {
@@ -55,8 +54,8 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name        = "terraform"
-  vpc_id      = "${aws_vpc.benchmark_vpc.id}"
+  name   = "terraform"
+  vpc_id = "${aws_vpc.benchmark_vpc.id}"
 
   # SSH access from anywhere
   ingress {
@@ -83,7 +82,7 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-      Name = "Benchmark-Security-Group"
+    Name = "Benchmark-Security-Group"
   }
 }
 
@@ -93,12 +92,12 @@ resource "aws_key_pair" "auth" {
 }
 
 resource "aws_instance" "zookeeper" {
-  ami           = "${var.ami}"
-  instance_type = "t2.small"
-  key_name      = "${aws_key_pair.auth.id}"
-  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["zookeeper"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = 3
+  count                  = "${var.num_instances["zookeeper"]}"
 
   tags {
     Name = "kafka-zk-${count.index}"
@@ -106,12 +105,12 @@ resource "aws_instance" "zookeeper" {
 }
 
 resource "aws_instance" "kafka" {
-  ami           = "${var.ami}"
-  instance_type = "i3.4xlarge"
-  key_name      = "${aws_key_pair.auth.id}"
-  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["kafka"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = 3
+  count                  = "${var.num_instances["kafka"]}"
 
   tags {
     Name = "kafka-${count.index}"
@@ -119,12 +118,12 @@ resource "aws_instance" "kafka" {
 }
 
 resource "aws_instance" "client" {
-  ami           = "${var.ami}"
-  instance_type = "c4.8xlarge"
-  key_name      = "${aws_key_pair.auth.id}"
-  subnet_id     = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["client"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count         = 1
+  count                  = 1
 
   tags {
     Name = "kafka-client-${count.index}"
