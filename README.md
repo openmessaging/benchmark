@@ -16,10 +16,10 @@ For each platform, the suite includes easy-to-use scripts for deploying the plat
 
 The goal of the OpenMessaging Benchmark Framework is to provide benchmarking suites for an ever-expanding variety of messaging platforms. These suites are intended to be:
 
-* **Cloud friendly** --- All benchmarks are run on cloud infrastructure, not on your laptop
-* **Easy to use** --- Just a few CLI commands get you from zero to completed benchmarks
-* **Transparent** --- All benchmarking code is open source, with pull requests very welcome
-* **Realistic** --- Benchmarks should be largely oriented toward standard use cases rather than bizarre edge cases
+* **Cloud friendly** &mdash; All benchmarks are run on cloud infrastructure, not on your laptop
+* **Easy to use** &mdash; Just a few CLI commands get you from zero to completed benchmarks
+* **Transparent** &mdash; All benchmarking code is open source, with pull requests very welcome
+* **Realistic** &mdash; Benchmarks should be largely oriented toward standard use cases rather than bizarre edge cases
 
 ## Adding a new platform
 
