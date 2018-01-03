@@ -36,6 +36,7 @@
 		<module>driver-kafka</module>
 
 		<module>package</module>
+		<module>driver-rabbitmq</module>
 	</modules>
 
 
