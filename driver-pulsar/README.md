@@ -107,3 +107,9 @@ $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/*.yaml
 ```
 
+There are multiple Pulsar "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-pulsar` folder.
+
+Mode | Description | Config file
+:----|:------------|:-----------
+Standard | Pulsar with message de-duplication disabled (at-least-once semantics) | `pulsar.yaml`
+Effectively once | Pulsar with message de-duplication enabled ("effectively-once" semantics) | `pulsar-effectively-once.yaml`
