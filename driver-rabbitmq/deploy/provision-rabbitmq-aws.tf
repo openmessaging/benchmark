@@ -1,26 +1,27 @@
 variable "public_key_path" {
-  default = "~/.ssh/id_rsa.pub"
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/id_rsa.pub
+Example: ~/.ssh/rabbitmq_aws.pub
 DESCRIPTION
 }
 
 variable "key_name" {
-  default = "pulsar-benchmark-key"
+  default = "rabbitmq-benchmark-key"
   description = "Desired name of AWS key pair"
 }
 
-variable "region" {
-    default = "us-west-2"
+variable "instance_types" {
+	type = "map"
 }
 
-variable "ami" {
-    default = "ami-9fa343e7" // RHEL-7.4
+variable "num_instances" {
+	type = "map"
 }
+variable "region" {}
+variable "ami" {}
 
 provider "aws" {
     region     = "${var.region}"
@@ -83,7 +84,7 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-      Name = "Benchmark-Security-Group"
+      Name = "Benchmark-Security-Group-RabbitMQ"
   }
 }
 
@@ -92,42 +93,29 @@ resource "aws_key_pair" "auth" {
   public_key = "${file(var.public_key_path)}"
 }
 
-resource "aws_instance" "zookeeper" {
+resource "aws_instance" "rabbitmq" {
     ami           = "${var.ami}"
-    instance_type = "t2.small"
+    instance_type = "${var.instance_types["rabbitmq"]}"
     key_name      = "${aws_key_pair.auth.id}"
     subnet_id     = "${aws_subnet.benchmark_subnet.id}"
     vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = 3
+    count         = "${var.num_instances["rabbitmq"]}"
 
     tags {
-        Name = "zk-${count.index}"
-    }
-}
-
-resource "aws_instance" "pulsar" {
-    ami           = "${var.ami}"
-    instance_type = "i3.4xlarge"
-    key_name      = "${aws_key_pair.auth.id}"
-    subnet_id     = "${aws_subnet.benchmark_subnet.id}"
-    vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = 3
-
-    tags {
-        Name = "pulsar-${count.index}"
+        Name = "rabbitmq-${count.index}"
     }
 }
 
 resource "aws_instance" "client" {
     ami           = "${var.ami}"
-    instance_type = "c4.8xlarge"
+    instance_type = "${var.instance_types["client"]}"
     key_name      = "${aws_key_pair.auth.id}"
     subnet_id     = "${aws_subnet.benchmark_subnet.id}"
     vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = 1
+    count         = "${var.num_instances["client"]}"
 
     tags {
-        Name = "pulsar-client-${count.index}"
+        Name = "rabbitmq-client-${count.index}"
     }
 }
 

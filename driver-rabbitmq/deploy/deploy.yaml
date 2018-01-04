@@ -17,6 +17,20 @@
 # under the License.
 #
 
+- name: add entries to /etc/hosts
+  hosts: all
+  connection: ssh
+  tasks:
+    - lineinfile:
+       dest: /etc/hosts
+       line: "{{ item.line }}"
+       state: present
+      with_items:
+        - { line: "{{ hostvars[groups['rabbitmq'][0]].private_ip }} rabbitmaster" }
+        - { line: "{{ hostvars[groups['rabbitmq'][1]].private_ip }} rabbitslave1" }
+        - { line: "{{ hostvars[groups['rabbitmq'][2]].private_ip }} rabbitslave2" }
+
+
 - name: Install RabbitMQ Cluster
   hosts: rabbitmq
   connection: ssh
@@ -28,17 +42,14 @@
       - java
       - sysstat
       - vim
-  - name: Download erlang rpm
-    get_url:
-      url: https://packages.erlang-solutions.com/erlang-solutions-1.0-1.noarch.rpm
-      dest: /tmp/erlang-solutions-1.0-1.noarch.rpm
+      - socat
   - name: Install Erlang
     yum:
-      name: /tmp/erlang-solutions-1.0-1.noarch.rpm
+      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v19.3.6.5/erlang-19.3.6.5-1.el7.centos.x86_64.rpm
       state: present
   - name: Install Rabbitmq Server
     yum:
-      name: http://www.rabbitmq.com/releases/rabbitmq-server/v3.6.14/rabbitmq-server-3.6.14-1.el6.noarch.rpm
+      name: https://dl.bintray.com/rabbitmq/all/rabbitmq-server/3.7.2/rabbitmq-server-3.7.2-1.el7.noarch.rpm
       state: present
 
   - name: change master hostname to rabbitmaster
@@ -56,16 +67,6 @@
       name: "rabbitslave2"
     when: rabbitslave2 is defined
 
-  - name: add entries to /etc/hosts
-    lineinfile:
-      dest: /etc/hosts
-      line: "{{ item.line }}"
-      state: present
-    with_items:
-      - { line: "{{ groups['rabbitmq'][0] }} rabbitmaster" }
-      - { line: "{{ groups['rabbitmq'][1] }} rabbitslave1" }
-      - { line: "{{ groups['rabbitmq'][2] }} rabbitslave2" }
-
   # - name: stop rabbitmq
   #   shell: rabbitmqctl stop_app
   # - name: kill rabbitmq
@@ -73,12 +74,16 @@
   # - name: reset rabbitmq
   #   shell: rabbitmqctl reset
 
-  - name: start rabbitmq server
-    service:  name=rabbitmq-server  state=started
+  - systemd:
+    state: started
+    daemon_reload: yes
+    name: "rabbitmq-server"
   - name: install web management
     shell: rabbitmq-plugins enable rabbitmq_management
-  - name: restart rabbitmq server
-    service:  name=rabbitmq-server  state=restarted
+  - systemd:
+    state: restarted
+    daemon_reload: yes
+    name: "rabbitmq-server"
   # - name: create admin/admin  profile
   #   shell:  rabbitmqctl add_user admin  admin
   # - name: set admin tag
@@ -89,10 +94,10 @@
     shell: rm -f  /var/lib/rabbitmq/.erlang.cookie
   - name: copy erlang.cookie
     copy: src=erlang.cookie  dest=/var/lib/rabbitmq/.erlang.cookie  owner=rabbitmq group=rabbitmq mode=0400
-  - name: kill rabbitmq
-    shell: rabbitmqctl stop ; ps aux | grep rabbitmq | grep -v grep | awk '{print $2}'| xargs kill -9 ; rabbitmq-server -detached
-  - name: start rabbitmq
-    service: name=rabbitmq-server enabled=yes state=restarted
+  - systemd:
+    state: restarted
+    daemon_reload: yes
+    name: "rabbitmq-server"
   - name: rabbitmq status
     shell: rabbitmqctl cluster_status
     register: result
@@ -127,3 +132,40 @@
     shell: rabbitmqctl list_queues
     register: result_queue
   - debug: msg='{{result_queue.stdout}}'
+  
+  
+- name: Pulsar benchmarking client setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - shell: >
+        tuned-adm profile latency-performance &&
+        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - name: Configure service URL
+      lineinfile:
+         dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
+         regexp: '^brokerAddress\: '
+         line: 'brokerAddress: rabbitmaster'
+    - name: Configure benchmark JVM settings
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+
+
+- name: List host addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "RabbitMQ brokers {{ item }}"
+      with_items: "{{ groups['rabbitmq'] }}"
+    - debug:
+        msg: "Benchmark client {{ item }}"
+      with_items: "{{ groups['client'] }}"
+  
