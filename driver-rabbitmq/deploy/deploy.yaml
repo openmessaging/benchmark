@@ -17,7 +17,7 @@
 # under the License.
 #
 
-- name: add entries to /etc/hosts
+- name: Add entries to /etc/hosts
   hosts: all
   connection: ssh
   tasks:
@@ -35,6 +35,9 @@
   hosts: rabbitmq
   connection: ssh
   tasks:
+  - set_fact:
+      erlangVersion: 19.3.6.5
+      rabbitMqVersion: 3.7.2
   - name: Install RPM packages
     yum: pkg={{ item }} state=latest
     with_items:
@@ -45,11 +48,11 @@
       - socat
   - name: Install Erlang
     yum:
-      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v19.3.6.5/erlang-19.3.6.5-1.el7.centos.x86_64.rpm
+      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el7.centos.x86_64.rpm
       state: present
   - name: Install Rabbitmq Server
     yum:
-      name: https://dl.bintray.com/rabbitmq/all/rabbitmq-server/3.7.2/rabbitmq-server-3.7.2-1.el7.noarch.rpm
+      name: https://dl.bintray.com/rabbitmq/all/rabbitmq-server/{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
       state: present
 
   - name: change master hostname to rabbitmaster
@@ -78,7 +81,7 @@
     state: started
     daemon_reload: yes
     name: "rabbitmq-server"
-  - name: install web management
+  - name: Install web management
     shell: rabbitmq-plugins enable rabbitmq_management
   - systemd:
     state: restarted
@@ -90,30 +93,33 @@
   #   shell: rabbitmqctl set_user_tags admin administrator
   # - name: set admin permission
   #   shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
-  - name: clear servers erlang cookie
-    shell: rm -f  /var/lib/rabbitmq/.erlang.cookie
-  - name: copy erlang.cookie
+  - name: Clear servers' Erlang cookie
+    file:
+      path: /var/lib/rabbitmq/.erlang.cookie
+      state: absent
+  - name: Copy Erlang cookie
     copy: src=erlang.cookie  dest=/var/lib/rabbitmq/.erlang.cookie  owner=rabbitmq group=rabbitmq mode=0400
   - systemd:
     state: restarted
     daemon_reload: yes
     name: "rabbitmq-server"
-  - name: rabbitmq status
+  - name: RabbitMQ status
     shell: rabbitmqctl cluster_status
     register: result
-  - debug: msg='{{result.stdout}}'
-  - name: rabbit cluster stop slaves
+  - debug:
+      msg: '{{ result.stdout }}'
+  - name: Rabbit cluster stop slaves
     shell: rabbitmqctl stop_app
     when: rabbitmq_slave is defined
-  - name: rabbit cluster slaves join master
+  - name: Rabbit cluster slaves join master
     shell: rabbitmqctl join_cluster rabbit@rabbitmaster
     when: rabbitmq_slave is defined
-  - name: rabbit cluster slaves start slaves
+  - name: Start RabbitMQ cluster slaves
     shell: rabbitmqctl start_app
     when: rabbitmq_slave is defined
-  - name: show rabbitmq cluster status
+  - name: Show RabbitMQ cluster status
     shell: rabbitmqctl cluster_status
-  - name: create ha pllicy
+  - name: Create high availability pllicy
     shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
     when: rabbitmq_master is defined
   # - name: add queue taxCodeInvoiceQueue
@@ -128,7 +134,7 @@
   # - name: add queue cmcc_zzs_sentToPlatformServerQueue
   #   rabbitmq_queue: cmcc_zzs_sentToPlatformServerQueue
   #   when: rabbitmq_master is defined
-  - name: show queue list
+  - name: Show queue list
     shell: rabbitmqctl list_queues
     register: result_queue
   - debug: msg='{{result_queue.stdout}}'
@@ -148,9 +154,9 @@
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
-         dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
-         regexp: '^brokerAddress\: '
-         line: 'brokerAddress: rabbitmaster'
+        dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
+        regexp: '^brokerAddress\: '
+        line: 'brokerAddress: rabbitmaster'
     - name: Configure benchmark JVM settings
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
