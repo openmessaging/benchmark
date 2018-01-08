@@ -5,6 +5,7 @@ This folder houses all of the assets necessary to run benchmarks for [Apache Pul
 * [Create the necessary local artifacts](#creating-local-artifacts)
 * [Stand up a Pulsar cluster](#creating-a-pulsar-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+* [Run the benchmarks from the client host](#running-the-benchmarks-from-the-client-host)
 
 ## Creating local artifacts
 
@@ -34,7 +35,7 @@ In addition, you will need to:
 * [Install the `aws` CLI tool](https://aws.amazon.com/cli/)
 * [Configure the `aws` CLI tool](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
 
-Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/aws_pulsar` (private) and `~/.ssh/aws_pulsar.pub` (public), respectively.
+Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/pulsar_aws` (private) and `~/.ssh/pulsar_aws.pub` (public), respectively.
 
 ```bash
 $ ssh-keygen -f ~/.ssh/pulsar_aws
@@ -46,9 +47,11 @@ When prompted to enter a passphrase, simply hit **Enter** twice. Then, make sure
 $ ls ~/.ssh/pulsar_aws*
 ```
 
-With SSH keys in place, you can create the necessary AWS resources using a single Terraform command (from this directory):
+With SSH keys in place, you can create the necessary AWS resources using a single Terraform command:
 
 ```bash
+$ cd driver-pulsar/deploy
+$ terraform init
 $ terraform apply
 ```
 

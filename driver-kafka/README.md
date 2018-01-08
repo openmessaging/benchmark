@@ -5,6 +5,7 @@ This folder houses all of the assets necessary to run benchmarks for [Apache Kaf
 * [Create the necessary local artifacts](#creating-local-artifacts)
 * [Stand up a Kafka cluster](#creating-a-kafka-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+* [Run the benchmarks from the client host](#running-the-benchmarks-from-the-client-host)
 
 ## Creating local artifacts
 
@@ -46,9 +47,11 @@ When prompted to enter a passphrase, simply hit **Enter** twice. Then, make sure
 $ ls ~/.ssh/kafka_aws*
 ```
 
-With SSH keys in place, you can create the necessary AWS resources using a single Terraform command (from this directory):
+With SSH keys in place, you can create the necessary AWS resources using a single Terraform command:
 
 ```bash
+$ cd driver-kafka/deploy
+$ terraform init
 $ terraform apply
 ```
 
