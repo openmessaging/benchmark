@@ -5,6 +5,7 @@ This folder houses all of the assets necessary to run benchmarks for [Apache Pul
 * [Create the necessary local artifacts](#creating-local-artifacts)
 * [Stand up a Pulsar cluster](#creating-a-pulsar-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+* [Run the benchmarks from the client host](#running-the-benchmarks-from-the-client-host)
 
 ## Creating local artifacts
 

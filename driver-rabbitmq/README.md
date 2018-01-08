@@ -5,10 +5,11 @@ This folder houses all of the assets necessary to run benchmarks for [RabbitMQ](
 * [Create the necessary local artifacts](#creating-local-artifacts)
 * [Stand up a RabbitMQ cluster](#creating-a-rabbitmq-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+* [Run the benchmarks from the client host](#running-the-benchmarks-from-the-client-host)
 
 ## Creating local artifacts
 
-In order to create the local artifacts necessary to run the Pulsar benchmarks in AWS, you'll need to have [Maven](https://maven.apache.org/install.html) installed. Once Maven's installed, you can create the necessary artifacts with a single Maven command:
+In order to create the local artifacts necessary to run the RabbitMQ benchmarks in AWS, you'll need to have [Maven](https://maven.apache.org/install.html) installed. Once Maven's installed, you can create the necessary artifacts with a single Maven command:
 
 ```bash
 $ git clone https://github.com/streamlio/messaging-benchmark
@@ -16,9 +17,9 @@ $ git clone https://github.com/streamlio/messaging-benchmark
 $ mvn install
 ```
 
-## Creating a Pulsar cluster on Amazon Web Services (AWS) using Terraform and Ansible
+## Creating a RabbitMQ cluster on Amazon Web Services (AWS) using Terraform and Ansible
 
-In order to create an Apache Pulsar cluster on AWS, you'll need to have the following installed:
+In order to create an RabbitMQ cluster on AWS, you'll need to have the following installed:
 
 * [Terraform](https://terraform.io)
 * [The `terraform-inventory` plugin for Terraform](https://github.com/adammck/terraform-inventory)
@@ -54,8 +55,7 @@ That will install the following [EC2](https://aws.amazon.com/ec2) instances (plu
 
 Resource | Description | Count
 :--------|:------------|:-----
-Pulsar/BookKeeper instances | The VMs on which a Pulsar broker and BookKeeper bookie will run | 3
-ZooKeeper instances | The VMs on which a ZooKeeper node will run | 3
+RabbitMQ instances | The VMs on which RabbitMQ brokers will run | 3
 Client instance | The VM from which the benchmarking suite itself will be run | 1
 
 When you run `terraform apply`, you will be prompted to type `yes`. Type `yes` to continue with the installation or anything else to quit.
@@ -68,16 +68,16 @@ There's a handful of configurable parameters related to the Terraform deployment
 
 Variable | Description | Default
 :--------|:------------|:-------
-`region` | The AWS region in which the Pulsar cluster will be deployed | `us-west-2`
-`public_key_path` | The path to the SSH public key that you've generated | `~/.ssh/pulsar_aws.pub`
+`region` | The AWS region in which the RabbitMQ cluster will be deployed | `us-west-2`
+`public_key_path` | The path to the SSH public key that you've generated | `~/.ssh/rabbitmq_aws.pub`
 `ami` | The [Amazon Machine Image](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) (AWI) to be used by the cluster's machines | [`ami-9fa343e7`](https://access.redhat.com/articles/3135091)
-`instance_types` | The EC2 instance types used by the various components | `i3.4xlarge` (Pulsar brokers and BookKeeper bookies), `t2.small` (ZooKeeper), `c4.8xlarge` (benchmarking client)
+`instance_types` | The EC2 instance types used by the various components | `i3.4xlarge` (RabbitMQ brokers), `c4.8xlarge` (benchmarking client)
 
 > If you modify the `public_key_path`, make sure that you point to the appropriate SSH key path when running the [Ansible playbook](#running-the-ansible-playbook).
 
 ### Running the Ansible playbook
 
-With the appropriate infrastructure in place, you can install and start the Pulsar cluster using Ansible with just one command:
+With the appropriate infrastructure in place, you can install and start the RabbitMQ cluster using Ansible with just one command:
 
 ```bash
 $ ansible-playbook \
@@ -86,14 +86,14 @@ $ ansible-playbook \
   deploy.yaml
 ```
 
-> If you're using an SSH private key path different from `~/.ssh/pulsar_aws`, you can specify that path using the `--private-key` flag, for example `--private-key=~/.ssh/my_key`.
+> If you're using an SSH private key path different from `~/.ssh/rabbitmq_aws`, you can specify that path using the `--private-key` flag, for example `--private-key=~/.ssh/my_key`.
 
 ## SSHing into the client host
 
 In the [output](https://www.terraform.io/intro/getting-started/outputs.html) produced by Terraform, there's a `client_ssh_host` variable that provides the IP address for the client EC2 host from which benchmarks can be run. You can SSH into that host using this command:
 
 ```bash
-$ ssh -i ~/.ssh/pulsar_aws ec2-user@$(terraform output client_ssh_host)
+$ ssh -i ~/.ssh/rabbitmq_aws ec2-user@$(terraform output client_ssh_host)
 ```
 
 ## Running the benchmarks from the client host
@@ -102,12 +102,5 @@ Once you've successfully SSHed into the client host, you can run the benchmarks 
 
 ```bash
 $ cd /opt/benchmark
-$ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/*.yaml
+$ sudo bin/benchmark --drivers driver-rabbitmq/rabbitmq.yaml workloads/*.yaml
 ```
-
-There are multiple Pulsar "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-pulsar` folder.
-
-Mode | Description | Config file
-:----|:------------|:-----------
-Standard | Pulsar with message de-duplication disabled (at-least-once semantics) | `pulsar.yaml`
-Effectively once | Pulsar with message de-duplication enabled ("effectively-once" semantics) | `pulsar-effectively-once.yaml`

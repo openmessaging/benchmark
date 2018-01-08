@@ -55,17 +55,17 @@
       name: https://dl.bintray.com/rabbitmq/all/rabbitmq-server/{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
       state: present
 
-  - name: change master hostname to rabbitmaster
+  - name: Change master hostname to rabbitmaster
     hostname:
       name: "rabbitmaster"
     when: rabbitmq_master is defined
 
-  - name: change slave1 hostname to rabbitslave1
+  - name: Change slave1 hostname to rabbitslave1
     hostname:
       name: "rabbitslave1"
     when: rabbitslave1 is defined
 
-  - name: change slave2 hostname to rabbitslave2
+  - name: Change slave2 hostname to rabbitslave2
     hostname:
       name: "rabbitslave2"
     when: rabbitslave2 is defined
