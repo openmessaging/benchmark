@@ -11,6 +11,7 @@ For each platform, the suite includes easy-to-use scripts for deploying the plat
 
 * [Kafka](driver-kafka/README.md)
 * [Pulsar](driver-pulsar/README.md)
+* [RabbitMQ](driver-rabbitmq/README.md)
 
 ## Project goals
 

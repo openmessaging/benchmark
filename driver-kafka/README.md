@@ -46,9 +46,11 @@ When prompted to enter a passphrase, simply hit **Enter** twice. Then, make sure
 $ ls ~/.ssh/kafka_aws*
 ```
 
-With SSH keys in place, you can create the necessary AWS resources using a single Terraform command (from this directory):
+With SSH keys in place, you can create the necessary AWS resources using a single Terraform command:
 
 ```bash
+$ cd driver-kafka/deploy
+$ terraform init
 $ terraform apply
 ```
 

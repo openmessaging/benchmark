@@ -22,9 +22,9 @@
   connection: ssh
   tasks:
     - lineinfile:
-       dest: /etc/hosts
-       line: "{{ item.line }}"
-       state: present
+        dest: /etc/hosts
+        line: "{{ item.line }}"
+        state: present
       with_items:
         - { line: "{{ hostvars[groups['rabbitmq'][0]].private_ip }} rabbitmaster" }
         - { line: "{{ hostvars[groups['rabbitmq'][1]].private_ip }} rabbitslave1" }

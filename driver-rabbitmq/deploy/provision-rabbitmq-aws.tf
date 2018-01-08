@@ -9,22 +9,23 @@ DESCRIPTION
 }
 
 variable "key_name" {
-  default = "rabbitmq-benchmark-key"
+  default     = "rabbitmq-benchmark-key"
   description = "Desired name of AWS key pair"
 }
 
 variable "instance_types" {
-	type = "map"
+  type = "map"
 }
 
 variable "num_instances" {
-	type = "map"
+  type = "map"
 }
+
 variable "region" {}
 variable "ami" {}
 
 provider "aws" {
-    region     = "${var.region}"
+  region = "${var.region}"
 }
 
 # Create a VPC to launch our instances into
@@ -32,7 +33,7 @@ resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags {
-      Name = "Benchmark-VPC"
+    Name = "Benchmark-VPC"
   }
 }
 
@@ -56,8 +57,8 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name        = "terraform"
-  vpc_id      = "${aws_vpc.benchmark_vpc.id}"
+  name   = "terraform"
+  vpc_id = "${aws_vpc.benchmark_vpc.id}"
 
   # SSH access from anywhere
   ingress {
@@ -84,7 +85,7 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-      Name = "Benchmark-Security-Group-RabbitMQ"
+    Name = "Benchmark-Security-Group-RabbitMQ"
   }
 }
 
@@ -94,29 +95,29 @@ resource "aws_key_pair" "auth" {
 }
 
 resource "aws_instance" "rabbitmq" {
-    ami           = "${var.ami}"
-    instance_type = "${var.instance_types["rabbitmq"]}"
-    key_name      = "${aws_key_pair.auth.id}"
-    subnet_id     = "${aws_subnet.benchmark_subnet.id}"
-    vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = "${var.num_instances["rabbitmq"]}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["rabbitmq"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["rabbitmq"]}"
 
-    tags {
-        Name = "rabbitmq-${count.index}"
-    }
+  tags {
+    Name = "rabbitmq-${count.index}"
+  }
 }
 
 resource "aws_instance" "client" {
-    ami           = "${var.ami}"
-    instance_type = "${var.instance_types["client"]}"
-    key_name      = "${aws_key_pair.auth.id}"
-    subnet_id     = "${aws_subnet.benchmark_subnet.id}"
-    vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-    count         = "${var.num_instances["client"]}"
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["client"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["client"]}"
 
-    tags {
-        Name = "rabbitmq-client-${count.index}"
-    }
+  tags {
+    Name = "rabbitmq-client-${count.index}"
+  }
 }
 
 output "client_ssh_host" {

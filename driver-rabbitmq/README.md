@@ -1,9 +1,9 @@
-# Apache Pulsar benchmarks
+# RabbitMQ benchmarks
 
-This folder houses all of the assets necessary to run benchmarks for [Apache Pulsar](https://pulsar.incubator.apache.org). In order to run these benchmarks, you'll need to:
+This folder houses all of the assets necessary to run benchmarks for [RabbitMQ](https://www.rabbitmq.com/). In order to run these benchmarks, you'll need to:
 
 * [Create the necessary local artifacts](#creating-local-artifacts)
-* [Stand up a Pulsar cluster](#creating-a-pulsar-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
+* [Stand up a RabbitMQ cluster](#creating-a-rabbitmq-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
 
 ## Creating local artifacts
@@ -11,6 +11,8 @@ This folder houses all of the assets necessary to run benchmarks for [Apache Pul
 In order to create the local artifacts necessary to run the Pulsar benchmarks in AWS, you'll need to have [Maven](https://maven.apache.org/install.html) installed. Once Maven's installed, you can create the necessary artifacts with a single Maven command:
 
 ```bash
+$ git clone https://github.com/streamlio/messaging-benchmark
+% cd messaging-benchmark
 $ mvn install
 ```
 
@@ -21,12 +23,6 @@ In order to create an Apache Pulsar cluster on AWS, you'll need to have the foll
 * [Terraform](https://terraform.io)
 * [The `terraform-inventory` plugin for Terraform](https://github.com/adammck/terraform-inventory)
 * [Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
-* The messaging benchmarks repository:
-
-  ```bash
-  $ git clone https://github.com/streamlio/messaging-benchmark
-  $ cd messaging-benchmark/driver-pulsar/deploy
-  ```
 
 In addition, you will need to:
 
@@ -34,22 +30,22 @@ In addition, you will need to:
 * [Install the `aws` CLI tool](https://aws.amazon.com/cli/)
 * [Configure the `aws` CLI tool](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
 
-Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/pulsar_aws` (private) and `~/.ssh/pulsar_aws.pub` (public), respectively.
+Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/rabbitmq_aws` (private) and `~/.ssh/rabbitmq_aws.pub` (public), respectively.
 
 ```bash
-$ ssh-keygen -f ~/.ssh/pulsar_aws
+$ ssh-keygen -f ~/.ssh/rabbitmq_aws
 ```
 
 When prompted to enter a passphrase, simply hit **Enter** twice. Then, make sure that the keys have been created:
 
 ```bash
-$ ls ~/.ssh/pulsar_aws*
+$ ls ~/.ssh/rabbitmq_aws*
 ```
 
 With SSH keys in place, you can create the necessary AWS resources using a single Terraform command:
 
 ```bash
-$ cd driver-pulsar/deploy
+$ cd driver-rabbitmq/deploy
 $ terraform init
 $ terraform apply
 ```
