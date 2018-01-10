@@ -21,6 +21,10 @@ variable "instance_types" {
   type = "map"
 }
 
+variable "num_instances" {
+  type = "map"
+}
+
 provider "aws" {
   region = "${var.region}"
 }
