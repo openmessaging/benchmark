@@ -54,7 +54,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final BenchmarkDriver benchmarkDriver;
     private final Workload workload;
 
-    private static final ExecutorService executor = Executors
+    private final ExecutorService executor = Executors
             .newCachedThreadPool(new DefaultThreadFactory("messaging-benchmark"));
 
     private final LongAdder messagesSent = new LongAdder();
