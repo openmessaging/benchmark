@@ -7,9 +7,9 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 
 > A benchmarking suite for [RabbitMQ](https://www.rabbitmq.com) will be available soon.
 
+<a id="documentation"></a>
 For each platform, the suite includes easy-to-use scripts for deploying the platform on [Amazon Web Services](https://aws.amazon.com) (AWS). For instructions on running the benchmarks, see platform-specific docs for:
 
-<a id="documentation"></a>
 * [Kafka](driver-kafka/README.md)
 * [Pulsar](driver-pulsar/README.md)
 
@@ -24,7 +24,7 @@ The goal of the OpenMessaging Benchmark Framework is to provide benchmarking sui
 
 ## Benchmarking workloads
 
-Benchmarking workloads are available in the [`workloads`](workloads) directory. The table below describes each workload in terms of the following parameters:
+Benchmarking workloads are specified in [YAML](http://yaml.org/) configuration files that are available in the [`workloads`](workloads) directory. The table below describes each workload in terms of the following parameters:
 
 * The number of topics
 * The size of the messages being produced and consumed
@@ -49,7 +49,7 @@ Workload | Topics | Partitions per topic | Message size | Subscriptions per topi
 [`max-rate-1-topic-100-partitions-1kb.yaml`](workloads/max-rate-1-topic-100-partitions-1kb.yaml) | 1 | 100 | 1 kB | 1 | 1 | 0 | 0 | 5
 [`max-rate-1-topic-100-partitions-100b.yaml`](workloads/max-rate-1-topic-100-partitions-100b.yaml) | 1 | 100 | 100 bytes | 1 | 1 | 0 | 0 | 5
 
-Instructions for running specific workloads---or all workloads sequentially---can be found in the platform-specific [documentation](#documentation).
+> Instructions for running specific workloads—or all workloads sequentially—can be found in the platform-specific [documentation](#documentation).
 
 ## Adding a new platform
 
