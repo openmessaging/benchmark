@@ -8,7 +8,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 > A benchmarking suite for [RabbitMQ](https://www.rabbitmq.com) will be available soon.
 
 <a id="documentation"></a>
-For each platform, the suite includes easy-to-use scripts for deploying the platform on [Amazon Web Services](https://aws.amazon.com) (AWS). For instructions on running the benchmarks, see platform-specific docs for:
+For each platform, the benchmarking suite includes easy-to-use scripts for deploying that platform on [Amazon Web Services](https://aws.amazon.com) (AWS) and then running benchmarks upon deployment. For end-to-end instructions, see platform-specific docs for:
 
 * [Kafka](driver-kafka/README.md)
 * [Pulsar](driver-pulsar/README.md)
