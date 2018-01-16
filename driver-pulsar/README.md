@@ -34,7 +34,7 @@ In addition, you will need to:
 * [Install the `aws` CLI tool](https://aws.amazon.com/cli/)
 * [Configure the `aws` CLI tool](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
 
-Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/aws_pulsar` (private) and `~/.ssh/aws_pulsar.pub` (public), respectively.
+Once those conditions are in place, you'll need to create an SSH public and private key at `~/.ssh/pulsar_aws` (private) and `~/.ssh/pulsar_aws.pub` (public), respectively.
 
 ```bash
 $ ssh-keygen -f ~/.ssh/pulsar_aws
