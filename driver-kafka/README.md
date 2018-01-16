@@ -110,6 +110,12 @@ $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-kafka/kafka.yaml workloads/*.yaml
 ```
 
+You can also run specific workloads in the `workloads` folder. Here's an example:
+
+```bash
+$ sudo bin/benchmark --drivers driver-kafka/kafka.yaml workloads/1-topic-16-partitions-1kb.yaml
+```
+
 There are multiple Kafka "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-kafka` folder.
 
 Mode | Description | Config file
@@ -117,3 +123,19 @@ Mode | Description | Config file
 Standard | Kafka with message idempotence disabled (at-least-once semantics) | `kafka.yaml`
 Exactly once | Kafka with message idempotence enabled ("exactly-once" semantics) | `kafka-exactly-once.yaml`
 Sync | Kafka with durability enabled (all published messages synced to disk) | `kafka-sync.yaml`
+
+The example used the "standard" mode as configured in `driver-kafka/kafka.yaml`. To run all available benchmark workloads in "exactly once" or "sync" mode instead:
+
+```bash
+# Exactly once
+$ sudo bin/benchmark --drivers driver-kafka/kafka-exactly-once.yaml workloads/*.yaml
+
+# Sync
+$ sudo bin/benchmark --drivers driver-kafka/kafka-sync.yaml workloads/*.yaml
+```
+
+Here's an example of running a specific benchmarking workload in exactly once mode:
+
+```bash
+$ sudo bin/benchmark --drivers driver-kafka/kafka-exactly-once.yaml workloads/1-topic-16-partitions-1kb.yaml
+```

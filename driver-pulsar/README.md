@@ -103,11 +103,17 @@ $ ssh -i ~/.ssh/pulsar_aws ec2-user@$(terraform output client_ssh_host)
 
 ## Running the benchmarks from the client host
 
-Once you've successfully SSHed into the client host, you can run the benchmarks like this:
+Once you've successfully SSHed into the client host, you can run all [available benchmark workloads](../#benchmarking-workloads) like this:
 
 ```bash
 $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/*.yaml
+```
+
+You can also run specific workloads in the `workloads` folder. Here's an example:
+
+```bash
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/1-topic-16-partitions-1kb.yaml
 ```
 
 There are multiple Pulsar "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-pulsar` folder.
@@ -116,3 +122,15 @@ Mode | Description | Config file
 :----|:------------|:-----------
 Standard | Pulsar with message de-duplication disabled (at-least-once semantics) | `pulsar.yaml`
 Effectively once | Pulsar with message de-duplication enabled ("effectively-once" semantics) | `pulsar-effectively-once.yaml`
+
+The example used the "standard" mode as configured in `driver-pulsar/pulsar.yaml`. To run all available benchmark workloads in "effectively once" mode:
+
+```bash
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar-effectively-once.yaml workloads/*.yaml
+```
+
+Here's an example of running a specific benchmarking workload in effectively once mode:
+
+```bash
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar-effectively-once.yaml workloads/1-topic-16-partitions-1kb.yaml
+```

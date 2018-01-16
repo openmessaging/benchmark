@@ -98,9 +98,15 @@ $ ssh -i ~/.ssh/rabbitmq_aws ec2-user@$(terraform output client_ssh_host)
 
 ## Running the benchmarks from the client host
 
-Once you've successfully SSHed into the client host, you can run the benchmarks like this:
+Once you've successfully SSHed into the client host, you can run all [available benchmark workloads](../#benchmarking-workloads) like this:
 
 ```bash
 $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-rabbitmq/rabbitmq.yaml workloads/*.yaml
+```
+
+You can also run specific workloads in the `workloads` folder. Here's an example:
+
+```bash
+$ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-16-partitions-1kb.yaml
 ```
