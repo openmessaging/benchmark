@@ -5,6 +5,7 @@ This folder houses all of the assets necessary to run benchmarks for [Apache Pul
 * [Create the necessary local artifacts](#creating-local-artifacts)
 * [Stand up a Pulsar cluster](#creating-a-pulsar-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+* [Run the benchmarks from the client host](#running-the-benchmarks-from-the-client-host)
 
 ## Creating local artifacts
 
@@ -46,9 +47,11 @@ When prompted to enter a passphrase, simply hit **Enter** twice. Then, make sure
 $ ls ~/.ssh/pulsar_aws*
 ```
 
-With SSH keys in place, you can create the necessary AWS resources using a single Terraform command (from this directory):
+With SSH keys in place, you can create the necessary AWS resources using a single Terraform command:
 
 ```bash
+$ cd driver-pulsar/deploy
+$ terraform init
 $ terraform apply
 ```
 
@@ -100,11 +103,17 @@ $ ssh -i ~/.ssh/pulsar_aws ec2-user@$(terraform output client_ssh_host)
 
 ## Running the benchmarks from the client host
 
-Once you've successfully SSHed into the client host, you can run the benchmarks like this:
+Once you've successfully SSHed into the client host, you can run all [available benchmark workloads](../#benchmarking-workloads) like this:
 
 ```bash
 $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/*.yaml
+```
+
+You can also run specific workloads in the `workloads` folder. Here's an example:
+
+```bash
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar.yaml workloads/1-topic-16-partitions-1kb.yaml
 ```
 
 There are multiple Pulsar "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-pulsar` folder.
@@ -113,3 +122,15 @@ Mode | Description | Config file
 :----|:------------|:-----------
 Standard | Pulsar with message de-duplication disabled (at-least-once semantics) | `pulsar.yaml`
 Effectively once | Pulsar with message de-duplication enabled ("effectively-once" semantics) | `pulsar-effectively-once.yaml`
+
+The example used the "standard" mode as configured in `driver-pulsar/pulsar.yaml`. To run all available benchmark workloads in "effectively once" mode:
+
+```bash
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar-effectively-once.yaml workloads/*.yaml
+```
+
+Here's an example of running a specific benchmarking workload in effectively once mode:
+
+```bash
+$ sudo bin/benchmark --drivers driver-pulsar/pulsar-effectively-once.yaml workloads/1-topic-16-partitions-1kb.yaml
+```

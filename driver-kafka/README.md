@@ -5,6 +5,7 @@ This folder houses all of the assets necessary to run benchmarks for [Apache Kaf
 * [Create the necessary local artifacts](#creating-local-artifacts)
 * [Stand up a Kafka cluster](#creating-a-kafka-cluster-on-amazon-web-services-aws-using-terraform-and-ansible) on Amazon Web Services (which includes a client host for running the benchmarks)
 * [SSH into the client host](#sshing-into-the-client-host)
+* [Run the benchmarks from the client host](#running-the-benchmarks-from-the-client-host)
 
 ## Creating local artifacts
 
@@ -46,9 +47,11 @@ When prompted to enter a passphrase, simply hit **Enter** twice. Then, make sure
 $ ls ~/.ssh/kafka_aws*
 ```
 
-With SSH keys in place, you can create the necessary AWS resources using a single Terraform command (from this directory):
+With SSH keys in place, you can create the necessary AWS resources using a single Terraform command:
 
 ```bash
+$ cd driver-kafka/deploy
+$ terraform init
 $ terraform apply
 ```
 
@@ -107,6 +110,12 @@ $ cd /opt/benchmark
 $ sudo bin/benchmark --drivers driver-kafka/kafka.yaml workloads/*.yaml
 ```
 
+You can also run specific workloads in the `workloads` folder. Here's an example:
+
+```bash
+$ sudo bin/benchmark --drivers driver-kafka/kafka.yaml workloads/1-topic-16-partitions-1kb.yaml
+```
+
 There are multiple Kafka "modes" for which you can run benchmarks. Each mode has its own YAML configuration file in the `driver-kafka` folder.
 
 Mode | Description | Config file
@@ -114,3 +123,19 @@ Mode | Description | Config file
 Standard | Kafka with message idempotence disabled (at-least-once semantics) | `kafka.yaml`
 Exactly once | Kafka with message idempotence enabled ("exactly-once" semantics) | `kafka-exactly-once.yaml`
 Sync | Kafka with durability enabled (all published messages synced to disk) | `kafka-sync.yaml`
+
+The example used the "standard" mode as configured in `driver-kafka/kafka.yaml`. To run all available benchmark workloads in "exactly once" or "sync" mode instead:
+
+```bash
+# Exactly once
+$ sudo bin/benchmark --drivers driver-kafka/kafka-exactly-once.yaml workloads/*.yaml
+
+# Sync
+$ sudo bin/benchmark --drivers driver-kafka/kafka-sync.yaml workloads/*.yaml
+```
+
+Here's an example of running a specific benchmarking workload in exactly once mode:
+
+```bash
+$ sudo bin/benchmark --drivers driver-kafka/kafka-exactly-once.yaml workloads/1-topic-16-partitions-1kb.yaml
+```

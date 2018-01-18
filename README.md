@@ -12,6 +12,7 @@ For each platform, the benchmarking suite includes easy-to-use scripts for deplo
 
 * [Kafka](driver-kafka/README.md)
 * [Pulsar](driver-pulsar/README.md)
+* [RabbitMQ](driver-rabbitmq/README.md)
 
 ## Project goals
 
