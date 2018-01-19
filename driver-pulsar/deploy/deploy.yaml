@@ -163,23 +163,29 @@
       template:
         src: "templates/client.conf"
         dest: "/opt/pulsar/conf/client.conf"
+    - shell: tuned-adm profile latency-performance
     - name: Copy benchmark code
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
-    - shell: >
-        tuned-adm profile latency-performance &&
-        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
+      register: drivers_list
+
     - name: Configure service URL
       lineinfile:
-         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
-         regexp: '^    serviceUrl \: '
-         line: '    serviceUrl : {{ serviceUrl }}'
+         dest: '{{ item }}'
+         regexp: '^  serviceUrl\: '
+         line: '  serviceUrl: {{ serviceUrl }}'
+      with_items: '{{ drivers_list.stdout_lines }}'
     - name: Configure http URL
       lineinfile:
-         dest: /opt/benchmark/driver-pulsar/pulsar.yaml
-         regexp: '^    httpUrl : '
-         line: '    httpUrl : {{ httpUrl }}'
+         dest: '{{ item }}'
+         regexp: '^  httpUrl: '
+         line: '  httpUrl: {{ httpUrl }}'
+      with_items: '{{ drivers_list.stdout_lines }}'
     - name: Configure http URL
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
