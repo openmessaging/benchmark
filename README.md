@@ -5,7 +5,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 * [Apache Kafka](https://kafka.apache.org)
 * [Apache Pulsar (incubating)](https://pulsar.incubator.apache.org)
 
-> A benchmarking suite for [RabbitMQ](https://www.rabbitmq.com) will be available soon.
+> A benchmarking suite for [RocketMQ](https://rocketmq.apache.org) and [RabbitMQ](https://www.rabbitmq.com) will be available soon.
 
 <a id="documentation"></a>
 For each platform, the benchmarking suite includes easy-to-use scripts for deploying that platform on [Amazon Web Services](https://aws.amazon.com) (AWS) and then running benchmarks upon deployment. For end-to-end instructions, see platform-specific docs for:
