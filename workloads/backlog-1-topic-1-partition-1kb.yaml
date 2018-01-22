@@ -17,16 +17,13 @@
 # under the License.
 #
 
-name: Max rate on 10 topics with 100 partitions each
+name: 1 producer / 1 consumers on 1 topic
 
-topics : 10
-partitionsPerTopic : 100
+topics : 1
+partitionsPerTopic : 1
 messageSize : 1024
 subscriptionsPerTopic : 1
 producersPerTopic : 1
-
-# Discover max-sustainable rate
-producerRate : 0
-
-consumerBacklogSizeGB : 0
+producerRate : 100000
+consumerBacklogSizeGB : 100
 testDurationMinutes : 5

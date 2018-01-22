@@ -4,26 +4,25 @@ Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/kafka_aws.pub
+Example: ~/.ssh/rabbitmq_aws.pub
 DESCRIPTION
 }
 
 variable "key_name" {
-  default     = "kafka-benchmark-key"
+  default     = "rabbitmq-benchmark-key"
   description = "Desired name of AWS key pair"
 }
-
-variable "region" {}
-
-variable "ami" {}
 
 variable "instance_types" {
   type = "map"
 }
 
 variable "num_instances" {
-    type = "map"
+  type = "map"
 }
+
+variable "region" {}
+variable "ami" {}
 
 provider "aws" {
   region = "${var.region}"
@@ -86,7 +85,7 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-    Name = "Benchmark-Security-Group"
+    Name = "Benchmark-Security-Group-RabbitMQ"
   }
 }
 
@@ -95,29 +94,16 @@ resource "aws_key_pair" "auth" {
   public_key = "${file(var.public_key_path)}"
 }
 
-resource "aws_instance" "zookeeper" {
+resource "aws_instance" "rabbitmq" {
   ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["zookeeper"]}"
+  instance_type          = "${var.instance_types["rabbitmq"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["zookeeper"]}"
+  count                  = "${var.num_instances["rabbitmq"]}"
 
   tags {
-    Name = "kafka-zk-${count.index}"
-  }
-}
-
-resource "aws_instance" "kafka" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["kafka"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["kafka"]}"
-
-  tags {
-    Name = "kafka-${count.index}"
+    Name = "rabbitmq-${count.index}"
   }
 }
 
@@ -127,10 +113,10 @@ resource "aws_instance" "client" {
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = 1
+  count                  = "${var.num_instances["client"]}"
 
   tags {
-    Name = "kafka-client-${count.index}"
+    Name = "rabbitmq-client-${count.index}"
   }
 }
 

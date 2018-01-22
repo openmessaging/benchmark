@@ -17,13 +17,8 @@
 # under the License.
 #
 
-name: 1 producer / 1 consumers on 1 topic
+name: Artemis
+driverClass: io.openmessaging.benchmark.driver.artemis.ArtemisBenchmarkDriver
 
-topics : 1
-partitionsPerTopic : 100
-messageSize : 1024
-subscriptionsPerTopic : 1
-producersPerTopic : 1
-producerRate : 50000
-consumerBacklogSizeGB : 0
-testDurationMinutes : 15
+# ActiveMQ Artemis client-specific configuration
+brokerAddress: tcp://localhost:61616

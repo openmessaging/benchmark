@@ -20,10 +20,10 @@
 name: 1 producer / 1 consumers on 1 topic
 
 topics : 1
-partitionsPerTopic : 1
+partitionsPerTopic : 16
 messageSize : 1024
 subscriptionsPerTopic : 1
 producersPerTopic : 1
-producerRate : 15000
-consumerBacklogSizeGB : 0
-testDurationMinutes : 15
+producerRate : 100000
+consumerBacklogSizeGB : 100
+testDurationMinutes : 5

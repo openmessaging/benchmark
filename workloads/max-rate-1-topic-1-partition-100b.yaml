@@ -20,8 +20,8 @@
 name: Max rate 1 producer on 1 topic / 1 partition
 
 topics : 1
-partitionsPerTopic : 100
-messageSize : 1024
+partitionsPerTopic : 1
+messageSize : 100
 subscriptionsPerTopic : 1
 producersPerTopic : 1
 

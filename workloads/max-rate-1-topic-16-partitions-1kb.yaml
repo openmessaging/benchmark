@@ -17,27 +17,16 @@
 # under the License.
 #
 
+name: Max rate 1 producer on 1 topic / 1 partition
 
-name: Kafka-exactly-once
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+topics : 1
+partitionsPerTopic : 16
+messageSize : 1024
+subscriptionsPerTopic : 1
+producersPerTopic : 1
 
-# Kafka client-specific configuration
-replicationFactor: 3
+# Discover max-sustainable rate
+producerRate : 0
 
-topicConfig: |
-	min.insync.replicas=2
-
-commonConfig: |
-  bootstrap.servers=localhost:9092
-
-producerConfig: |
-  enable.idempotence=true
-  max.in.flight.requests.per.connection=1
-  retries=2147483647
-  acks=all
-  linger.ms=1
-  batch.size=131072
-
-consumerConfig: |
-  auto.offset.reset=earliest
-  enable.auto.commit=false
+consumerBacklogSizeGB : 0
+testDurationMinutes : 5

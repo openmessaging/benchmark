@@ -16,16 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.openmessaging.benchmark.driver.kafka;
 
-public class Config {
-    public short replicationFactor;
+package io.openmessaging.benchmark.driver.artemis;
 
-    public String topicConfig;
-
-    public String commonConfig;
-
-    public String producerConfig;
-
-    public String consumerConfig;
+public class ArtemisConfig {
+    public String brokerAddress;
 }

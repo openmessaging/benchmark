@@ -18,26 +18,9 @@
 #
 
 
-name: Kafka-exactly-once
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+name : RabbitMQ
+driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
 
-# Kafka client-specific configuration
-replicationFactor: 3
+# RabbitMq client specific configurations
 
-topicConfig: |
-	min.insync.replicas=2
-
-commonConfig: |
-  bootstrap.servers=localhost:9092
-
-producerConfig: |
-  enable.idempotence=true
-  max.in.flight.requests.per.connection=1
-  retries=2147483647
-  acks=all
-  linger.ms=1
-  batch.size=131072
-
-consumerConfig: |
-  auto.offset.reset=earliest
-  enable.auto.commit=false
+brokerAddress: localhost

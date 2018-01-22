@@ -24,7 +24,9 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -56,6 +58,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private KafkaProducer<String, byte[]> producer;
     private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
+    private Properties topicProperties;
     private Properties producerProperties;
     private Properties consumerProperties;
 
@@ -80,6 +83,9 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
+        topicProperties = new Properties();
+        topicProperties.load(new StringReader(config.topicConfig));
+
         admin = AdminClient.create(commonProperties);
 
         producer = new KafkaProducer<>(producerProperties);
@@ -90,12 +96,14 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         return "test-topic";
     }
 
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
         return CompletableFuture.runAsync(() -> {
             try {
-                admin.createTopics(Arrays.asList(new NewTopic(topic, partitions, config.replicationFactor))).all()
-                        .get();
+                NewTopic newTopic = new NewTopic(topic, partitions, config.replicationFactor);
+                newTopic.configs(new HashMap<>((Map) topicProperties));
+                admin.createTopics(Arrays.asList(newTopic)).all().get();
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }

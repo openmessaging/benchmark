@@ -54,7 +54,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private final BenchmarkDriver benchmarkDriver;
     private final Workload workload;
 
-    private static final ExecutorService executor = Executors
+    private final ExecutorService executor = Executors
             .newCachedThreadPool(new DefaultThreadFactory("messaging-benchmark"));
 
     private final LongAdder messagesSent = new LongAdder();
@@ -69,8 +69,8 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     private boolean testCompleted = false;
     private volatile boolean needToWaitForBacklogDraining = false;
 
-    private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMillis(12), 5);
-    private final Recorder endToEndCumulativeLatencyRecorder = new Recorder(TimeUnit.HOURS.toMillis(12), 5);
+    private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+    private final Recorder endToEndCumulativeLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
 
     public WorkloadGenerator(String driverName, BenchmarkDriver benchmarkDriver, Workload workload) {
         this.driverName = driverName;

@@ -25,11 +25,8 @@
 		<groupId>io.openmessaging.benchmark</groupId>
 		<artifactId>messaging-benchmark</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>..</relativePath>
 	</parent>
-
-	<artifactId>driver-pulsar</artifactId>
-
+	<artifactId>driver-rabbitmq</artifactId>
 
 	<dependencies>
 		<dependency>
@@ -39,15 +36,9 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.pulsar</groupId>
-			<artifactId>pulsar-client</artifactId>
-			<version>1.21.0-incubating</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.pulsar</groupId>
-			<artifactId>pulsar-client-admin</artifactId>
-			<version>1.21.0-incubating</version>
+			<groupId>com.rabbitmq</groupId>
+			<artifactId>amqp-client</artifactId>
+			<version>4.3.0</version>
 		</dependency>
 	</dependencies>
 </project>
