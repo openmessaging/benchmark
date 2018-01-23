@@ -38,6 +38,8 @@
   connection: ssh
   become: true
   tasks:
+    - name: Set performance profile
+      command: tuned-adm profile latency-performance
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
@@ -163,7 +165,6 @@
       template:
         src: "templates/client.conf"
         dest: "/opt/pulsar/conf/client.conf"
-    - shell: tuned-adm profile latency-performance
     - name: Copy benchmark code
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
