@@ -47,6 +47,14 @@ def create_charts(test_results):
                      y_label='Rate (msg/s)',
                      time_series=[(x['driver'], x['publishRate']) for x in results])
 
+        create_chart(workload, 'Consume rate',
+                     y_label='Rate (msg/s)',
+                     time_series=[(x['driver'], x['consumeRate']) for x in results])
+
+        create_chart(workload, 'endToEndLatencyAvg',
+                     y_label='LatencyAvg msec',
+                     time_series=[(x['driver'], x['endToEndLatencyAvg']) for x in results])
+
         create_quantile_chart(workload, 'Publish latency quantiles',
                               y_label='Latency (ms)',
                               time_series=[(x['driver'], x['aggregatedPublishLatencyQuantiles']) for x in results])

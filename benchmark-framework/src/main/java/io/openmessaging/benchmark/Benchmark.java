@@ -126,6 +126,10 @@ public class Benchmark {
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
+    static {
+        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
+    }
+
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
 
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");

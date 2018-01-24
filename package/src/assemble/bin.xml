@@ -38,6 +38,9 @@
 			<directory>${basedir}/../workloads</directory>
 		</fileSet>
 		<fileSet>
+			<directory>${basedir}/../payload</directory>
+		</fileSet>
+		<fileSet>
 			<directory>${basedir}/../bin</directory>
 			<fileMode>755</fileMode>
 		</fileSet>

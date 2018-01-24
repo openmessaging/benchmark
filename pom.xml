@@ -79,8 +79,9 @@
 					<excludes>
 						<exclude>LICENSE</exclude>
 						<exclude>NOTICE</exclude>
+						<exclude>payload/**</exclude>
 						<exclude>**/*.pyc</exclude>
-						<eclude>**/.pydevproject</eclude>
+						<exclude>**/.pydevproject</exclude>
 					</excludes>
 					<mapping>
 						<benchmark>SCRIPT_STYLE</benchmark>

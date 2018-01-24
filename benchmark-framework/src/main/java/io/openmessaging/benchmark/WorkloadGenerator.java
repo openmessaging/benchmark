@@ -22,6 +22,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.HdrHistogram.Histogram;
@@ -47,6 +49,12 @@ import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.openmessaging.benchmark.utils.PaddingDecimalFormat;
 import io.openmessaging.benchmark.utils.Timer;
+import io.openmessaging.benchmark.utils.distributor.KeyDistributor;
+import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
+import io.openmessaging.benchmark.utils.payload.FilePayloadReader;
+import io.openmessaging.benchmark.utils.payload.PayloadReader;
+
+import static java.util.stream.Collectors.toList;
 
 public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
 
@@ -281,34 +289,39 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
     }
 
     private List<BenchmarkConsumer> createConsumers(List<String> topics) {
-        List<CompletableFuture<BenchmarkConsumer>> futures = new ArrayList<>();
+        List<CompletableFuture<BenchmarkConsumer>> consumerFutures = new ArrayList<>();
         Timer timer = new Timer();
 
         for (int i = 0; i < workload.subscriptionsPerTopic; i++) {
             String subscriptionName = String.format("sub-%03d", i);
 
-            for (String topic : topics) {
-                futures.add(benchmarkDriver.createConsumer(topic, subscriptionName, this));
-            }
+            topics.stream()
+                    .map(topic -> benchmarkDriver.createConsumer(topic, subscriptionName, this))
+                    .forEach(consumerFutures::add);
         }
 
-        List<BenchmarkConsumer> consumers = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        List<BenchmarkConsumer> consumers = consumerFutures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
 
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
         return consumers;
     }
 
     private List<BenchmarkProducer> createProducers(List<String> topics) {
-        List<CompletableFuture<BenchmarkProducer>> futures = new ArrayList<>();
+        List<CompletableFuture<BenchmarkProducer>> producerFutures = new ArrayList<>();
         Timer timer = new Timer();
 
         for (int i = 0; i < workload.producersPerTopic; i++) {
-            for (String topic : topics) {
-                futures.add(benchmarkDriver.createProducer(topic));
-            }
+            topics.stream()
+                    .map(topic -> benchmarkDriver.createProducer(topic))
+                    .forEach(producerFutures::add);
         }
 
-        List<BenchmarkProducer> producers = futures.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        List<BenchmarkProducer> producers = producerFutures.stream()
+                .map(CompletableFuture::join)
+                .collect(toList());
+
         log.info("Created {} producers in {} ms", producers.size(), timer.elapsedMillis());
         return producers;
     }
@@ -356,8 +369,7 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         }
     }
 
-    private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds,
-            RateLimiter rateLimiter) {
+    private TestResult generateLoad(List<BenchmarkProducer> producers, long testDurationsSeconds, RateLimiter rateLimiter) {
         Recorder publishRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
         Recorder cumulativeRecorder = new Recorder(TimeUnit.SECONDS.toMicros(30), 5);
 
@@ -367,43 +379,20 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         int processors = Runtime.getRuntime().availableProcessors();
         Collections.shuffle(producers);
 
-        final byte[] payloadData = new byte[workload.messageSize];
+        final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
+        final byte[] payloadData = payloadReader.load(workload.payloadFile);
 
-        // Divide the producers across multiple different threads
-        for (List<BenchmarkProducer> producersPerThread : Lists.partition(producers, processors)) {
-            executor.submit(() -> {
-                try {
+        final KeyDistributorType keyDistributorType = workload.keyDistributor;
 
-                    // Send messages on all topics/producers assigned to this thread
-                    while (!testCompleted) {
-                        for (int i = 0; i < producersPerThread.size(); i++) {
-                            BenchmarkProducer producer = producersPerThread.get(i);
-                            rateLimiter.acquire();
+        final Function<BenchmarkProducer, KeyDistributor> assignKeyDistributor = (any) ->
+                KeyDistributor.build(keyDistributorType);
 
-                            final long sendTime = System.nanoTime();
-                            String key = randomKeys[Math.abs(((int) sendTime)) % randomKeys.length];
-
-                            producer.sendAsync(key, payloadData).thenRun(() -> {
-                                messagesSent.increment();
-                                totalMessagesSent.increment();
-                                bytesSent.add(payloadData.length);
-
-                                long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
-                                publishRecorder.recordValue(latencyMicros);
-                                cumulativeRecorder.recordValue(latencyMicros);
-
-                            }).exceptionally(ex -> {
-                                log.warn("Write error on message", ex);
-                                System.exit(-1);
-                                return null;
-                            });
-                        }
-                    }
-                } catch (Throwable t) {
-                    log.error("Got error", t);
-                }
-            });
-        }
+        Lists.partition(producers, processors).stream()
+                .map(producersPerThread -> producersPerThread.stream()
+                        .collect(Collectors.toMap(Function.identity(), assignKeyDistributor)))
+                .forEach(producersWithKeyDistributor ->
+                        submitProducersToExecutor(producersWithKeyDistributor, rateLimiter, payloadData,
+                                publishRecorder, cumulativeRecorder));
 
         // Print report stats
         long oldTime = System.nanoTime();
@@ -525,6 +514,37 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         return result;
     }
 
+    private void submitProducersToExecutor(Map<BenchmarkProducer, KeyDistributor> producersWithKeyDistributor,
+                                           RateLimiter rateLimiter, byte[] payloadData, Recorder publishRecorder,
+                                           Recorder cumulativeRecorder) {
+        executor.submit(() -> {
+            try {
+                while (!testCompleted) {
+                    producersWithKeyDistributor.forEach((producer, producersKeyDistributor) -> {
+                        rateLimiter.acquire();
+                        final long sendTime = System.nanoTime();
+                        producer.sendAsync(producersKeyDistributor.next(), payloadData).thenRun(() -> {
+                            messagesSent.increment();
+                            totalMessagesSent.increment();
+                            bytesSent.add(payloadData.length);
+
+                            long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
+                            publishRecorder.recordValue(latencyMicros);
+                            cumulativeRecorder.recordValue(latencyMicros);
+
+                        }).exceptionally(ex -> {
+                            log.warn("Write error on message", ex);
+                            System.exit(-1);
+                            return null;
+                        });
+                    });
+                }
+            } catch (Throwable t) {
+                log.error("Got error", t);
+            }
+        });
+    }
+
     @Override
     public void messageReceived(byte[] data, long publishTimestamp) {
         messagesReceived.increment();
@@ -547,17 +567,6 @@ public class WorkloadGenerator implements ConsumerCallback, AutoCloseable {
         byte[] buffer = new byte[5];
         random.nextBytes(buffer);
         return BaseEncoding.base64Url().omitPadding().encode(buffer);
-    }
-
-    private static final String[] randomKeys = new String[10000];
-
-    static {
-        // Generate a number of random keys to be used when publishing
-        byte[] buffer = new byte[7];
-        for (int i = 0; i < randomKeys.length; i++) {
-            random.nextBytes(buffer);
-            randomKeys[i] = BaseEncoding.base64Url().omitPadding().encode(buffer);
-        }
     }
 
     private static double microsToMillis(double timeInMicros) {

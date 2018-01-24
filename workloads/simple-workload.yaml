@@ -24,6 +24,7 @@ topics : 1
 partitionsPerTopic : 10
 
 messageSize : 1024
+payloadFile: "payload/payload-1Kb.data"
 
 subscriptionsPerTopic : 1
 
