@@ -46,6 +46,7 @@ Workload | Topics | Partitions per topic | Message size | Subscriptions per topi
 [`backlog-1-topic-16-partitions-1kb.yaml`](workloads/backlog-1-topic-16-partitions-1kb.yaml) | 1 | 16 | 1 kB | 1 | 1 | 100000 | 100 | 5
 [`max-rate-1-topic-1-partition-1kb.yaml`](workloads/max-rate-1-topic-1-partition-1kb.yaml) | 1 | 1 | 1 kB | 1 | 1 | 0 | 0 | 5
 [`max-rate-1-topic-1-partition-100b.yaml`](workloads/max-rate-1-topic-1-partition-100b.yaml) | 1 | 1 | 100 bytes | 1 | 1 | 0 | 0 | 5
+[`1-topic-3-partition-100b-3producers.yaml`](workloads/1-topic-3-partition-100b-3producers.yaml) | 1 | 3 | 100 bytes | 1 | 3 | 0 | 0 | 15
 [`max-rate-1-topic-16-partitions-1kb.yaml`](workloads/max-rate-1-topic-16-partitions-1kb.yaml) | 1 | 16 | 1 kB | 1 | 1 | 0 | 0 | 5
 [`max-rate-1-topic-16-partitions-100b.yaml`](workloads/max-rate-1-topic-16-partitions-100b.yaml) | 1 | 16 | 100 bytes | 1 | 1 | 0 | 0 | 5
 [`max-rate-1-topic-100-partitions-1kb.yaml`](workloads/max-rate-1-topic-100-partitions-1kb.yaml) | 1 | 100 | 1 kB | 1 | 1 | 0 | 0 | 5

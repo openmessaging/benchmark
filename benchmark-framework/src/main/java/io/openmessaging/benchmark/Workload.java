@@ -18,7 +18,15 @@
  */
 package io.openmessaging.benchmark;
 
+import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
+
+import static io.openmessaging.benchmark.utils.distributor.KeyDistributorType.ROUND_ROBIN;
+
 public class Workload {
+
+    public Workload() {
+        keyDistributor = ROUND_ROBIN;
+    }
 
     public String name;
 
@@ -28,7 +36,11 @@ public class Workload {
     /** Number of partitions each topic will contain */
     public int partitionsPerTopic;
 
+    public KeyDistributorType keyDistributor;
+
     public int messageSize;
+
+    public String payloadFile;
 
     public int subscriptionsPerTopic;
 

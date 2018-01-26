@@ -24,13 +24,17 @@
   tasks:
     - command: >
         tuned-adm profile latency-performance
+    - name: Format block device
+      filesystem:
+        fstype: xfs
+        dev: /dev/nvme0n1
     - name: Create and mount disks
       mount:
         path: /mnt/data
         src: /dev/nvme0n1
         fstype: xfs
-        opts: default,noatime,nodiscard
-        state: present
+        opts: defaults,noatime,nodiscard
+        state: mounted
 
 - name: Kafka setup
   hosts: all
@@ -118,8 +122,8 @@
     - name: Configure URL
       lineinfile:
          dest: /opt/benchmark/driver-kafka/kafka.yaml
-         regexp: '^    bootstrap.servers='
-         line: '    bootstrap.servers={{ boostrapServers }}'
+         regexp: '^  bootstrap.servers='
+         line: '  bootstrap.servers={{ boostrapServers }}'
     - name: Configure http URL
       lineinfile:
          dest: /opt/benchmark/bin/benchmark

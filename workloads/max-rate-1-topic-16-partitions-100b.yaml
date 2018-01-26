@@ -22,6 +22,7 @@ name: Max rate 1 producer on 1 topic / 16 partitions
 topics : 1
 partitionsPerTopic : 16
 messageSize : 100
+payloadFile: "payload/payload-100b.data"
 subscriptionsPerTopic : 1
 producersPerTopic : 1
 
