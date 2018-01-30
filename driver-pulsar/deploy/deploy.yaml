@@ -155,13 +155,13 @@
   hosts: localhost
   become: false
   tasks:
-    - shell: >
-        cat ../../pom.xml | xmllint --format - \
-          | sed "s/xmlns=\".*\"//g" | xmllint --stream --pattern /project/version --debug - \
-          | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
-      register: maven_version
-    - set_fact:
-        benchmark_version: "{{ maven_version.stdout }}"
+     - shell: >
+          cat ../../pom.xml | xmllint --format - \
+            | sed "s/xmlns=\".*\"//g" | xmllint --stream --pattern /project/version --debug - \
+            | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
+       register: maven_version
+     - set_fact:
+         benchmark_version: "{{ maven_version.stdout }}"
 
 - name: Pulsar benchmarking client setup
   hosts: client
@@ -174,9 +174,9 @@
         dest: "/opt/pulsar/conf/client.conf"
     - name: Copy benchmark code
       unarchive:
-        src: ../../package/target/openmessaging-benchmark-{{ benchmark_version }}-bin.tar.gz
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
-    - shell: mv /opt/openmessaging-benchmark-{{ benchmark_version }} /opt/benchmark
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
 
     - name: Get list of driver config files
       raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
