@@ -91,7 +91,7 @@ $ ansible-playbook \
   deploy.yaml
 ```
 
-> If you're using an SSH private key path different from `~/.ssh/pulsar_aws`, you can specify that path using the `--private-key` flag, for example `--private-key=~/.ssh/my_key`.
+> If you're using an SSH private key path different from `~/.ssh/pulsar_aws`, you can specify that path using the `--private-key` flag, for example `--private-key=~/.ssh/my_key`. <br>If it's keep asking for the ssh key passphrase, you may add the keys to the ssh agent by running `ssh-agent bash` and `ssh-add ~/.ssh/pulsar_aws`.
 
 ## SSHing into the client host
 
