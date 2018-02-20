@@ -19,6 +19,7 @@
 package io.openmessaging.benchmark;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -37,7 +38,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import io.openmessaging.benchmark.driver.BenchmarkDriver;
+import io.openmessaging.benchmark.worker.DistributedWorkersEnsemble;
+import io.openmessaging.benchmark.worker.LocalWorker;
+import io.openmessaging.benchmark.worker.Worker;
 
 public class Benchmark {
 
@@ -49,6 +52,9 @@ public class Benchmark {
         @Parameter(names = { "-d",
                 "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml", required = true)
         public List<String> drivers;
+
+        @Parameter(names = { "-w", "--workers" }, description = "List of worker nodes. eg: 1.2.3.4:8080,4.5.6.7:8080")
+        public List<String> workers;
 
         @Parameter(description = "Workloads", required = true)
         public List<String> workloads;
@@ -85,27 +91,34 @@ public class Benchmark {
 
         log.info("Workloads: {}", writer.writeValueAsString(workloads));
 
-        Map<String, BenchmarkDriver> drivers = new TreeMap<>();
+        Worker worker;
 
-        for (String driverConfig : arguments.drivers) {
-            File driverConfigFile = new File(driverConfig);
-            DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile, DriverConfiguration.class);
-
-            log.info("Driver: {}", writer.writeValueAsString(driverConfiguration));
-            BenchmarkDriver driver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
-            driver.initialize(driverConfigFile);
-            drivers.put(driverConfiguration.name, driver);
+        if (arguments.workers != null) {
+            worker = new DistributedWorkersEnsemble(arguments.workers);
+        } else {
+            // Use local worker implementation
+            worker = new LocalWorker();
         }
 
         workloads.forEach((workloadName, workload) -> {
-            drivers.forEach((driverName, driver) -> {
-                log.info("--------------- WORKLOAD : {} --- DRIVER : {}---------------", workload.name, driverName);
-
-                WorkloadGenerator generator = new WorkloadGenerator(driverName, driver, workload);
+            arguments.drivers.forEach(driverConfig -> {
                 try {
+                    File driverConfigFile = new File(driverConfig);
+                    DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile,
+                            DriverConfiguration.class);
+                    log.info("--------------- WORKLOAD : {} --- DRIVER : {}---------------", workload.name,
+                            driverConfiguration.name);
+
+                    // Stop any left over workload
+                    worker.stopAll();
+
+                    worker.initializeDriver(new File(driverConfig));
+
+                    WorkloadGenerator generator = new WorkloadGenerator(driverConfiguration.name, workload, worker);
+
                     TestResult result = generator.run();
 
-                    String fileName = String.format("%s-%s-%s.json", workloadName, driverName,
+                    String fileName = String.format("%s-%s-%s.json", workloadName, driverConfiguration.name,
                             dateFormat.format(new Date()));
 
                     log.info("Writing test result into {}", fileName);
@@ -113,14 +126,17 @@ public class Benchmark {
 
                     generator.close();
                 } catch (Exception e) {
-                    log.error("Failed to run the workload '{}' for driver '{}'", workload.name, driverName, e);
+                    log.error("Failed to run the workload '{}' for driver '{}'", workload.name, driverConfig, e);
+                } finally {
+                    try {
+                        worker.stopAll();
+                    } catch (IOException e) {
+                    }
                 }
             });
         });
 
-        for (BenchmarkDriver driver : drivers.values()) {
-            driver.close();
-        }
+        worker.close();
     }
 
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
