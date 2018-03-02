@@ -48,9 +48,8 @@
           - java
           - sysstat
           - vim
-    - file:
-        path: /opt/kafka
-        state: directory
+    - file: path=/opt/kafka state=absent
+    - file: path=/opt/kafka state=directory
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         boostrapServers: "{{ hostvars[groups['kafka'][0]].private_ip }}:9092"
@@ -112,24 +111,45 @@
   connection: ssh
   become: true
   tasks:
+    - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
-    - shell: >
-        tuned-adm profile latency-performance &&
-        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: tuned-adm profile latency-performance
+
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
+      register: drivers_list
+
     - name: Configure URL
       lineinfile:
          dest: /opt/benchmark/driver-kafka/kafka.yaml
          regexp: '^  bootstrap.servers='
          line: '  bootstrap.servers={{ boostrapServers }}'
-    - name: Configure http URL
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
-
+         line: 'JVM_MEM="-Xmx1G"'
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
 
 - name:  Hosts addresses
   hosts: localhost
@@ -142,5 +162,5 @@
         msg: "Kafka brokers {{ item }}"
       with_items: "{{ groups['kafka'] }}"
     - debug:
-        msg: "Benchmark client {{ item }}"
+        msg: "Benchmark clients {{ item }}"
       with_items: "{{ groups['client'] }}"

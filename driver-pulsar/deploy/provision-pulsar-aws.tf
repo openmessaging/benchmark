@@ -127,7 +127,7 @@ resource "aws_instance" "client" {
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = 1
+  count                  = "${var.num_instances["client"]}"
 
   tags {
     Name = "pulsar-client-${count.index}"

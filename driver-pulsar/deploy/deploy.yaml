@@ -59,10 +59,8 @@
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
         pulsarVersion: "1.21.0-incubating"
-    - name: Create Pulsar directory
-      file:
-        path: /opt/pulsar
-        state: directory
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
         src: "http://archive.apache.org/dist/incubator/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
@@ -172,12 +170,16 @@
       template:
         src: "templates/client.conf"
         dest: "/opt/pulsar/conf/client.conf"
+    - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
 
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
     - name: Get list of driver config files
       raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
       register: drivers_list
@@ -194,11 +196,24 @@
          regexp: '^  httpUrl: '
          line: '  httpUrl: {{ httpUrl }}'
       with_items: '{{ drivers_list.stdout_lines }}'
-    - name: Configure http URL
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xmx1G"'
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
 
 
 - name: List host addresses
@@ -212,5 +227,5 @@
         msg: "Pulsar/BookKeeper servers {{ item }}"
       with_items: "{{ groups['pulsar'] }}"
     - debug:
-        msg: "Benchmark client {{ item }}"
+        msg: "Benchmark clients {{ item }}"
       with_items: "{{ groups['client'] }}"

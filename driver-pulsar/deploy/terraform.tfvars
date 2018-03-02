@@ -5,10 +5,11 @@ ami             = "ami-9fa343e7" // RHEL-7.4
 instance_types = {
   "pulsar"    = "i3.4xlarge"
   "zookeeper" = "t2.small"
-  "client"    = "c4.8xlarge"
+  "client"    = "c5.2xlarge"
 }
 
 num_instances = {
+  "client"    = 4
   "pulsar"    = 3
   "zookeeper" = 3
 }
