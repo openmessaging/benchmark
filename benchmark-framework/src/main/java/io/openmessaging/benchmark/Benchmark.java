@@ -53,8 +53,13 @@ public class Benchmark {
                 "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml", required = true)
         public List<String> drivers;
 
-        @Parameter(names = { "-w", "--workers" }, description = "List of worker nodes. eg: 1.2.3.4:8080,4.5.6.7:8080")
+        @Parameter(names = { "-w",
+                "--workers" }, description = "List of worker nodes. eg: http://1.2.3.4:8080,http://4.5.6.7:8080")
         public List<String> workers;
+
+        @Parameter(names = { "-wf",
+                "--workers-file" }, description = "Path to a YAML file containing the list of workers addresses")
+        public File workersFile;
 
         @Parameter(description = "Workloads", required = true)
         public List<String> workloads;
@@ -78,6 +83,16 @@ public class Benchmark {
             System.exit(-1);
         }
 
+        if (arguments.workers != null && arguments.workersFile != null) {
+            System.err.println("Only one between --workers and --workers-file can be specified");
+            System.exit(-1);
+        }
+
+        if (arguments.workersFile != null) {
+            log.info("Reading workers list from {}", arguments.workersFile);
+            arguments.workers = mapper.readValue(arguments.workersFile, Workers.class).workers;
+        }
+
         // Dump configuration variables
         log.info("Starting benchmark with config: {}", writer.writeValueAsString(arguments));
 
@@ -93,7 +108,7 @@ public class Benchmark {
 
         Worker worker;
 
-        if (arguments.workers != null) {
+        if (arguments.workers != null && !arguments.workers.isEmpty()) {
             worker = new DistributedWorkersEnsemble(arguments.workers);
         } else {
             // Use local worker implementation
