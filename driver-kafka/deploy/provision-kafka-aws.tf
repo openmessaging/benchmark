@@ -1,3 +1,12 @@
+provider "aws" {
+  region  = "${var.region}"
+  version = "1.8"
+}
+
+provider "random" {
+  version = "1.1"
+}
+
 variable "public_key_path" {
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
@@ -8,9 +17,13 @@ Example: ~/.ssh/kafka_aws.pub
 DESCRIPTION
 }
 
+resource "random_id" "hash" {
+  byte_length = 8
+}
+
 variable "key_name" {
   default     = "kafka-benchmark-key"
-  description = "Desired name of AWS key pair"
+  description = "Desired name prefix for the AWS key pair"
 }
 
 variable "region" {}
@@ -22,11 +35,7 @@ variable "instance_types" {
 }
 
 variable "num_instances" {
-    type = "map"
-}
-
-provider "aws" {
-  region = "${var.region}"
+  type = "map"
 }
 
 # Create a VPC to launch our instances into
@@ -34,12 +43,12 @@ resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags {
-    Name = "Benchmark-VPC"
+    Name = "Kafka-Benchmark-VPC-${random_id.hash.hex}"
   }
 }
 
 # Create an internet gateway to give our subnet access to the outside world
-resource "aws_internet_gateway" "default" {
+resource "aws_internet_gateway" "kafka" {
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
 }
 
@@ -47,7 +56,7 @@ resource "aws_internet_gateway" "default" {
 resource "aws_route" "internet_access" {
   route_table_id         = "${aws_vpc.benchmark_vpc.main_route_table_id}"
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.default.id}"
+  gateway_id             = "${aws_internet_gateway.kafka.id}"
 }
 
 # Create a subnet to launch our instances into
@@ -58,7 +67,7 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name   = "terraform"
+  name   = "terraform-kafka-${random_id.hash.hex}"
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
 
   # SSH access from anywhere
@@ -86,12 +95,12 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-    Name = "Benchmark-Security-Group"
+    Name = "Benchmark-Security-Group-${random_id.hash.hex}"
   }
 }
 
 resource "aws_key_pair" "auth" {
-  key_name   = "${var.key_name}"
+  key_name   = "${var.key_name}-${random_id.hash.hex}"
   public_key = "${file(var.public_key_path)}"
 }
 
@@ -104,7 +113,7 @@ resource "aws_instance" "zookeeper" {
   count                  = "${var.num_instances["zookeeper"]}"
 
   tags {
-    Name = "kafka-zk-${count.index}"
+    Name = "zk-${count.index}"
   }
 }
 
