@@ -19,15 +19,15 @@
 
 name: Max rate 1 producer on 1 topic / 100 partition / 100 bytes
 
-topics : 1
-partitionsPerTopic : 100
-messageSize : 100
+topics: 1
+partitionsPerTopic: 100
+messageSize: 100
 payloadFile: "payload/payload-100b.data"
-subscriptionsPerTopic : 1
-producersPerTopic : 1
+subscriptionsPerTopic: 1
+producersPerTopic: 1
 
 # Discover max-sustainable rate
-producerRate : 0
+producerRate: 0
 
-consumerBacklogSizeGB : 0
-testDurationMinutes : 5
+consumerBacklogSizeGB: 0
+testDurationMinutes: 5

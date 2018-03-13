@@ -19,13 +19,13 @@
 
 name: 1 topic / 1 partition / 1Kb
 
-topics : 1
-partitionsPerTopic : 1
+topics: 1
+partitionsPerTopic: 1
 keyDistributor: "ROUND_ROBIN"
-messageSize : 1024
+messageSize: 1024
 payloadFile: "payload/payload-1Kb.data"
-subscriptionsPerTopic : 1
-producersPerTopic : 1
-producerRate : 50000
-consumerBacklogSizeGB : 0
-testDurationMinutes : 15
+subscriptionsPerTopic: 1
+producersPerTopic: 1
+producerRate: 50000
+consumerBacklogSizeGB: 0
+testDurationMinutes: 15

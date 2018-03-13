@@ -17,14 +17,14 @@
 # under the License.
 #
 
-name: 1 topic / 1 partition / 1Kb
+name: 1 topic / 1 partition / 100b
 
-topics : 1
-partitionsPerTopic : 1
-messageSize : 100
+topics: 1
+partitionsPerTopic: 1
+messageSize: 100
 payloadFile: "payload/payload-100b.data"
-subscriptionsPerTopic : 1
-producersPerTopic : 1
-producerRate : 50000
-consumerBacklogSizeGB : 0
-testDurationMinutes : 15
+subscriptionsPerTopic: 1
+producersPerTopic: 1
+producerRate: 50000
+consumerBacklogSizeGB: 0
+testDurationMinutes: 15
