@@ -33,6 +33,8 @@ import org.apache.pulsar.client.api.ConsumerConfiguration;
 import org.apache.pulsar.client.api.ProducerConfiguration;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.apache.pulsar.common.policies.data.BacklogQuota;
+import org.apache.pulsar.common.policies.data.BacklogQuota.RetentionPolicy;
 import org.apache.pulsar.common.policies.data.PersistencePolicies;
 import org.apache.pulsar.common.policies.data.PropertyAdmin;
 import org.slf4j.Logger;
@@ -105,6 +107,9 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
                     new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
+
+            adminClient.namespaces().setBacklogQuota(namespace,
+                    new BacklogQuota(Long.MAX_VALUE, RetentionPolicy.producer_exception));
             adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
             log.info("Applied persistence configuration for namespace {}/{}/{}: {}",
                     property, cluster, namespace, writer.writeValueAsString(p));
