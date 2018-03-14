@@ -205,7 +205,7 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xmx1G"'
+         line: 'JVM_MEM="-Xmx4G"'
     - name: Install benchmark systemd service
       template:
         src: "templates/benchmark-worker.service"
