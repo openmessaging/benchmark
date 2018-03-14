@@ -89,9 +89,9 @@ public class Benchmark {
         }
 
         if (arguments.workers == null && arguments.workersFile == null) {
-            log.info("Using default worker file workers.yaml");
             File defaultFile = new File("workers.yaml");
             if (defaultFile.exists()) {
+                log.info("Using default worker file workers.yaml");
                 arguments.workersFile = defaultFile;
             }
         }
