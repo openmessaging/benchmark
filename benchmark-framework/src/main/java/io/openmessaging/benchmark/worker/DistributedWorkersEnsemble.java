@@ -262,6 +262,9 @@ public class DistributedWorkersEnsemble implements Worker {
 
     private CompletableFuture<Void> sendPost(String host, String path, byte[] body) {
         return httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(x -> {
+            if (x.getStatusCode() != 200) {
+                log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, x.getStatusCode());
+            }
             Preconditions.checkArgument(x.getStatusCode() == 200);
             return (Void) null;
         });
@@ -284,6 +287,9 @@ public class DistributedWorkersEnsemble implements Worker {
     private <T> CompletableFuture<T> get(String host, String path, Class<T> clazz) {
         return httpClient.prepareGet(host + path).execute().toCompletableFuture().thenApply(response -> {
             try {
+                if (response.getStatusCode() != 200) {
+                    log.error("Failed to do HTTP get request to {}{} -- code: {}", host, path, response.getStatusCode());
+                }
                 Preconditions.checkArgument(response.getStatusCode() == 200);
                 return mapper.readValue(response.getResponseBody(), clazz);
             } catch (IOException e) {
@@ -295,6 +301,9 @@ public class DistributedWorkersEnsemble implements Worker {
     private <T> CompletableFuture<T> post(String host, String path, byte[] body, Class<T> clazz) {
         return httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(response -> {
             try {
+                if (response.getStatusCode() != 200) {
+                    log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
+                }
                 Preconditions.checkArgument(response.getStatusCode() == 200);
                 return mapper.readValue(response.getResponseBody(), clazz);
             } catch (IOException e) {
