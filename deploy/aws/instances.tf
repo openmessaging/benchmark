@@ -7,7 +7,7 @@ resource "aws_instance" "zookeeper" {
   count                  = "${var.num_instances["zookeeper"]}"
 
   tags {
-    Name = "zk-${count.index}"
+    Name = "${var.platform}-zk-${count.index}"
   }
 }
 
