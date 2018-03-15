@@ -13,11 +13,11 @@ resource "aws_instance" "zookeeper" {
 
 resource "aws_instance" "messaging" {
   ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["${var.platform}"]}"
+  instance_type          = "${var.instance_types["messaging"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["${var.platform}"]}"
+  count                  = "${var.num_instances["messaging"]}"
 
   tags {
     Name = "${var.platform}-${count.index}"

@@ -1,10 +1,12 @@
 variable "public_key_path" {
+  default = "~/.ssh/openmessaging-benchmark.pub"
+
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/kafka_aws.pub
+Example: ~/.ssh/openmessaging-benchmark.pub
 DESCRIPTION
 }
 
@@ -17,14 +19,30 @@ variable "key_name" {
   description = "Desired name prefix for the AWS key pair"
 }
 
-variable "region" {}
+variable "region" {
+  default = "us-west-2"
+}
 
-variable "ami" {}
+variable "ami" {
+  default = "ami-9fa343e7" // RHEL-7.4
+}
 
 variable "instance_types" {
   type = "map"
+
+  default = {
+    "messaging" = "i3.4xlarge"
+    "zookeeper" = "t2.small"
+    "client"    = "c5.2xlarge"
+  }
 }
 
 variable "num_instances" {
   type = "map"
+
+  default = {
+    "client"    = 4
+    "messaging" = 3
+    "zookeeper" = 0
+  }
 }
