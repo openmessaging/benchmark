@@ -88,6 +88,14 @@ public class Benchmark {
             System.exit(-1);
         }
 
+        if (arguments.workers == null && arguments.workersFile == null) {
+            File defaultFile = new File("workers.yaml");
+            if (defaultFile.exists()) {
+                log.info("Using default worker file workers.yaml");
+                arguments.workersFile = defaultFile;
+            }
+        }
+
         if (arguments.workersFile != null) {
             log.info("Reading workers list from {}", arguments.workersFile);
             arguments.workers = mapper.readValue(arguments.workersFile, Workers.class).workers;
