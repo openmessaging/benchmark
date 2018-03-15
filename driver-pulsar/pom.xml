@@ -40,14 +40,14 @@
 
 		<dependency>
 			<groupId>org.apache.pulsar</groupId>
-			<artifactId>pulsar-client</artifactId>
-			<version>1.21.0-incubating</version>
+			<artifactId>pulsar-client-original</artifactId>
+			<version>1.22.0-incubating</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.pulsar</groupId>
-			<artifactId>pulsar-client-admin</artifactId>
-			<version>1.21.0-incubating</version>
+			<artifactId>pulsar-client-admin-original</artifactId>
+			<version>1.22.0-incubating</version>
 		</dependency>
 	</dependencies>
 </project>
