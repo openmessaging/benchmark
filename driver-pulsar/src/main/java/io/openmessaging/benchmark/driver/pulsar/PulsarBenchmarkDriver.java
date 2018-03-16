@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
 import org.apache.pulsar.client.api.ClientConfiguration;
 import org.apache.pulsar.client.api.ConsumerConfiguration;
 import org.apache.pulsar.client.api.ProducerConfiguration;
@@ -95,8 +96,12 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             String property = config.client.namespacePrefix.split("/")[0];
             String cluster = config.client.namespacePrefix.split("/")[1];
             if (!adminClient.properties().getProperties().contains(property)) {
-                adminClient.properties().createProperty(property,
-                        new PropertyAdmin(Collections.emptyList(), Sets.newHashSet(cluster)));
+                try {
+                    adminClient.properties().createProperty(property,
+                            new PropertyAdmin(Collections.emptyList(), Sets.newHashSet(cluster)));
+                } catch (ConflictException e) {
+                    // Ignore. This can happen when multiple workers are initializing at the same time
+                }
             }
             log.info("Created Pulsar property {} with allowed cluster {}", property, cluster);
 
