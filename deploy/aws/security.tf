@@ -18,7 +18,7 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["10.0.0.0/16"]
   }
 
-  # outbound internet access
+  # Outbound internet access
   egress {
     from_port   = 0
     to_port     = 0
@@ -26,8 +26,23 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Prometheus/Dashboard access
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags {
-    Name = "Benchmark-Security-Group-${random_id.hash.hex}"
+    Name = "${var.platform}-Benchmark-Security-Group-${random_id.hash.hex}"
   }
 }
 

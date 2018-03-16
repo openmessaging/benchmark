@@ -31,9 +31,10 @@ variable "instance_types" {
   type = "map"
 
   default = {
-    "messaging" = "i3.4xlarge"
-    "zookeeper" = "t2.small"
-    "client"    = "c5.2xlarge"
+    "messaging"  = "i3.4xlarge"
+    "zookeeper"  = "t2.small"
+    "client"     = "c5.2xlarge"
+    "prometheus" = "t2.small"
   }
 }
 
@@ -41,8 +42,9 @@ variable "num_instances" {
   type = "map"
 
   default = {
-    "client"    = 4
-    "messaging" = 3
-    "zookeeper" = 0
+    "client"     = 4
+    "messaging"  = 3
+    "zookeeper"  = 0
+    "prometheus" = 0
   }
 }

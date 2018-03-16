@@ -36,3 +36,16 @@ resource "aws_instance" "client" {
     Name = "${var.platform}-client-${count.index}"
   }
 }
+
+resource "aws_instance" "prometheus" {
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["prometheus"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["prometheus"]}"
+
+  tags {
+    Name = "${var.platform}-prometheus-${count.index}"
+  }
+}
