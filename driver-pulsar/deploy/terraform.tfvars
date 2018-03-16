@@ -1,7 +1,6 @@
 public_key_path = "~/.ssh/pulsar_aws.pub"
-region          = "us-east-1"
-#region          = "us-west-2"
-ami             = "ami-26ebbc5c" // RHEL-7.4
+region          = "us-west-2"
+ami             = "ami-9fa343e7" // RHEL-7.4
 
 instance_types = {
   "pulsar"      = "i3.4xlarge"
