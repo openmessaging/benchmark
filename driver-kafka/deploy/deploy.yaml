@@ -62,7 +62,11 @@
         extra_opts: ["--strip-components=1"]
     - set_fact:
         privateIp: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+        
 - name: Setup ZooKeeper
   hosts: zookeeper
   connection: ssh
