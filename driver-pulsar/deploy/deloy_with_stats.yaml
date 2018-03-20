@@ -47,6 +47,8 @@
   tasks:
     - name: Set performance profile
       command: tuned-adm profile latency-performance
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
@@ -54,6 +56,7 @@
           - java
           - sysstat
           - vim
+          - docker
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
@@ -219,6 +222,51 @@
         daemon_reload: yes
         name: "benchmark-worker"
 
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        prometheusVersion: "2.2.1"
+    - file: path=/opt/prometheus state=absent
+    - file: path=/opt/prometheus state=directory
+    - name: Download Prometheus Binary Package
+      unarchive:
+        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+        remote_src: yes
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+- name: Prometheus setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - file:
+        path: "/opt/prometheus/{{ item }}"
+        state: directory
+      with_items:
+        - data
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - template:
+        src: "templates/pulsar-dashboard.service"
+        dest: "/etc/systemd/system/pulsar-dashboard.service"
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "pulsar-dashboard"
 
 - name: List host addresses
   hosts: localhost
@@ -233,3 +281,6 @@
     - debug:
         msg: "Benchmark clients {{ item }}"
       with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"
