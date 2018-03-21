@@ -276,8 +276,10 @@ public class WorkloadGenerator implements AutoCloseable {
         for (int i = 0; i < workload.subscriptionsPerTopic; i++) {
             String subscriptionName = String.format("sub-%03d", i);
 
-            topics.forEach(topic -> consumerAssignment.topicsSubscriptions
-                    .add(new TopicSubscription(topic, subscriptionName)));
+            for (int j = 0; j < workload.consumerPerSubscription; j++) {
+                topics.forEach(topic -> consumerAssignment.topicsSubscriptions
+                        .add(new TopicSubscription(topic, subscriptionName)));
+            }
         }
 
         Collections.shuffle(consumerAssignment.topicsSubscriptions);
