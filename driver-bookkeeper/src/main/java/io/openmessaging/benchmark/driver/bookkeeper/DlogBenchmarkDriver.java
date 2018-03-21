@@ -34,6 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.distributedlog.DistributedLogConfiguration;
+import org.apache.distributedlog.api.DistributedLogManager;
 import org.apache.distributedlog.api.namespace.Namespace;
 import org.apache.distributedlog.api.namespace.NamespaceBuilder;
 import org.slf4j.Logger;
@@ -93,6 +94,7 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
                         namespace.createLog(getFullyQualifiedPartitionedStreamName(topic, i));
                     }
                 }
+                log.info("Successfully create topic {} with {} partitions", topic, partitions);
             } catch (IOException ioe) {
                 log.error("Failed to create topic {} with {} partitions",
                     topic, partitions, ioe);
@@ -105,7 +107,9 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return namespace.openLog(topic);
+                DistributedLogManager dlm = namespace.openLog(topic);
+                log.info("Open stream {} for producer", topic);
+                return dlm;
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
             }
@@ -121,7 +125,9 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
             ConsumerCallback consumerCallback) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return namespace.openLog(topic);
+                DistributedLogManager dlm = namespace.openLog(topic);
+                log.info("Open stream {} for consumer", topic);
+                return dlm;
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
             }

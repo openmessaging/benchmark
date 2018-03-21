@@ -85,6 +85,14 @@ public class DlogBenchmarkConsumer implements BenchmarkConsumer {
 
                 try {
                     record = reader.readNext(false);
+                    if (null == record) {
+                        try {
+                            Thread.sleep(1);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        continue;
+                    }
 
                     callback.messageReceived(record.getPayload(), record.getTransactionId());
 
@@ -92,6 +100,7 @@ public class DlogBenchmarkConsumer implements BenchmarkConsumer {
                 } catch (IOException e) {
                     log.info("Encountered error on reading records from reading stream {}, last record = {}",
                         dlm.getStreamName(), lastDLSN, e);
+                    Utils.closeQuietly(reader);
                     reader = null;
                 }
             }
@@ -105,7 +114,9 @@ public class DlogBenchmarkConsumer implements BenchmarkConsumer {
         closing = true;
         executor.shutdown();
         readerTask.get();
-        dlm.close();
+        if (null != dlm) {
+            dlm.close();
+        }
     }
 
 }
