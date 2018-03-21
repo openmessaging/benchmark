@@ -18,7 +18,7 @@
 #
 
 name: BookKeeper
-driverClass: DlogBenchmarkDriver
+driverClass: io.openmessaging.benchmark.driver.bookkeeper.DlogBenchmarkDriver
 
 dlogUri: distributedlog://localhost:2181/streams
 
@@ -62,6 +62,7 @@ dlogConf: |
   bkcWriteQuorumSize=3
   bkcAckQuorumSize=2
   bkc.ensemblePlacementPolicy=dlshade.org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicy
+  bkc.allowShadedLedgerManagerFactoryClass=true
   bkc.delayEnsembleChange=true
   writerOutputBufferSize=524288
   enableImmediateFlush=false
