@@ -246,8 +246,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         long now = System.currentTimeMillis();
         long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);
-        endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
-        endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
+        if (endToEndLatencyMicros > 0) {
+            endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
+            endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
+        }
 
         while (consumersArePaused) {
             try {
