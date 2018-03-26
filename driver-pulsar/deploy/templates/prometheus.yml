@@ -57,3 +57,10 @@ scrape_configs:
 {% endfor %}
         labels:
           group: 'bookie'
+      - targets:
+{% for worker in groups['client'] %}
+          - {{ hostvars[worker].private_ip }}:8081
+{% endfor %}
+        labels:
+          group: 'client'
+
