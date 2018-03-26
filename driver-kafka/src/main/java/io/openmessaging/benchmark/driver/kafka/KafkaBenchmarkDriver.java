@@ -31,6 +31,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -111,13 +112,13 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
         return CompletableFuture.completedFuture(new KafkaBenchmarkProducer(producer, topic));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
+            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
         Properties properties = new Properties();
         consumerProperties.forEach((key, value) -> properties.put(key, value));
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);

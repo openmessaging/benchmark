@@ -37,6 +37,7 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import org.apache.bookkeeper.stats.StatsLogger;
 
 public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
@@ -93,13 +94,13 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
         return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
+            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
 
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
         ForkJoinPool.commonPool().execute(() -> {

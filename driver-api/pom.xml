@@ -29,4 +29,12 @@
 	</parent>
 
 	<artifactId>driver-api</artifactId>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.bookkeeper.stats</groupId>
+			<artifactId>bookkeeper-stats-api</artifactId>
+			<version>${bookkeeper.version}</version>
+		</dependency>
+	</dependencies>
 </project>

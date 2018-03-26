@@ -30,6 +30,7 @@ import org.apache.activemq.artemis.api.core.client.ActiveMQClient;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.ServerLocator;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +90,7 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
         try {
             return CompletableFuture.completedFuture(new ArtemisBenchmarkProducer(topic, sessionFactory));
         } catch (ActiveMQException e) {
@@ -101,8 +102,7 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
-
+            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
         ForkJoinPool.commonPool().submit(() -> {
             try {

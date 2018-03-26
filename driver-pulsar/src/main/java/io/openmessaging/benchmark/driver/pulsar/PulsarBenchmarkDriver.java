@@ -26,6 +26,7 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
@@ -140,14 +141,14 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
         return client.createProducerAsync(topic, producerConfiguration)
                 .thenApply(pulsarProducer -> new PulsarBenchmarkProducer(pulsarProducer));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
+            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
         ConsumerConfiguration conf = new ConsumerConfiguration();
         conf.setSubscriptionType(SubscriptionType.Failover);
         conf.setMessageListener((consumer, msg) -> {
