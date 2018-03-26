@@ -21,16 +21,19 @@ package io.openmessaging.benchmark.driver.bookkeeper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import dlshade.org.apache.bookkeeper.stats.CachingStatsLogger;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 
+import io.openmessaging.benchmark.driver.bookkeeper.stats.StatsLoggerAdaptor;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.distributedlog.DistributedLogConfiguration;
@@ -39,7 +42,6 @@ import org.apache.distributedlog.api.namespace.Namespace;
 import org.apache.distributedlog.api.namespace.NamespaceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Benchmark driver testing distributedlog.
@@ -53,7 +55,8 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
     private Config config;
     private Namespace namespace;
 
-    public void initialize(File configurationFile) throws IOException {
+    @Override
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, Config.class);
 
         PropertiesConfiguration propsConf = new PropertiesConfiguration();
@@ -67,9 +70,13 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
         }
         URI dlogUri = URI.create(config.dlogUri);
 
+        dlshade.org.apache.bookkeeper.stats.StatsLogger dlStatsLogger =
+            new CachingStatsLogger(new StatsLoggerAdaptor(statsLogger.scope("dlog")));
+
         namespace = NamespaceBuilder.newBuilder()
             .conf(conf)
             .uri(dlogUri)
+            .statsLogger(dlStatsLogger)
             .build();
 
         log.info("Initialized distributedlog namespace at {}", dlogUri);
