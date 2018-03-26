@@ -47,8 +47,6 @@
   tasks:
     - name: Set performance profile
       command: tuned-adm profile latency-performance
-    - name: Add Extras Repo
-      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
@@ -56,7 +54,6 @@
           - java
           - sysstat
           - vim
-          - docker
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
@@ -227,6 +224,12 @@
   connection: ssh
   become: true
   tasks:
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - docker
     - set_fact:
         prometheusVersion: "2.2.1"
     - file: path=/opt/prometheus state=absent
