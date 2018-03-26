@@ -47,7 +47,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     private Channel channel;
 
     @Override
-    public void initialize(File configurationFile) throws IOException {
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, RabbitMqConfig.class);
 
         ConnectionFactory connectionFactory = new ConnectionFactory();
@@ -94,13 +94,13 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
+            ConsumerCallback consumerCallback) {
 
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
         ForkJoinPool.commonPool().execute(() -> {

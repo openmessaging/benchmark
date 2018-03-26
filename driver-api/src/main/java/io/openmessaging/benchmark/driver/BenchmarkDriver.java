@@ -34,9 +34,10 @@ public interface BenchmarkDriver extends AutoCloseable {
      * The format of the configuration file is specific to the driver implementation.
      * 
      * @param configurationFile
+     * @param statsLogger stats logger to collect stats from benchmark driver
      * @throws IOException
      */
-    void initialize(File configurationFile) throws IOException;
+    void initialize(File configurationFile, StatsLogger statsLogger) throws IOException;
 
     /**
      * Get a driver specific prefix to be used in creating multiple topic names
@@ -51,7 +52,7 @@ public interface BenchmarkDriver extends AutoCloseable {
     /**
      * Create a producer for a given topic
      */
-    CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger);
+    CompletableFuture<BenchmarkProducer> createProducer(String topic);
 
     /**
      * Create a benchmark consumer relative to one particular topic and subscription.
@@ -67,6 +68,5 @@ public interface BenchmarkDriver extends AutoCloseable {
     CompletableFuture<BenchmarkConsumer> createConsumer(
         String topic,
         String subscriptionName,
-        ConsumerCallback consumerCallback,
-        StatsLogger statsLogger);
+        ConsumerCallback consumerCallback);
 }

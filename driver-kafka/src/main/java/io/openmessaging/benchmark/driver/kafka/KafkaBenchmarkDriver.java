@@ -66,7 +66,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private AdminClient admin;
 
     @Override
-    public void initialize(File configurationFile) throws IOException {
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, Config.class);
 
         Properties commonProperties = new Properties();
@@ -112,13 +112,13 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return CompletableFuture.completedFuture(new KafkaBenchmarkProducer(producer, topic));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
+            ConsumerCallback consumerCallback) {
         Properties properties = new Properties();
         consumerProperties.forEach((key, value) -> properties.put(key, value));
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);

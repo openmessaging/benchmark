@@ -67,7 +67,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     private String namespace;
 
-    public void initialize(File configurationFile) throws IOException {
+    @Override
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
         log.info("Pulsar driver configuration: {}", writer.writeValueAsString(config));
 
@@ -141,14 +142,14 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return client.createProducerAsync(topic, producerConfiguration)
                 .thenApply(pulsarProducer -> new PulsarBenchmarkProducer(pulsarProducer));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
+            ConsumerCallback consumerCallback) {
         ConsumerConfiguration conf = new ConsumerConfiguration();
         conf.setSubscriptionType(SubscriptionType.Failover);
         conf.setMessageListener((consumer, msg) -> {

@@ -50,7 +50,8 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
     private ClientSessionFactory sessionFactory;
     private ClientSession session;
 
-    public void initialize(File configurationFile) throws IOException {
+    @Override
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
         log.info("ActiveMQ Artemis driver configuration: {}", writer.writeValueAsString(config));
         try {
@@ -90,7 +91,7 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkProducer> createProducer(String topic, StatsLogger statsLogger) {
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         try {
             return CompletableFuture.completedFuture(new ArtemisBenchmarkProducer(topic, sessionFactory));
         } catch (ActiveMQException e) {
@@ -102,7 +103,7 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback, StatsLogger statsLogger) {
+            ConsumerCallback consumerCallback) {
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
         ForkJoinPool.commonPool().submit(() -> {
             try {

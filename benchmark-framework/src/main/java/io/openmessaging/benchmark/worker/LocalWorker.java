@@ -132,7 +132,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         try {
             benchmarkDriver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
-            benchmarkDriver.initialize(driverConfigFile);
+            benchmarkDriver.initialize(driverConfigFile, statsLogger);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -164,7 +164,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         Timer timer = new Timer();
 
         List<CompletableFuture<BenchmarkProducer>> futures = topics.stream()
-                .map(topic -> benchmarkDriver.createProducer(topic, NullStatsLogger.INSTANCE)).collect(toList());
+                .map(topic -> benchmarkDriver.createProducer(topic)).collect(toList());
 
         futures.forEach(f -> producers.add(f.join()));
         log.info("Created {} producers in {} ms", producers.size(), timer.elapsedMillis());
@@ -175,7 +175,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         Timer timer = new Timer();
 
         List<CompletableFuture<BenchmarkConsumer>> futures = consumerAssignment.topicsSubscriptions.stream()
-                .map(ts -> benchmarkDriver.createConsumer(ts.topic, ts.subscription, this, NullStatsLogger.INSTANCE)).collect(toList());
+                .map(ts -> benchmarkDriver.createConsumer(ts.topic, ts.subscription, this)).collect(toList());
 
         futures.forEach(f -> consumers.add(f.join()));
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
