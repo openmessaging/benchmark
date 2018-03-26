@@ -27,13 +27,13 @@ scrape_configs:
 
     static_configs:
       - targets:
-{% for worker in groups['pulsar'] %}
+{% for worker in groups['messaging'] %}
           - {{ hostvars[worker].private_ip }}:8080
 {% endfor %}
         labels:
           group: 'broker'
       - targets:
-{% for worker in groups['pulsar'] %}
+{% for worker in groups['messaging'] %}
           - {{ hostvars[worker].private_ip }}:8000
 {% endfor %}
         labels:

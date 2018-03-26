@@ -18,7 +18,7 @@
 #
 
 - name: Format and mount disks for Pulsar/BookKeeper hosts
-  hosts: pulsar
+  hosts: messaging
   connection: ssh
   become: true
   tasks:
@@ -59,8 +59,8 @@
           - docker
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
-        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
-        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        serviceUrl: "pulsar://{{ hostvars[groups['messaging'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['messaging'][0]].private_ip }}:8080/"
         pulsarVersion: "1.22.0-incubating"
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
@@ -123,7 +123,7 @@
       when: groups['zookeeper'][0] == inventory_hostname
 
 - name: BookKeeper setup
-  hosts: pulsar
+  hosts: messaging
   connection: ssh
   become: true
   tasks:
@@ -140,7 +140,7 @@
         name: "bookkeeper"
 
 - name: Pulsar configuration and systemd setup
-  hosts: pulsar
+  hosts: messaging
   connection: ssh
   become: true
   tasks:
