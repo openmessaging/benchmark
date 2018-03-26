@@ -25,6 +25,7 @@ keyDistributor: "ROUND_ROBIN"
 messageSize: 1024
 payloadFile: "payload/payload-1Kb.data"
 subscriptionsPerTopic: 1
+consumerPerSubscription: 1
 producersPerTopic: 1
 producerRate: 50000
 consumerBacklogSizeGB: 0
