@@ -24,6 +24,7 @@ partitionsPerTopic: 1
 messageSize: 1024
 payloadFile: "payload/payload-1Kb.data"
 subscriptionsPerTopic: 3
+consumerPerSubscription: 1
 producersPerTopic: 1
 producerRate: 150000
 consumerBacklogSizeGB: 0
