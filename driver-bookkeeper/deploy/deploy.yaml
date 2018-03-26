@@ -17,8 +17,8 @@
 # under the License.
 #
 
-- name: Format and mount disks for Pulsar/BookKeeper hosts
-  hosts: messaging
+- name: Format and mount disks for BookKeeper hosts
+  hosts: bookkeeper
   connection: ssh
   become: true
   tasks:
@@ -40,7 +40,7 @@
         - { path: "/mnt/journal", src: "/dev/nvme0n1" }
         - { path: "/mnt/storage", src: "/dev/nvme1n1" }
 
-- name: Pulsar installation
+- name: BookKeeper installation
   hosts: all
   connection: ssh
   become: true
@@ -56,14 +56,15 @@
           - vim
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
-        serviceUrl: "pulsar://{{ hostvars[groups['messaging'][0]].private_ip }}:6650/"
-        httpUrl: "http://{{ hostvars[groups['messaging'][0]].private_ip }}:8080/"
-        pulsarVersion: "1.22.0-incubating"
+        serviceUrl: "pulsar://{{ hostvars[groups['bookkeeper'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['bookkeeper'][0]].private_ip }}:8080/"
+        dlogUri: "distributedlog://{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}/streams"
+        pulsarVersion: "2.0.0-incubating-SNAPSHOT"
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
-        src: "http://archive.apache.org/dist/incubator/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        src: "https://s3.amazonaws.com/pulsar-testing/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
@@ -118,9 +119,16 @@
       args:
         chdir: /opt/pulsar
       when: groups['zookeeper'][0] == inventory_hostname
+    - command: >
+        bin/pulsar org.apache.distributedlog.tools.Tool
+        org.apache.distributedlog.admin.DistributedLogAdmin
+        bind -l /ledgers -s {{ zookeeperServers }} -c {{ dlogUri }}
+      args:
+        chdir: /opt/pulsar
+      when: groups['zookeeper'][0] == inventory_hostname
 
 - name: BookKeeper setup
-  hosts: messaging
+  hosts: bookkeeper
   connection: ssh
   become: true
   tasks:
@@ -136,23 +144,6 @@
         daemon_reload: yes
         name: "bookkeeper"
 
-- name: Pulsar configuration and systemd setup
-  hosts: messaging
-  connection: ssh
-  become: true
-  tasks:
-    - name: Set up broker
-      template:
-        src: "templates/broker.conf"
-        dest: "/opt/pulsar/conf/broker.conf"
-    - template:
-        src: "templates/pulsar.service"
-        dest: "/etc/systemd/system/pulsar.service"
-    - systemd:
-        state: restarted
-        daemon_reload: yes
-        name: "pulsar"
-
 - name: Get Maven version
   hosts: localhost
   become: false
@@ -165,15 +156,11 @@
      - set_fact:
          benchmark_version: "{{ maven_version.stdout }}"
 
-- name: Pulsar benchmarking client setup
+- name: BookKeeper benchmarking client setup
   hosts: client
   connection: ssh
   become: true
   tasks:
-    - name: Set up client config
-      template:
-        src: "templates/client.conf"
-        dest: "/opt/pulsar/conf/client.conf"
     - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
@@ -185,31 +172,25 @@
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
     - name: Get list of driver config files
-      raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
+      raw: ls -1 /opt/benchmark/driver-bookkeeper/*.yaml
       register: drivers_list
 
     - name: Configure service URL
       lineinfile:
          dest: '{{ item }}'
-         regexp: '^  serviceUrl\: '
-         line: '  serviceUrl: {{ serviceUrl }}'
-      with_items: '{{ drivers_list.stdout_lines }}'
-    - name: Configure http URL
-      lineinfile:
-         dest: '{{ item }}'
-         regexp: '^  httpUrl: '
-         line: '  httpUrl: {{ httpUrl }}'
+         regexp: '^dlogUri\: '
+         line: 'dlogUri: {{ dlogUri }}'
       with_items: '{{ drivers_list.stdout_lines }}'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms8G -Xmx8G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xmx4G"'
+         line: 'JVM_MEM="-Xmx2G"'
     - name: Install benchmark systemd service
       template:
         src: "templates/benchmark-worker.service"
@@ -219,6 +200,57 @@
         daemon_reload: yes
         name: "benchmark-worker"
 
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - docker
+    - set_fact:
+        prometheusVersion: "2.2.1"
+    - file: path=/opt/prometheus state=absent
+    - file: path=/opt/prometheus state=directory
+    - name: Download Prometheus Binary Package
+      unarchive:
+        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+        remote_src: yes
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+- name: Prometheus setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - file:
+        path: "/opt/prometheus/{{ item }}"
+        state: directory
+      with_items:
+        - data
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - template:
+        src: "templates/pulsar-dashboard.service"
+        dest: "/etc/systemd/system/pulsar-dashboard.service"
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "pulsar-dashboard"
 
 - name: List host addresses
   hosts: localhost
@@ -228,8 +260,11 @@
         msg: "Zookeeper servers {{ item }}"
       with_items: "{{ groups['zookeeper'] }}"
     - debug:
-        msg: "Pulsar/BookKeeper servers {{ item }}"
-      with_items: "{{ groups['pulsar'] }}"
+        msg: "BookKeeper servers {{ item }}"
+      with_items: "{{ groups['bookkeeper'] }}"
     - debug:
         msg: "Benchmark clients {{ item }}"
       with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"

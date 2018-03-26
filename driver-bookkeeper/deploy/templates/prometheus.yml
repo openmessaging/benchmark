@@ -39,20 +39,14 @@ rule_files:
 # Here it's Prometheus itself.
 scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: 'pulsar'
+  - job_name: 'bookkeeper'
 
     # metrics_path defaults to '/metrics'
     # scheme defaults to 'http'.
 
     static_configs:
       - targets:
-{% for worker in groups['messaging'] %}
-          - {{ hostvars[worker].private_ip }}:8080
-{% endfor %}
-        labels:
-          group: 'broker'
-      - targets:
-{% for worker in groups['messaging'] %}
+{% for worker in groups['bookkeeper'] %}
           - {{ hostvars[worker].private_ip }}:8000
 {% endfor %}
         labels:
