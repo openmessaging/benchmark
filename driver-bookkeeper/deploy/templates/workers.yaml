@@ -17,15 +17,8 @@
 # under the License.
 #
 
-name: 1 producer / 1 consumers on 1 topic
 
-topics: 1
-partitionsPerTopic: 16
-messageSize: 1024
-payloadFile: "payload/payload-1Kb.data"
-subscriptionsPerTopic: 1
-consumerPerSubscription: 1
-producersPerTopic: 1
-producerRate: 100000
-consumerBacklogSizeGB: 100
-testDurationMinutes: 5
+workers:
+{% for worker in groups['client'] %}
+  - http://{{ hostvars[worker].private_ip }}:8080
+{% endfor %}

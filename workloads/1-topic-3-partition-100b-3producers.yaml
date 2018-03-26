@@ -24,6 +24,7 @@ partitionsPerTopic: 3
 messageSize: 100
 payloadFile: "payload/payload-100b.data"
 subscriptionsPerTopic: 1
+consumerPerSubscription: 1
 producersPerTopic: 3
 producerRate: 0
 consumerBacklogSizeGB: 0
