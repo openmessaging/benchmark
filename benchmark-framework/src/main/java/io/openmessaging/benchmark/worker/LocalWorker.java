@@ -35,6 +35,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.HdrHistogram.Recorder;
+import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.NullStatsLogger;
+import org.apache.bookkeeper.stats.OpStatsLogger;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,24 +77,52 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private final ExecutorService executor = Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
 
+    // stats
+
+    private final StatsLogger statsLogger;
+
     private final LongAdder messagesSent = new LongAdder();
     private final LongAdder bytesSent = new LongAdder();
+    private final Counter messagesSentCounter;
+    private final Counter bytesSentCounter;
 
     private final LongAdder messagesReceived = new LongAdder();
     private final LongAdder bytesReceived = new LongAdder();
+    private final Counter messagesReceivedCounter;
+    private final Counter bytesReceivedCounter;
 
     private final LongAdder totalMessagesSent = new LongAdder();
     private final LongAdder totalMessagesReceived = new LongAdder();
 
     private final Recorder publishLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
     private final Recorder cumulativePublishLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
+    private final OpStatsLogger publishLatencyStats;
 
     private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
     private final Recorder endToEndCumulativeLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+    private final OpStatsLogger endToEndLatencyStats;
 
     private boolean testCompleted = false;
 
     private boolean consumersArePaused = false;
+
+    public LocalWorker() {
+        this(NullStatsLogger.INSTANCE);
+    }
+
+    public LocalWorker(StatsLogger statsLogger) {
+        this.statsLogger = statsLogger;
+
+        StatsLogger producerStatsLogger = statsLogger.scope("producer");
+        this.messagesSentCounter = producerStatsLogger.getCounter("messages_sent");
+        this.bytesSentCounter = producerStatsLogger.getCounter("bytes_sent");
+        this.publishLatencyStats = producerStatsLogger.getOpStatsLogger("produce_latency");
+
+        StatsLogger consumerStatsLogger = statsLogger.scope("consumer");
+        this.messagesReceivedCounter = consumerStatsLogger.getCounter("messages_recv");
+        this.bytesReceivedCounter = consumerStatsLogger.getCounter("bytes_recv");
+        this.endToEndLatencyStats = consumerStatsLogger.getOpStatsLogger("e2e_latency");
+    }
 
     @Override
     public void initializeDriver(File driverConfigFile) throws IOException {
@@ -103,7 +135,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         try {
             benchmarkDriver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
-            benchmarkDriver.initialize(driverConfigFile);
+            benchmarkDriver.initialize(driverConfigFile, statsLogger);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -185,11 +217,14 @@ public class LocalWorker implements Worker, ConsumerCallback {
                         producer.sendAsync(producersKeyDistributor.next(), payloadData).thenRun(() -> {
                             messagesSent.increment();
                             totalMessagesSent.increment();
+                            messagesSentCounter.inc();
                             bytesSent.add(payloadData.length);
+                            bytesSentCounter.add(payloadData.length);
 
                             long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
                             publishLatencyRecorder.recordValue(latencyMicros);
                             cumulativePublishLatencyRecorder.recordValue(latencyMicros);
+                            publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
                         }).exceptionally(ex -> {
                             log.warn("Write error on message", ex);
                             return null;
@@ -210,10 +245,13 @@ public class LocalWorker implements Worker, ConsumerCallback {
     @Override
     public PeriodStats getPeriodStats() {
         PeriodStats stats = new PeriodStats();
+
         stats.messagesSent = messagesSent.sumThenReset();
         stats.bytesSent = bytesSent.sumThenReset();
+
         stats.messagesReceived = messagesReceived.sumThenReset();
         stats.bytesReceived = bytesReceived.sumThenReset();
+
         stats.totalMessagesSent = totalMessagesSent.sum();
         stats.totalMessagesReceived = totalMessagesReceived.sum();
 
@@ -242,13 +280,16 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void messageReceived(byte[] data, long publishTimestamp) {
         messagesReceived.increment();
         totalMessagesReceived.increment();
+        messagesReceivedCounter.inc();
         bytesReceived.add(data.length);
+        bytesReceivedCounter.add(data.length);
 
         long now = System.currentTimeMillis();
         long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);
         if (endToEndLatencyMicros > 0) {
             endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
             endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
+            endToEndLatencyStats.registerSuccessfulEvent(endToEndLatencyMicros, TimeUnit.MICROSECONDS);
         }
 
         while (consumersArePaused) {

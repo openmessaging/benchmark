@@ -124,6 +124,18 @@
 		</dependency>
 
 		<dependency>
+			<groupId>org.apache.bookkeeper.stats</groupId>
+			<artifactId>bookkeeper-stats-api</artifactId>
+			<version>${bookkeeper.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.bookkeeper.stats</groupId>
+			<artifactId>prometheus-metrics-provider</artifactId>
+			<version>${bookkeeper.version}</version>
+		</dependency>
+
+		<dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
             <version>1.3.0</version>

@@ -22,6 +22,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,9 +42,11 @@ import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 @SuppressWarnings("unchecked")
 public class WorkerHandler {
 
-    private final Worker localWorker = new LocalWorker();
+    private final Worker localWorker;
 
-    public WorkerHandler(Javalin app) {
+    public WorkerHandler(Javalin app, StatsLogger statsLogger) {
+        this.localWorker = new LocalWorker(statsLogger);
+
         app.post("/initialize-driver", this::handleInitializeDriver);
         app.post("/create-topics", this::handleCreateTopics);
         app.post("/create-producers", this::handleCreateProducers);

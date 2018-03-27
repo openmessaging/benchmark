@@ -18,6 +18,11 @@
  */
 package io.openmessaging.benchmark.worker;
 
+import org.apache.bookkeeper.stats.Stats;
+import org.apache.bookkeeper.stats.StatsProvider;
+import org.apache.bookkeeper.stats.prometheus.PrometheusMetricsProvider;
+import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +46,9 @@ public class BenchmarkWorker {
 
         @Parameter(names = { "-p", "--port" }, description = "HTTP port to listen on")
         public int httpPort = 8080;
+
+        @Parameter(names = { "-sp", "--stats-port" }, description = "Stats port to listen on")
+        public int statsPort = 8081;
     }
 
     public static void main(String[] args) throws Exception {
@@ -61,13 +69,24 @@ public class BenchmarkWorker {
             System.exit(-1);
         }
 
+        Configuration conf = new CompositeConfiguration();
+        conf.setProperty(Stats.STATS_PROVIDER_CLASS, PrometheusMetricsProvider.class.getName());
+        conf.setProperty("prometheusStatsHttpPort", arguments.statsPort);
+        Stats.loadStatsProvider(conf);
+        StatsProvider provider = Stats.get();
+        provider.start(conf);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(
+            () -> provider.stop(),
+            "benchmark-worker-shutdown-thread"));
+
         // Dump configuration variables
         log.info("Starting benchmark with config: {}", writer.writeValueAsString(arguments));
 
         // Start web server
         Javalin app = Javalin.start(arguments.httpPort);
 
-        new WorkerHandler(app);
+        new WorkerHandler(app, provider.getStatsLogger("benchmark"));
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();

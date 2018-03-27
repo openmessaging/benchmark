@@ -31,6 +31,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -65,7 +66,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private AdminClient admin;
 
     @Override
-    public void initialize(File configurationFile) throws IOException {
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, Config.class);
 
         Properties commonProperties = new Properties();

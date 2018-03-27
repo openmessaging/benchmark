@@ -37,6 +37,7 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import org.apache.bookkeeper.stats.StatsLogger;
 
 public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
@@ -46,7 +47,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     private Channel channel;
 
     @Override
-    public void initialize(File configurationFile) throws IOException {
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, RabbitMqConfig.class);
 
         ConnectionFactory connectionFactory = new ConnectionFactory();
