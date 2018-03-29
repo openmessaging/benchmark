@@ -52,7 +52,7 @@ public interface BenchmarkDriver extends AutoCloseable {
     /**
      * Create a producer for a given topic
      */
-    CompletableFuture<BenchmarkProducer> createProducer(String topic);
+    CompletableFuture<BenchmarkProducer> createProducer(String topic) throws MQClientException;
 
     /**
      * Create a benchmark consumer relative to one particular topic and subscription.

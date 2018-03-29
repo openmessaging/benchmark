@@ -39,7 +39,8 @@
 		<module>driver-bookkeeper</module>
 
 		<module>package</module>
-		
+		<module>driver-rocketmq</module>
+
 	</modules>
 
 
