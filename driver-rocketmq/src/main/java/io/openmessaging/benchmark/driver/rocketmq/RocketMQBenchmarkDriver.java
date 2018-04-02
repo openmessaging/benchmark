@@ -109,6 +109,7 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(final String topic, final String subscriptionName,
         final ConsumerCallback consumerCallback) {
         DefaultMQPushConsumer rmqConsumer = new DefaultMQPushConsumer(subscriptionName);
+        rmqConsumer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
         rmqConsumer.setInstanceName("ConsumerInstance" + getRandomString());
         try {
             rmqConsumer.subscribe(topic, "*");
