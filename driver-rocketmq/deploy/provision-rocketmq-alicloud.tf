@@ -88,14 +88,18 @@ resource "alicloud_key_pair" "key_pair" {
   key_file = "${var.private_key_file}"
 }
 
-output "broker_ssh_host" {
+output "broker_host" {
   value = "${alicloud_instance.rmq-broker.*.public_ip}"
 }
 
-output "namesrv_ssh_host" {
+output "namesrv_host" {
   value = "${alicloud_instance.rmq-namesrv.*.public_ip}"
 }
 
-output "client_ssh_host" {
+output "client_host" {
   value = "${alicloud_instance.rmq-client.*.public_ip}"
+}
+
+output "client_ssh_host" {
+  value = "${alicloud_instance.rmq-client.0.public_ip}"
 }
