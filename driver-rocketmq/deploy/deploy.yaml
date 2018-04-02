@@ -17,6 +17,20 @@
 # under the License.
 #
 
+- name:  Hosts addresses
+  hosts: rmq-namesrv
+  become: false
+  tasks:
+    - debug:
+        msg: "RocketMQ broker servers {{ item }}"
+      with_items: "{{ groups['rmq-broker'] }}"
+    - debug:
+        msg: "RocketMQ name servers {{ item }}"
+      with_items: "{{ groups['rmq-namesrv'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['rmq-client'] }}"
+
 - name: RocketMQ setup
   hosts: all
   connection: ssh
@@ -41,7 +55,7 @@
         remote_src: yes
         dest: /opt/rocketmq
     - set_fact:
-        privateIp: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        privateIp: "{{ hostvars[inventory_hostname]['ansible_facts']['eth0']['ipv4']['address'] }}"
     - name: Change locale to en_US.utf-8
       shell: |
         echo 'LANG=en_US.utf-8
@@ -110,7 +124,7 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
@@ -127,17 +141,3 @@
         state: restarted
         daemon_reload: yes
         name: "benchmark-worker"
-
-- name:  Hosts addresses
-  hosts: localhost
-  become: false
-  tasks:
-    - debug:
-        msg: "RocketMQ broker servers {{ item }}"
-      with_items: "{{ groups['rmq-broker'] }}"
-    - debug:
-        msg: "RocketMQ name servers {{ item }}"
-      with_items: "{{ groups['rmq-namesrv'] }}"
-    - debug:
-        msg: "Benchmark clients {{ item }}"
-      with_items: "{{ groups['rmq-client'] }}"

@@ -4,6 +4,7 @@ variable "region" {}
 variable "private_key_file" {}
 variable "key_name" {}
 variable "image_id" {}
+variable "availability_zone" {}
 variable "instance_types" {
   type = "map"
 }
@@ -22,6 +23,7 @@ provider "alicloud" {
 resource "alicloud_instance" "rmq-broker" {
   provider          = "alicloud"
   image_id          = "${var.image_id}"
+  availability_zone          = "${var.availability_zone}"
 
   internet_charge_type  = "PayByBandwidth"
 
