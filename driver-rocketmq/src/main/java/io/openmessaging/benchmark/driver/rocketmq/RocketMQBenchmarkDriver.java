@@ -94,7 +94,7 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(final String topic) {
-        DefaultMQProducer rmqProducer = new DefaultMQProducer();
+        DefaultMQProducer rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString());
         rmqProducer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
         rmqProducer.setInstanceName("ProducerInstance" + getRandomString());
         try {
