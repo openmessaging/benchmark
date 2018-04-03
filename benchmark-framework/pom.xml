@@ -104,6 +104,12 @@
 			<artifactId>driver-kafka</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>driver-rocketmq</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		
 		<dependency>
 			<groupId>${project.groupId}</groupId>

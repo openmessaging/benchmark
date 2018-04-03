@@ -9,6 +9,7 @@ target
 core/*.json
 *.json
 *.retry
+*.pem
 **/.terraform
 **/terraform.tfstate
 **/terraform.tfstate.backup
