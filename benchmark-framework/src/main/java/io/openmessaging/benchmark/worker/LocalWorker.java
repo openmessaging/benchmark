@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -203,7 +204,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     @Override
     public void probeProducers() throws IOException {
         producers.forEach(
-                producer -> producer.sendAsync("key", new byte[10]).thenRun(() -> totalMessagesSent.increment()));
+                producer -> producer.sendAsync(Optional.of("key"), new byte[10]).thenRun(() -> totalMessagesSent.increment()));
     }
 
     private void submitProducersToExecutor(Map<BenchmarkProducer, KeyDistributor> producersWithKeyDistributor,
@@ -214,7 +215,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
                     producersWithKeyDistributor.forEach((producer, producersKeyDistributor) -> {
                         rateLimiter.acquire();
                         final long sendTime = System.nanoTime();
-                        producer.sendAsync(producersKeyDistributor.next(), payloadData).thenRun(() -> {
+                        producer.sendAsync(Optional.ofNullable(producersKeyDistributor.next()), payloadData)
+                                .thenRun(() -> {
                             messagesSent.increment();
                             totalMessagesSent.increment();
                             messagesSentCounter.inc();

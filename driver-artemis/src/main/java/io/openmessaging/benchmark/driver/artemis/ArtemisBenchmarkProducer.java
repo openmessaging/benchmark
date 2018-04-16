@@ -18,6 +18,7 @@
  */
 package io.openmessaging.benchmark.driver.artemis;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.activemq.artemis.api.core.ActiveMQException;
@@ -46,7 +47,7 @@ public class ArtemisBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(String key, byte[] payload) {
+    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
         ClientMessage msg = session.createMessage(true /* durable */ );
         msg.setTimestamp(System.currentTimeMillis());
         msg.getBodyBuffer().writeBytes(payload);

@@ -20,14 +20,7 @@ package io.openmessaging.benchmark;
 
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
 
-import static io.openmessaging.benchmark.utils.distributor.KeyDistributorType.ROUND_ROBIN;
-
 public class Workload {
-
-    public Workload() {
-        keyDistributor = ROUND_ROBIN;
-    }
-
     public String name;
 
     /** Number of topics to create in the test */
@@ -36,7 +29,7 @@ public class Workload {
     /** Number of partitions each topic will contain */
     public int partitionsPerTopic;
 
-    public KeyDistributorType keyDistributor;
+    public KeyDistributorType keyDistributor = KeyDistributorType.NO_KEY;
 
     public int messageSize;
 
@@ -53,7 +46,7 @@ public class Workload {
     /**
      * If the consumer backlog is > 0, the generator will accumulate messages until the requested amount of storage is
      * retained and then it will start the consumers to drain it.
-     * 
+     *
      * The testDurationMinutes will be overruled to allow the test to complete when the consumer has drained all the
      * backlog and it's on par with the producer
      */
