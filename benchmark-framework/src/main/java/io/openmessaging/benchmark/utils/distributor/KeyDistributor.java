@@ -52,8 +52,11 @@ public abstract class KeyDistributor {
     public static KeyDistributor build(KeyDistributorType keyType) {
         KeyDistributor keyDistributor = null;
         switch (keyType) {
-            case ROUND_ROBIN:
-                keyDistributor = new RoundRobin();
+            case NO_KEY:
+                keyDistributor = new KeyRoundRobin();
+                break;
+            case KEY_ROUND_ROBIN:
+                keyDistributor = new KeyRoundRobin();
                 break;
             case RANDOM_NANO:
                 keyDistributor = new RandomNano();

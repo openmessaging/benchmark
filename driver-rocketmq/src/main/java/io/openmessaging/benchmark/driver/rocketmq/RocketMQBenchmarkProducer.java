@@ -18,12 +18,15 @@
  */
 package io.openmessaging.benchmark.driver.rocketmq;
 
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendCallback;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
+
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class RocketMQBenchmarkProducer implements BenchmarkProducer {
     private final DefaultMQProducer rmqProducer;
@@ -35,9 +38,11 @@ public class RocketMQBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(final String key, final byte[] payload) {
+    public CompletableFuture<Void> sendAsync(final Optional<String> key, final byte[] payload) {
         Message message = new Message(this.rmqTopic, payload);
-        message.setKeys(key);
+        if (key.isPresent()) {
+            message.setKeys(key.get());
+        }
 
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {

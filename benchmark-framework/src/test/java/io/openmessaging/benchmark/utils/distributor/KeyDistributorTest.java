@@ -18,19 +18,19 @@
  */
 package io.openmessaging.benchmark.utils.distributor;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import static io.openmessaging.benchmark.utils.distributor.KeyDistributorType.KEY_ROUND_ROBIN;
+import static io.openmessaging.benchmark.utils.distributor.KeyDistributorType.RANDOM_NANO;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.openmessaging.benchmark.utils.distributor.KeyDistributorType.RANDOM_NANO;
-import static io.openmessaging.benchmark.utils.distributor.KeyDistributorType.ROUND_ROBIN;
-import static java.util.stream.Collectors.counting;
-import static java.util.stream.Collectors.groupingBy;
-import static org.junit.Assert.assertEquals;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class KeyDistributorTest {
 
@@ -39,7 +39,7 @@ public class KeyDistributorTest {
 
     @Before
     public void init() {
-        roundRobin = KeyDistributor.build(ROUND_ROBIN);
+        roundRobin = KeyDistributor.build(KEY_ROUND_ROBIN);
         randomNano = KeyDistributor.build(RANDOM_NANO);
     }
 

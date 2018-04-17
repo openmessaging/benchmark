@@ -21,7 +21,7 @@ package io.openmessaging.benchmark.utils.distributor;
 import javax.annotation.concurrent.NotThreadSafe;
 
 @NotThreadSafe
-public class RoundRobin extends KeyDistributor {
+public class KeyRoundRobin extends KeyDistributor {
 
     private int currentIndex = 0;
 

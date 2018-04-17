@@ -20,6 +20,7 @@ package io.openmessaging.benchmark.driver.rabbitmq;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import com.rabbitmq.client.AMQP.BasicProperties;
@@ -45,11 +46,11 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
     private static final BasicProperties defaultProperties = new BasicProperties();
 
     @Override
-    public CompletableFuture<Void> sendAsync(String key, byte[] payload) {
+    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
         BasicProperties props = defaultProperties.builder().timestamp(new Date()).build();
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            channel.basicPublish(exchange, key, props, payload);
+            channel.basicPublish(exchange, key.orElse(null), props, payload);
             channel.waitForConfirms();
             future.complete(null);
         } catch (IOException | InterruptedException e) {
