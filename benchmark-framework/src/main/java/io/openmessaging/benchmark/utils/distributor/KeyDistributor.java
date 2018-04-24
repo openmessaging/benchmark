@@ -53,7 +53,7 @@ public abstract class KeyDistributor {
         KeyDistributor keyDistributor = null;
         switch (keyType) {
             case NO_KEY:
-                keyDistributor = new KeyRoundRobin();
+                keyDistributor = new NoKeyDistributor();
                 break;
             case KEY_ROUND_ROBIN:
                 keyDistributor = new KeyRoundRobin();
