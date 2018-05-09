@@ -41,7 +41,7 @@
 		<dependency>
 			<groupId>org.apache.distributedlog</groupId>
 			<artifactId>distributedlog-core-shaded</artifactId>
-			<version>4.7.0-SNAPSHOT</version>
+			<version>4.7.0</version>
 		</dependency>
 	</dependencies>
 </project>
