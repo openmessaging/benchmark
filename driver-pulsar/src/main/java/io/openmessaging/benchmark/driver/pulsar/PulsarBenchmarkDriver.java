@@ -1,3 +1,4 @@
+
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,7 +21,6 @@ package io.openmessaging.benchmark.driver.pulsar;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
@@ -30,15 +30,13 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
-import org.apache.pulsar.client.api.ClientConfiguration;
-import org.apache.pulsar.client.api.ConsumerConfiguration;
-import org.apache.pulsar.client.api.ProducerConfiguration;
+import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.common.policies.data.BacklogQuota;
 import org.apache.pulsar.common.policies.data.BacklogQuota.RetentionPolicy;
 import org.apache.pulsar.common.policies.data.PersistencePolicies;
-import org.apache.pulsar.common.policies.data.PropertyAdmin;
+import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,8 +51,8 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
-import io.openmessaging.benchmark.driver.pulsar.config.PulsarConfig;
 import io.openmessaging.benchmark.driver.pulsar.config.PulsarClientConfig.PersistenceConfiguration;
+import io.openmessaging.benchmark.driver.pulsar.config.PulsarConfig;
 
 public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
@@ -63,63 +61,61 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     private PulsarConfig config;
 
-    private ProducerConfiguration producerConfiguration;
 
     private String namespace;
+    private ProducerBuilder<byte[]> producerBuilder;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
         log.info("Pulsar driver configuration: {}", writer.writeValueAsString(config));
+        client = PulsarClient.builder().ioThreads(config.client.ioThreads)
+                        .connectionsPerBroker(config.client.connectionsPerBroker).statsInterval(0, TimeUnit.SECONDS)
+                        .serviceUrl(config.client.serviceUrl).build();
 
-        ClientConfiguration clientConfiguration = new ClientConfiguration();
-        clientConfiguration.setIoThreads(config.client.ioThreads);
-        clientConfiguration.setConnectionsPerBroker(config.client.connectionsPerBroker);
 
-        // Disable internal stats since we're already collecting in the framework
-        clientConfiguration.setStatsInterval(0, TimeUnit.SECONDS);
-        log.info("Set Pulsar client configuration: {}", writer.writeValueAsString(clientConfiguration));
+        //log.info("Set Pulsar client configuration: {}", writer.writeValueAsString(client.));
 
-        client = PulsarClient.create(config.client.serviceUrl, clientConfiguration);
         log.info("Created Pulsar client for service URL {}", config.client.serviceUrl);
-        adminClient = new PulsarAdmin(new URL(config.client.httpUrl), clientConfiguration);
+
+        adminClient = PulsarAdmin.builder().serviceHttpUrl(config.client.httpUrl).build();
+
         log.info("Created Pulsar admin client for HTTP URL {}", config.client.httpUrl);
 
-        producerConfiguration = new ProducerConfiguration();
-        producerConfiguration.setBatchingEnabled(config.producer.batchingEnabled);
-        producerConfiguration.setBatchingMaxPublishDelay(config.producer.batchingMaxPublishDelayMs,
-                TimeUnit.MILLISECONDS);
-        producerConfiguration.setBlockIfQueueFull(config.producer.blockIfQueueFull);
-        producerConfiguration.setMaxPendingMessages(config.producer.pendingQueueSize);
-        log.info("Set producer configuration: {}", writer.writeValueAsString(producerConfiguration));
+        producerBuilder = client.newProducer().enableBatching(config.producer.batchingEnabled)
+                        .batchingMaxPublishDelay(config.producer.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
+                        .blockIfQueueFull(config.producer.blockIfQueueFull)
+                        .maxPendingMessages(config.producer.pendingQueueSize);
+
+        //log.info("Set producer configuration: {}", writer.writeValueAsString(producerBuilder));
 
         try {
             // Create namespace and set the configuration
-            String property = config.client.namespacePrefix.split("/")[0];
+            String tenant = config.client.namespacePrefix.split("/")[0];
             String cluster = config.client.namespacePrefix.split("/")[1];
-            if (!adminClient.properties().getProperties().contains(property)) {
+            if (!adminClient.tenants().getTenants().contains(tenant)) {
                 try {
-                    adminClient.properties().createProperty(property,
-                            new PropertyAdmin(Collections.emptyList(), Sets.newHashSet(cluster)));
+                    adminClient.tenants().createTenant(tenant,
+                                    new TenantInfo(Collections.emptySet(), Sets.newHashSet(cluster)));
                 } catch (ConflictException e) {
                     // Ignore. This can happen when multiple workers are initializing at the same time
                 }
             }
-            log.info("Created Pulsar property {} with allowed cluster {}", property, cluster);
+            log.info("Created Pulsar property {} with allowed cluster {}", tenant, cluster);
 
             this.namespace = config.client.namespacePrefix + "-" + getRandomString();
             adminClient.namespaces().createNamespace(namespace);
-            log.info("Created Pulsar namespace {}/{}/{}", property, cluster, namespace);
+            log.info("Created Pulsar namespace {}/{}/{}", tenant, cluster, namespace);
 
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
-                    new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
+                            new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
 
             adminClient.namespaces().setBacklogQuota(namespace,
-                    new BacklogQuota(Long.MAX_VALUE, RetentionPolicy.producer_exception));
+                            new BacklogQuota(Long.MAX_VALUE, RetentionPolicy.producer_exception));
             adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
-            log.info("Applied persistence configuration for namespace {}/{}/{}: {}",
-                    property, cluster, namespace, writer.writeValueAsString(p));
+            log.info("Applied persistence configuration for namespace {}/{}/{}: {}", tenant, cluster, namespace,
+                            writer.writeValueAsString(p));
 
         } catch (PulsarAdminException e) {
             throw new IOException(e);
@@ -138,27 +134,25 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             return CompletableFuture.completedFuture(null);
         }
 
-        return adminClient.persistentTopics().createPartitionedTopicAsync(topic, partitions);
+        return adminClient.topics().createPartitionedTopicAsync(topic, partitions);
     }
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        return client.createProducerAsync(topic, producerConfiguration)
-                .thenApply(pulsarProducer -> new PulsarBenchmarkProducer(pulsarProducer));
+        return producerBuilder.topic(topic).createAsync()
+                        .thenApply(pulsarProducer -> new PulsarBenchmarkProducer(pulsarProducer));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
-        ConsumerConfiguration conf = new ConsumerConfiguration();
-        conf.setSubscriptionType(SubscriptionType.Failover);
-        conf.setMessageListener((consumer, msg) -> {
+                    ConsumerCallback consumerCallback) {
+        return client.newConsumer().subscriptionType(SubscriptionType.Failover).messageListener((consumer, msg) -> {
             consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
             consumer.acknowledgeAsync(msg);
-        });
+        }).topic(topic).subscriptionName(subscriptionName).subscribeAsync()
+                        .thenApply(consumer -> new PulsarBenchmarkConsumer(consumer));
 
-        return client.subscribeAsync(topic, subscriptionName, conf)
-                .thenApply(consumer -> new PulsarBenchmarkConsumer(consumer));
+
     }
 
     @Override
@@ -177,7 +171,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     }
 
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private static PulsarConfig readConfig(File configurationFile) throws IOException {
         return mapper.readValue(configurationFile, PulsarConfig.class);

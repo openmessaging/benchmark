@@ -29,7 +29,9 @@
 	</parent>
 
 	<artifactId>driver-pulsar</artifactId>
-
+	<properties>	
+		<pulsar.version>2.1.0-incubating</pulsar.version>
+	</properties>
 
 	<dependencies>
 		<dependency>
@@ -41,13 +43,13 @@
 		<dependency>
 			<groupId>org.apache.pulsar</groupId>
 			<artifactId>pulsar-client-original</artifactId>
-			<version>1.22.0-incubating</version>
+			<version>${pulsar.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.pulsar</groupId>
 			<artifactId>pulsar-client-admin-original</artifactId>
-			<version>1.22.0-incubating</version>
+			<version>${pulsar.version}</version>
 		</dependency>
 	</dependencies>
 </project>

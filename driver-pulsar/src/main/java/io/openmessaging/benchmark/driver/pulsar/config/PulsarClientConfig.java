@@ -18,7 +18,7 @@
  */
 package io.openmessaging.benchmark.driver.pulsar.config;
 
-import org.apache.pulsar.common.naming.DestinationDomain;
+import org.apache.pulsar.common.naming.TopicDomain;
 
 public class PulsarClientConfig {
     public String serviceUrl;
@@ -31,7 +31,7 @@ public class PulsarClientConfig {
 
     public String namespacePrefix;
 
-    public DestinationDomain topicType = DestinationDomain.persistent;
+    public TopicDomain topicType = TopicDomain.persistent;
 
     public PersistenceConfiguration persistence = new PersistenceConfiguration();
 

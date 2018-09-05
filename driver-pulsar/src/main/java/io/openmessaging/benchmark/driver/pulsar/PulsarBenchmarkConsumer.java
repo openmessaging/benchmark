@@ -24,9 +24,9 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 
 public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
 
-    private final Consumer consumer;
+    private final Consumer<byte[]> consumer;
 
-    public PulsarBenchmarkConsumer(Consumer consumer) {
+    public PulsarBenchmarkConsumer(Consumer<byte[]> consumer) {
         this.consumer = consumer;
     }
 
