@@ -73,9 +73,6 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                         .connectionsPerBroker(config.client.connectionsPerBroker).statsInterval(0, TimeUnit.SECONDS)
                         .serviceUrl(config.client.serviceUrl).build();
 
-
-        //log.info("Set Pulsar client configuration: {}", writer.writeValueAsString(client.));
-
         log.info("Created Pulsar client for service URL {}", config.client.serviceUrl);
 
         adminClient = PulsarAdmin.builder().serviceHttpUrl(config.client.httpUrl).build();
@@ -86,8 +83,6 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                         .batchingMaxPublishDelay(config.producer.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
                         .blockIfQueueFull(config.producer.blockIfQueueFull)
                         .maxPendingMessages(config.producer.pendingQueueSize);
-
-        //log.info("Set producer configuration: {}", writer.writeValueAsString(producerBuilder));
 
         try {
             // Create namespace and set the configuration
@@ -101,7 +96,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                     // Ignore. This can happen when multiple workers are initializing at the same time
                 }
             }
-            log.info("Created Pulsar property {} with allowed cluster {}", tenant, cluster);
+            log.info("Created Pulsar tenant {} with allowed cluster {}", tenant, cluster);
 
             this.namespace = config.client.namespacePrefix + "-" + getRandomString();
             adminClient.namespaces().createNamespace(namespace);

@@ -46,7 +46,6 @@ public class PulsarBenchmarkProducer implements BenchmarkProducer {
             msgBuilder.key(key.get());
         }
 
-        //return producer.sendAsync(producer).thenApply(msgId -> null);
         return msgBuilder.sendAsync().thenApply(msgId -> null);
     }
 
