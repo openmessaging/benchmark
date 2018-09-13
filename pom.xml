@@ -18,109 +18,33 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-	<groupId>io.openmessaging.benchmark</groupId>
-	<artifactId>messaging-benchmark</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>Messaging Benchmark</name>
-	<packaging>pom</packaging>
-
-	<modules>
-		<module>benchmark-framework</module>
-		<module>driver-api</module>
-
-		<module>driver-pulsar</module>
-		<module>driver-kafka</module>
-		<module>driver-rabbitmq</module>
-		<module>driver-artemis</module>
-		<module>driver-bookkeeper</module>
-		<module>driver-rocketmq</module>
-		<module>package</module>
-	</modules>
-
-
-	<licenses>
-		<license>
-			<name>Apache License, Version 2.0</name>
-			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-			<distribution>repo</distribution>
-		</license>
-	</licenses>
-
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<bookkeeper.version>4.7.0</bookkeeper.version>
-	</properties>
-
-	<build>
-		<plugins>
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.3.2</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-					<encoding>UTF-8</encoding>
-					<showDeprecation>true</showDeprecation>
-					<showWarnings>true</showWarnings>
-					<optimize>true</optimize>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>com.mycila</groupId>
-				<artifactId>license-maven-plugin</artifactId>
-				<version>3.0</version>
-				<configuration>
-					<header>dev/license-header.txt</header>
-
-					<excludes>
-						<exclude>LICENSE</exclude>
-						<exclude>NOTICE</exclude>
-						<exclude>payload/**</exclude>
-						<exclude>**/*.pyc</exclude>
-						<exclude>**/.pydevproject</exclude>
-					</excludes>
-					<mapping>
-						<benchmark>SCRIPT_STYLE</benchmark>
-						<j2>SCRIPT_STYLE</j2>
-						<conf>SCRIPT_STYLE</conf>
-						<yaml>SCRIPT_STYLE</yaml>
-						<md>XML_STYLE</md>
-					</mapping>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>check</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
-
-	<dependencies>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.25</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>2.9.3</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.dataformat</groupId>
-			<artifactId>jackson-dataformat-yaml</artifactId>
-			<version>2.9.3</version>
-		</dependency>
-	</dependencies>
+    <groupId>io.openmessaging.benchmark</groupId>
+    <artifactId>driver-api</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <build>
+        <finalName>io.openmessaging.benchmark-driver-api-1.0-SNAPSHOT</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.bookkeeper.stats</groupId>
+            <artifactId>bookkeeper-stats-api</artifactId>
+            <version>4.6.2</version>
+        </dependency>
+    </dependencies>
 
 </project>
