@@ -4,7 +4,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 
 * [Apache RocketMQ](https://rocketmq.apache.org) 
 * [Apache Kafka](https://kafka.apache.org)
-* [Apache Pulsar (incubating)](https://pulsar.incubator.apache.org)
+* [Apache Pulsar](https://pulsar.apache.org)
 * [Apache RabbitMQ](https://www.rabbitmq.com/)
 
 
