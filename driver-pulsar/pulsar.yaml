@@ -33,6 +33,12 @@ client:
     writeQuorum: 3
     ackQuorum: 2
     deduplicationEnabled: false
+  tlsAllowInsecureConnection: false
+  tlsEnableHostnameVerification: false
+  tlsTrustCertsFilePath:
+  authentication:
+    plugin:
+    data:
 
 # Producer configuration
 producer:

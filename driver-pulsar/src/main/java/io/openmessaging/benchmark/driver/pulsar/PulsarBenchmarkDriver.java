@@ -28,8 +28,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.admin.PulsarAdminBuilder;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
+import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.SubscriptionType;
@@ -69,13 +71,33 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
         log.info("Pulsar driver configuration: {}", writer.writeValueAsString(config));
-        client = PulsarClient.builder().ioThreads(config.client.ioThreads)
+
+        ClientBuilder clientBuilder = PulsarClient.builder().ioThreads(config.client.ioThreads)
                         .connectionsPerBroker(config.client.connectionsPerBroker).statsInterval(0, TimeUnit.SECONDS)
-                        .serviceUrl(config.client.serviceUrl).build();
+                        .serviceUrl(config.client.serviceUrl);
+        if (config.client.serviceUrl.startsWith("pulsar+ssl")) {
+            clientBuilder.enableTls(true).allowTlsInsecureConnection(config.client.tlsAllowInsecureConnection)
+                            .enableTlsHostnameVerification(config.client.tlsEnableHostnameVerification)
+                            .tlsTrustCertsFilePath(config.client.tlsTrustCertsFilePath);
+        }
+
+        PulsarAdminBuilder pulsarAdminBuilder = PulsarAdmin.builder().serviceHttpUrl(config.client.httpUrl);
+        if (config.client.httpUrl.startsWith("https")) {
+            pulsarAdminBuilder.allowTlsInsecureConnection(config.client.tlsAllowInsecureConnection)
+                            .enableTlsHostnameVerification(config.client.tlsEnableHostnameVerification)
+                            .tlsTrustCertsFilePath(config.client.tlsTrustCertsFilePath);
+        }
+
+        if (!config.client.authentication.plugin.isEmpty()) {
+            clientBuilder.authentication(config.client.authentication.plugin, config.client.authentication.data);
+            pulsarAdminBuilder.authentication(config.client.authentication.plugin, config.client.authentication.data);
+        }
+
+        client = clientBuilder.build();
 
         log.info("Created Pulsar client for service URL {}", config.client.serviceUrl);
 
-        adminClient = PulsarAdmin.builder().serviceHttpUrl(config.client.httpUrl).build();
+        adminClient = pulsarAdminBuilder.build();
 
         log.info("Created Pulsar admin client for HTTP URL {}", config.client.httpUrl);
 
