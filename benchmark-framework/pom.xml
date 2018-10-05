@@ -110,7 +110,7 @@
 			<artifactId>driver-rocketmq</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-rabbitmq</artifactId>
@@ -146,6 +146,13 @@
             <artifactId>javalin</artifactId>
             <version>1.3.0</version>
         </dependency>
+
+		<!-- set jetty version to be consistent across all transitive dependencies  -->
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-server</artifactId>
+			<version>9.4.8.v20171121</version>
+		</dependency>
 
 		<dependency>
 			<groupId>junit</groupId>
