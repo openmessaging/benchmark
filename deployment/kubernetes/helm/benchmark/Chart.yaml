@@ -18,7 +18,11 @@
 #
 
 apiVersion: v1
-appVersion: "1.0"
-description: A Helm chart for Kubernetes
-name: benchmark
-version: 0.1.0
+appVersion: "0.0.1"
+description: A Helm chart for running the Open Messaging Benchmark in Kubernetes
+name: openmessaging-benchmark
+version: 0.0.1
+sources:
+  - https://github.com/openmessaging/openmessaging-benchmark
+maintainers:
+  - name: Jerry Peng
