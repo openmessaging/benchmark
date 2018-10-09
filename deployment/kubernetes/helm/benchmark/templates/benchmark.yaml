@@ -20,13 +20,13 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: benchmark-driver
+  name: {{ .Release.Name }}-driver
   labels:
-    app: benchmark
+    app: {{ .Release.Name }}
     role: driver
 spec:
   containers:
-    - name: benchmark-driver
+    - name: {{ .Release.Name }}-driver
       imagePullPolicy: {{ .Values.imagePullPolicy }}
       image: {{ .Values.image }}
       env:

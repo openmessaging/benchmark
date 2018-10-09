@@ -20,26 +20,26 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: benchmark-worker
+  name: {{ .Release.Name }}-worker
   labels:
-    app: benchmark
+    app: {{ .Release.Name }}
     component: worker
 spec:
-  serviceName: benchmark-worker
+  serviceName: {{ .Release.Name }}-worker
   replicas: {{ .Values.numWorkers }}
   podManagementPolicy: Parallel
   selector:
     matchLabels:
-      app: benchmark
+      app: {{ .Release.Name }}
       component: worker
   template:
     metadata:
       labels:
-        app: benchmark
+        app: {{ .Release.Name }}
         component: worker
     spec:
       containers:
-        - name: benchmark-worker
+        - name: {{ .Release.Name }}-worker
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           image: {{ .Values.image }}
           command: ["sh", "-c"]
@@ -54,9 +54,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: benchmark-worker
+  name: {{ .Release.Name }}-worker
   labels:
-    app: benchmark
+    app: {{ .Release.Name }}
     component: worker
     role: worker
 spec:
@@ -67,5 +67,5 @@ spec:
       name: stats
   clusterIP: None
   selector:
-    app: benchmark
+    app: {{ .Release.Name }}
     component: worker
