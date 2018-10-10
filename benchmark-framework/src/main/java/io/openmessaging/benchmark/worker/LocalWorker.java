@@ -241,6 +241,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public void adjustPublishRate(double publishRate) {
+        if(publishRate < 1.0) {
+            rateLimiter.setRate(1.0);
+            return;
+        }
         rateLimiter.setRate(publishRate);
     }
 
