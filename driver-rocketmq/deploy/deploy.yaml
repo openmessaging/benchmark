@@ -48,7 +48,7 @@
     - file: path=/opt/rocketmq state=directory
     - set_fact:
         nameServers: "{{ groups['rmq-namesrv']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:9876') | join(';') }}"
-        rocketMQVersion: "4.2.0"
+        rocketMQVersion: "4.3.0"
     - name: Download RocketMQ package
       unarchive:
         src: http://mirror.bit.edu.cn/apache/rocketmq/{{ rocketMQVersion }}/rocketmq-all-{{ rocketMQVersion }}-bin-release.zip
@@ -71,7 +71,7 @@
     - name: Set up broker
       template:
         src: "templates/rmq-broker.properties"
-        dest: "/opt/rocketmq/conf/rmq-broker.properties"
+        dest: "/opt/rocketmq/rocketmq-all-4.3.0-bin-release/conf/rmq-broker.properties"
     - template:
         src: "templates/rmq-broker.service"
         dest: "/etc/systemd/system/rmq-broker.service"
@@ -88,7 +88,7 @@
     - name: Set up RocketMQ NameServer
       template:
         src: "templates/rmq-namesrv.properties"
-        dest: "/opt/rocketmq/conf/rmq-namesrv.properties"
+        dest: "/opt/rocketmq/rocketmq-all-4.3.0-bin-release/conf/rmq-namesrv.properties"
     - template:
         src: "templates/rmq-namesrv.service"
         dest: "/etc/systemd/system/rmq-namesrv.service"
@@ -107,6 +107,7 @@
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
+    - shell: rm -rf /opt/benchmark
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - shell: tuned-adm profile latency-performance
 
