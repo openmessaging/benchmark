@@ -78,21 +78,21 @@
   #   shell: rabbitmqctl reset
 
   - systemd:
-    state: started
-    daemon_reload: yes
-    name: "rabbitmq-server"
+      state: started
+      daemon_reload: yes
+      name: "rabbitmq-server"
   - name: Install web management
     shell: rabbitmq-plugins enable rabbitmq_management
   - systemd:
-    state: restarted
-    daemon_reload: yes
-    name: "rabbitmq-server"
-  # - name: create admin/admin  profile
-  #   shell:  rabbitmqctl add_user admin  admin
-  # - name: set admin tag
-  #   shell: rabbitmqctl set_user_tags admin administrator
-  # - name: set admin permission
-  #   shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
+      state: restarted
+      daemon_reload: yes
+      name: "rabbitmq-server"
+  - name: create admin/admin  profile
+    shell:  rabbitmqctl add_user admin  admin
+  - name: set admin tag
+    shell: rabbitmqctl set_user_tags admin administrator
+  - name: set admin permission
+    shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
   - name: Clear servers' Erlang cookie
     file:
       path: /var/lib/rabbitmq/.erlang.cookie
@@ -100,9 +100,9 @@
   - name: Copy Erlang cookie
     copy: src=erlang.cookie  dest=/var/lib/rabbitmq/.erlang.cookie  owner=rabbitmq group=rabbitmq mode=0400
   - systemd:
-    state: restarted
-    daemon_reload: yes
-    name: "rabbitmq-server"
+      state: restarted
+      daemon_reload: yes
+      name: "rabbitmq-server"
   - name: RabbitMQ status
     shell: rabbitmqctl cluster_status
     register: result
@@ -140,7 +140,7 @@
   - debug: msg='{{result_queue.stdout}}'
   
   
-- name: Pulsar benchmarking client setup
+- name: Rabbitmq benchmarking client setup
   hosts: client
   connection: ssh
   become: true
