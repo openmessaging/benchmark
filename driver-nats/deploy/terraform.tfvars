@@ -1,6 +1,6 @@
 region            = "cn-shenzhen"
 availability_zone = "cn-shenzhen-c"
-private_key_file  = "rocketmq_alicloud.pem"
+private_key_file  = "alicloud.pem"
 key_name          = "key-pair-from-terraform-nats"
 image_id          = "centos_7_04_64_20G_alibase_201701015.vhd"
 
