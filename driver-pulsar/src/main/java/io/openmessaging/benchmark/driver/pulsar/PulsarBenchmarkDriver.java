@@ -122,7 +122,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
             this.namespace = config.client.namespacePrefix + "-" + getRandomString();
             adminClient.namespaces().createNamespace(namespace);
-            log.info("Created Pulsar namespace {}/{}/{}", tenant, cluster, namespace);
+            log.info("Created Pulsar namespace {}", namespace);
 
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
