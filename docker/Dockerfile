@@ -17,32 +17,12 @@
 # under the License.
 #
 
-name: Pulsar-effectively-once
-driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
+FROM openjdk:8-jdk
 
-# Pulsar client-specific configuration
-client:
-  serviceUrl: pulsar://localhost:6650
-  httpUrl: http://localhost:8080
-  ioThreads: 8
-  connectionsPerBroker: 8
-  namespacePrefix: benchmark/local/ns
-  topicType: persistent
-  persistence:
-    ensembleSize: 3
-    writeQuorum: 3
-    ackQuorum: 2
-    deduplicationEnabled: true
-  tlsAllowInsecureConnection: false
-  tlsEnableHostnameVerification: false
-  tlsTrustCertsFilePath:
-  authentication:
-    plugin:
-    data:
+ARG BENCHMARK_TARBALL
 
-# Producer configuration
-producer:
-  batchingEnabled: true
-  batchingMaxPublishDelayMs: 1
-  blockIfQueueFull: true
-  pendingQueueSize: 10000
+ADD ${BENCHMARK_TARBALL} /
+
+RUN mv openmessaging-benchmark-* /benchmark
+
+WORKDIR /benchmark

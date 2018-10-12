@@ -3,8 +3,8 @@ Description=RocketMQ-NameServer
 After=network.target
 
 [Service]
-ExecStart=/opt/rocketmq/bin/mqnamesrv -c conf/rmq-namesrv.properties
-WorkingDirectory=/opt/rocketmq
+ExecStart=/opt/rocketmq/rocketmq-all-4.3.0-bin-release/bin/mqnamesrv -c conf/rmq-namesrv.properties
+WorkingDirectory=/opt/rocketmq/rocketmq-all-4.3.0-bin-release/
 RestartSec=1s
 Restart=on-failure
 Type=simple

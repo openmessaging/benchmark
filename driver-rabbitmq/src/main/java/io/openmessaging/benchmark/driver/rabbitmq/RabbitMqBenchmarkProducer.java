@@ -97,8 +97,7 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
         ackSet.add(msgId);
         futureConcurrentHashMap.putIfAbsent(msgId++, future);
         try {
-            channel.basicPublish(exchange, key.orElse(null), props, payload);
-            
+            channel.basicPublish(exchange, key.orElse(""), props, payload);   
         } catch (Exception e) {
             future.completeExceptionally(e);
         }

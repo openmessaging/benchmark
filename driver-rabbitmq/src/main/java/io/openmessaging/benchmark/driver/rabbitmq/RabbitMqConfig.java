@@ -19,5 +19,5 @@
 package io.openmessaging.benchmark.driver.rabbitmq;
 
 public class RabbitMqConfig {
-    String brokerAddress;
+    public String brokerAddress;
 }

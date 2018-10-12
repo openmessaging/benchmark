@@ -319,7 +319,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
+    private static final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
