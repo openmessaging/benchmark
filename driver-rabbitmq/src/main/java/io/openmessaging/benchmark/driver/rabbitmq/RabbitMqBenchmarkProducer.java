@@ -50,7 +50,7 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
         BasicProperties props = defaultProperties.builder().timestamp(new Date()).build();
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            channel.basicPublish(exchange, "", props, payload);
+            channel.basicPublish(exchange, key.orElse(""), props, payload);
             channel.waitForConfirms();
             future.complete(null);
         } catch (IOException | InterruptedException e) {
