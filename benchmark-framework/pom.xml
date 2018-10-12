@@ -153,6 +153,12 @@
 			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-util</artifactId>
+			<version>9.4.8.v20171121</version>
+		</dependency>
 	</dependencies>
 
 	<build>
