@@ -38,7 +38,7 @@ public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements Benchm
 
         this.channel = channel;
         this.callback = callback;
-        channel.basicConsume(queueName, true,this);
+        channel.basicConsume(queueName, true, this);
     }
 
     @Override
