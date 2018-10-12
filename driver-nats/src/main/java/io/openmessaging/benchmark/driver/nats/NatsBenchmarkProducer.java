@@ -45,21 +45,21 @@ public class NatsBenchmarkProducer implements BenchmarkProducer {
     @Override public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-//            semaphore.acquire();
+            semaphore.acquire();
 
-//            executor.submit(() -> {
-//                try {
+            executor.submit(() -> {
+                try {
                     natsProducer.publish(topic, Long.toString(System.currentTimeMillis()), payload);
-                    natsProducer.flush(Duration.ZERO);
-//                } catch (Exception e) {
-//                    log.error("send exception" + e);
-//                    future.exceptionally(null);
-//                } finally {
-//                    semaphore.release();
-//                }
+//                    natsProducer.flush(Duration.ofSeconds(1));
+                } catch (Exception e) {
+                    log.error("send exception" + e);
+                    future.exceptionally(null);
+                } finally {
+                    semaphore.release();
+                }
                 future.complete(null);
 
-//            });
+            });
         } catch (Exception e) {
             log.error("send exception", e);
             future.exceptionally(null);

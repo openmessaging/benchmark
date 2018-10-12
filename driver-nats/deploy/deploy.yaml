@@ -32,12 +32,12 @@
 
   - file: path=/opt/nats state=absent
   - file: path=/opt/nats state=directory
-  - name: Install Nsq Server
+  - name: Install Nats Server
     unarchive:
       src: "https://github.com/nats-io/gnatsd/releases/download/v1.3.0/gnatsd-v1.3.0-linux-amd64.zip"
       remote_src: yes
       dest: /opt/nats
-      extra_opts: ["--strip-components=1"]
+#      extra_opts: ["--strip-components=1"]
   - template:
       src: "templates/cluster.conf"
       dest: "/opt/nats/cluster.conf"
@@ -47,6 +47,10 @@
   - replace:
       dest: /opt/nats/cluster.conf
       regexp: 'natsHostUrl'
+      replace: '{{natsHostUrl}}'
+  - replace:
+      dest: /opt/nats/cluster.conf
+      regexp: 'localhost'
       replace: '{{natsHostUrl}}'
   - systemd:
       state: started
