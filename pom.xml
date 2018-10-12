@@ -38,6 +38,7 @@
 		<module>driver-artemis</module>
 		<module>driver-bookkeeper</module>
 		<module>driver-rocketmq</module>
+		<module>driver-nats</module>
 		<module>package</module>
 	</modules>
 
