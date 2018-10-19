@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.openmessaging.benchmark.driver.rabbitmq;
+package io.openmessaging.benchmark.driver.nsq;
 
-public class RabbitMqConfig {
-    public String brokerAddress;
+public class NsqConfig {
+    public String nsqdHost;
+    public String lookupHost;
 }

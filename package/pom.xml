@@ -46,7 +46,7 @@
 							<goal>single</goal>
 						</goals>
 						<configuration>
-							<attach>false</attach>
+							<attach>true</attach>
 							<tarLongFileMode>posix</tarLongFileMode>
 							<finalName>openmessaging-benchmark-${project.version}</finalName>
 							<descriptors>

@@ -53,6 +53,8 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setAutomaticRecoveryEnabled(true);
         connectionFactory.setHost(config.brokerAddress);
+        connectionFactory.setUsername("admin");
+        connectionFactory.setPassword("admin");
 
         try {
             connection = connectionFactory.newConnection();

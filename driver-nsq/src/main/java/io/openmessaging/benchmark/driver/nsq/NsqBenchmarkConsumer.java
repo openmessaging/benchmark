@@ -16,8 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.openmessaging.benchmark.driver.rabbitmq;
+package io.openmessaging.benchmark.driver.nsq;
 
-public class RabbitMqConfig {
-    public String brokerAddress;
+import com.github.brainlag.nsq.NSQConsumer;
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+
+public class NsqBenchmarkConsumer implements BenchmarkConsumer {
+    private NSQConsumer nsqConsumer;
+    public NsqBenchmarkConsumer(NSQConsumer nsqConsumer) {
+        this.nsqConsumer = nsqConsumer;
+    }
+    @Override public void close() throws Exception {
+        this.nsqConsumer.shutdown();
+    }
 }
