@@ -93,6 +93,5 @@ public class NsqBenchmarkDriver implements BenchmarkDriver {
     private static final Logger log = LoggerFactory.getLogger(NsqBenchmarkDriver.class);
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    }
+    
 }
