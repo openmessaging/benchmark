@@ -88,7 +88,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                             .tlsTrustCertsFilePath(config.client.tlsTrustCertsFilePath);
         }
 
-        if (!config.client.authentication.plugin.isEmpty()) {
+        if (config.client.authentication.plugin != null && !config.client.authentication.plugin.isEmpty()) {
             clientBuilder.authentication(config.client.authentication.plugin, config.client.authentication.data);
             pulsarAdminBuilder.authentication(config.client.authentication.plugin, config.client.authentication.data);
         }
