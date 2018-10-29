@@ -1,6 +1,6 @@
 public_key_path = "~/.ssh/bookkeeper_aws.pub"
-region          = "us-east-2"
-ami             = "ami-0b1e356e" // RHEL-7.4
+region          = "us-west-2"
+ami             = "ami-9fa343e7" // RHEL-7.4
 
 instance_types = {
   "bookkeeper"  = "i3.4xlarge"

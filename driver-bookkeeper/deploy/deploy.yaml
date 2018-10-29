@@ -70,8 +70,8 @@
         extra_opts: ["--strip-components=1"]
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-        max_heap_memory: "24g"
-        max_direct_memory: "24g"
+        max_heap_memory: "6g"
+        max_direct_memory: "6g"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
