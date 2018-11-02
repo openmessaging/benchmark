@@ -30,7 +30,6 @@
 
 	<modules>
 		<module>benchmark-framework</module>
-		<module>driver-api</module>
 
 		<module>driver-pulsar</module>
 		<module>driver-kafka</module>
