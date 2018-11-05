@@ -10,10 +10,10 @@ After the chart has started, users can exec into the pod name "benchmark-driver"
 For example, once inside the "benchmark-driver" pod, users can execute:
 
 ```bash
-bin/benchmark --drivers driver-pulsar/pulsar.yaml --workers $WORKER workloads/1-topic-16-partitions-1kb.yaml
+bin/benchmark --drivers driver-pulsar/pulsar.yaml --workers $WORKERS workloads/1-topic-16-partitions-1kb.yaml
 ```
 
-All workers that has configured to startup will be set in the "$WORKER" env variable
+All workers that has configured to startup will be set in the "$WORKERS" env variable
 
 To tear down the chart:
 
