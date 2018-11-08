@@ -21,8 +21,7 @@ package io.openmessaging.benchmark.driver.pulsar;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -63,9 +62,9 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     private PulsarConfig config;
 
-
     private String namespace;
     private ProducerBuilder<byte[]> producerBuilder;
+    private Map<String, List<String>> topicSubscriptions = new HashMap<>();
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
@@ -163,6 +162,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
+        addSubscriptionToTopicMap(topic, subscriptionName);
         return client.newConsumer().subscriptionType(SubscriptionType.Failover).messageListener((consumer, msg) -> {
             consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
             consumer.acknowledgeAsync(msg);
@@ -176,6 +176,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     public void close() throws Exception {
         log.info("Shutting down Pulsar benchmark driver");
 
+        removeSubscriptions();
+
         if (client != null) {
             client.close();
         }
@@ -187,6 +189,29 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         log.info("Pulsar benchmark driver successfully shut down");
     }
 
+    private void removeSubscriptions(){
+        for (Map.Entry<String, List<String>> entry : topicSubscriptions.entrySet()){
+            String topic = entry.getKey();
+            List<String> subscriptions = entry.getValue();
+            for (String sub : subscriptions){
+                try {
+                    adminClient.topics().deleteSubscription(topic, sub);
+                } catch (PulsarAdminException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+    }
+
+    private void addSubscriptionToTopicMap(String topic, String subscription){
+        if (topicSubscriptions.containsKey(topic)){
+            topicSubscriptions.get(topic).add(subscription);
+        }
+        else {
+            topicSubscriptions.put(topic, Arrays.asList(subscription));
+        }
+    }
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 

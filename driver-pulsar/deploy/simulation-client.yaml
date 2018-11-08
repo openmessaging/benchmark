@@ -1,0 +1,177 @@
+# #############################################################################################
+# # The first play tasks run on the ansible host and create instances in Gcloud              ##
+# # The second play installs and configures the pulsar client                                ##
+# #############################################################################################
+# - name: a play to provision the servers
+#   hosts: 127.0.0.1 
+#   connection: local
+#   tasks:
+#     - name: Provision pre-emptible instance
+#       gce:
+#         instance_names: pulsar-simulation-client-{{item}}
+#         machine_type: n1-standard-2
+#         image: debian-9
+#         network: new
+#         external_ip: none
+#         preemptible: false
+#         subnetwork: new
+#         state: present
+#         service_account_permissions:
+#           - compute-ro
+#         tags:
+#           - pulsar
+#           - new-ipmasq
+#         service_account_email: pulsar@lofty-outcome-860.iam.gserviceaccount.com
+#         credentials_file: /Users/emmapollum/Desktop/terraform-testing/loftycredz.json
+#         project_id: lofty-outcome-860
+#       register: instance 
+#       with_sequence: start=1 end=2
+
+# - name: a play to install and configure benchmarking client
+#   hosts: all
+#   connection: ssh
+#   become: true
+#   vars:
+#     ansible_ssh_private_key_file: "~/.ssh/id_rsa"
+#   tasks:
+#     - name: Create /opt/pulsar directory
+#       file:
+#         path: "/opt/pulsar"
+#         state: directory
+
+#     - name: Download Pulsar 2.2.0
+#       get_url:
+#         url: https://archive.apache.org/dist/pulsar/pulsar-2.2.0/apache-pulsar-2.2.0-bin.tar.gz
+#         dest: /tmp/pulsar.tgz
+
+#     - name: Unpack pulsar tarball
+#       unarchive:
+#         remote_src: yes
+#         src: /tmp/pulsar.tgz
+#         dest: /opt/pulsar
+#         extra_opts: [--strip-components=1]
+
+# - name: Pulsar installation
+#   hosts: all
+#   connection: ssh
+#   remote_user: emmapollum
+#   become: true
+#   vars:
+#     ansible_ssh_private_key_file: "~/.ssh/id_rsa"
+#   become: true
+#   tasks:
+#     - name: Set performance profile
+#       command: tuned-adm profile latency-performance
+#     - name: Install RPM packages
+#       yum: pkg={{ item }} state=latest
+#       with_items:
+#           - wget
+#           - java
+#           - sysstat
+#           - vim
+#     - set_fact:
+#         zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
+#         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+#         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+#         pulsarVersion: "1.22.0-incubating"
+#     - file: path=/opt/pulsar state=absent
+#     - file: path=/opt/pulsar state=directory
+#     - name: Download Pulsar binary package
+#       unarchive:
+#         src: "http://archive.apache.org/dist/incubator/pulsar/pulsar-2.2.0/apache-pulsar-2.2.0-bin.tar.gz"
+#         remote_src: yes
+#         dest: /opt/pulsar
+#         extra_opts: ["--strip-components=1"]
+#     - set_fact:
+#         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+#         max_heap_memory: "24g"
+#         max_direct_memory: "24g"
+#     - template:
+#         src: "templates/pulsar_env.sh"
+#         dest: "/opt/pulsar/conf/pulsar_env.sh"
+#     - name: Change locale to en_US.utf-8
+#       shell: |
+#         echo 'LANG=en_US.utf-8
+#               LC_ALL=en_US.utf-8' > /etc/environment
+
+- name : a play to launch pulsar-simulation-client
+  hosts: all
+  connection: ssh
+  remote_user: emmapollum
+  become: true
+  vars:
+    ansible_ssh_private_key_file: "~/.ssh/id_rsa"
+    
+  tasks:
+
+    # - name: Install a list of packages
+    #   apt:
+    #     name: "{{ packages }}"
+    #   vars:
+    #     packages:
+    #      - maven
+    #      - git
+    #      - default-jdk
+
+    # - name: clone openmessaging-benchmark
+    #   git:
+    #     repo: "https://github.com/openmessaging/openmessaging-benchmark.git"
+    #     dest: "/home/emmapollum/benchmark-repo"
+
+    # - shell: cd /home/emmapollum/benchmark-repo && mvn clean install -DskipTests
+    
+    # - name: create directory
+    #   file:
+    #     path: /opt/pulsar/conf
+    #     state: directory
+
+    # - name: Set up client config
+    #   copy:
+    #     src: "templates/client.conf"
+    #     dest: "/opt/pulsar/conf/client.conf"
+
+    - file: path=/opt/benchmark state=absent
+
+    - name: Copy benchmark code
+      shell: tar -xvf /home/emmapollum/benchmark-repo/package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz -C /opt
+
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+
+    - copy:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
+      register: drivers_list
+
+    - name: Configure service URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  serviceUrl\: '
+         line: '  serviceUrl: pulsar://10.128.0.73:6650/'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure http URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  httpUrl: '
+         line: '  httpUrl: http://10.128.0.164:8080/'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark systemd service
+      copy:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
