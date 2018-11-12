@@ -97,7 +97,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic));
+        return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic, config.messagePersistence));
     }
 
     @Override

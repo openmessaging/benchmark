@@ -42,10 +42,12 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
     //To record msg and it's future structure.
     volatile SortedSet<Long> ackSet = Collections.synchronizedSortedSet(new TreeSet<Long>());
     private final ConcurrentHashMap<Long, CompletableFuture<Void>> futureConcurrentHashMap = new ConcurrentHashMap<>();
+    private boolean messagePersistence = false;
 
-    public RabbitMqBenchmarkProducer(Channel channel, String exchange) {
+    public RabbitMqBenchmarkProducer(Channel channel, String exchange, boolean messagePersistence) {
         this.channel = channel;
         this.exchange = exchange;
+        this.messagePersistence = messagePersistence;
         this.listener = new ConfirmListener() {
             @Override
             public void handleNack(long deliveryTag, boolean multiple) throws IOException {
@@ -92,7 +94,11 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        BasicProperties props = defaultProperties.builder().timestamp(new Date()).build();
+        BasicProperties.Builder builder = defaultProperties.builder().timestamp(new Date());
+        if (messagePersistence) {
+            builder.deliveryMode(2);
+        }
+        BasicProperties props = builder.build();
         CompletableFuture<Void> future = new CompletableFuture<>();
         ackSet.add(msgId);
         futureConcurrentHashMap.putIfAbsent(msgId++, future);

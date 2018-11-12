@@ -24,3 +24,4 @@ driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
 # RabbitMq client specific configurations
 
 brokerAddress: localhost
+messagePersistence: false

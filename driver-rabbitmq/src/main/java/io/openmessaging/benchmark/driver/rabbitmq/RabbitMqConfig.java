@@ -20,4 +20,5 @@ package io.openmessaging.benchmark.driver.rabbitmq;
 
 public class RabbitMqConfig {
     public String brokerAddress;
+    public boolean messagePersistence = false;
 }
