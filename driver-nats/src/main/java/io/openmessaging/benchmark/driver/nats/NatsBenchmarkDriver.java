@@ -61,7 +61,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     @Override public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         Connection natsProducer;
         try {
-            Options options = new Options.Builder().server(config.natsHostUrl).maxReconnects(-1).build();
+            Options options = new Options.Builder().server(config.natsHostUrl).maxReconnects(5).build();
             natsProducer = Nats.connect(options);
         } catch (Exception e) {
             log.error("createProducer excetopin " + e);
@@ -76,12 +76,12 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
         Connection cn;
         log.info("createConsumer");
         try {
-            Options options = new Options.Builder().server(config.natsHostUrl).maxReconnects(-1).build();
+            Options options = new Options.Builder().server(config.natsHostUrl).maxReconnects(5).build();
             cn = Nats.connect(options);
             natsConsumer = cn.createDispatcher((msg) -> {
                 consumerCallback.messageReceived(msg.getData(), Long.parseLong(msg.getReplyTo()));
             });
-            natsConsumer.subscribe(topic);
+            natsConsumer.subscribe(topic, subscriptionName);
             cn.flush(Duration.ZERO);
         } catch (Exception e) {
             log.error("createConsumer excetopin " + e);
@@ -99,24 +99,4 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    public static void main(String[] args) throws Exception {
-        Dispatcher natsConsumer;
-        Connection cn1;
-        Options options = new Options.Builder().server("nats://0.0.0.0:4222").noReconnect().build();
-        cn1 = Nats.connect(options);
-        natsConsumer = cn1.createDispatcher((msg) -> {
-            System.out.println("recv "+msg.getReplyTo());
-        });
-        natsConsumer.subscribe("test");
-        cn1.flush(Duration.ZERO);
-
-        Connection  natsProducer = Nats.connect(options);
-        for (int i = 0; i < 5; i++) {
-            natsProducer.publish("test", Long.toString(System.currentTimeMillis()), "hello".getBytes(StandardCharsets.UTF_8));
-
-        }
-        Thread.sleep(10000);
-        natsProducer.flush(Duration.ZERO);
-
-    }
 }
