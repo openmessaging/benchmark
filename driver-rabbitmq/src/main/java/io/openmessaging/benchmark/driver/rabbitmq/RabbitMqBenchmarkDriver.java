@@ -95,7 +95,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic));
+        return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic, config.messagePersistence));
     }
 
     @Override
