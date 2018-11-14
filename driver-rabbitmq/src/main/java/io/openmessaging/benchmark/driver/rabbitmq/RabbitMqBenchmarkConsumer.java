@@ -49,6 +49,9 @@ public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements Benchm
 
     @Override
     public void close() throws Exception {
+        if (this.channel.isOpen()) {
+            this.channel.close();
+        }
     }
 
 }

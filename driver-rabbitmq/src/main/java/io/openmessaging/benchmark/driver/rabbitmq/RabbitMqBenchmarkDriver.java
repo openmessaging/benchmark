@@ -44,8 +44,6 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     private RabbitMqConfig config;
 
     private Connection connection;
-    private Channel channel;
-
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, RabbitMqConfig.class);
@@ -58,16 +56,15 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
         try {
             connection = connectionFactory.newConnection();
-            channel = connection.createChannel();
-            channel.confirmSelect();
         } catch (TimeoutException e) {
-            throw new IOException(e);
+            e.printStackTrace();
         }
     }
 
+
+
     @Override
     public void close() throws Exception {
-        channel.close();
         connection.close();
     }
 
@@ -83,20 +80,21 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         }
 
         CompletableFuture<Void> future = new CompletableFuture<>();
-        ForkJoinPool.commonPool().execute(() -> {
-            try {
-                channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT);
-                future.complete(null);
-            } catch (IOException e) {
-                future.completeExceptionally(e);
-            }
-        });
+        future.complete(null);
 
         return future;
     }
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
+        Channel channel = null;
+        try {
+            channel = connection.createChannel();
+            channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT);
+            channel.confirmSelect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return CompletableFuture.completedFuture(new RabbitMqBenchmarkProducer(channel, topic));
     }
 
@@ -108,7 +106,13 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         ForkJoinPool.commonPool().execute(() -> {
             try {
                 String queueName = topic + "-" + subscriptionName;
-
+                Channel channel = null;
+                try {
+                    channel = connection.createChannel();
+                    channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 // Create the queue
                 channel.queueDeclare(queueName, true, false, false, Collections.emptyMap());
                 channel.queueBind(queueName, topic, "");

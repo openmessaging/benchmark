@@ -22,6 +22,7 @@ import com.rabbitmq.client.ConfirmListener;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -37,11 +38,11 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
 
     private final Channel channel;
     private final String exchange;
-    private Long msgId = 0L;
-    private ConfirmListener listener;
-    //To record msg and it's future structure.
+    private final ConfirmListener listener;
+    /**To record msg and it's future structure.**/
     volatile SortedSet<Long> ackSet = Collections.synchronizedSortedSet(new TreeSet<Long>());
     private final ConcurrentHashMap<Long, CompletableFuture<Void>> futureConcurrentHashMap = new ConcurrentHashMap<>();
+
 
     public RabbitMqBenchmarkProducer(Channel channel, String exchange) {
         this.channel = channel;
@@ -49,31 +50,50 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
         this.listener = new ConfirmListener() {
             @Override
             public void handleNack(long deliveryTag, boolean multiple) throws IOException {
-                CompletableFuture<Void> future = futureConcurrentHashMap.get(deliveryTag);
-                if (future != null) {
-                    future.completeExceptionally(null);
-                }
-                futureConcurrentHashMap.remove(deliveryTag);
-            }
-            @Override
-            public void handleAck(long deliveryTag, boolean multiple) throws IOException {
                 if (multiple) {
-                    for (long i = ackSet.first(); i <= deliveryTag; ++i) {
-                        CompletableFuture<Void> future = futureConcurrentHashMap.get(i);
-                        if (future != null) {
-                            future.complete(null);
+                    SortedSet<Long> treeHeadSet = ackSet.headSet(deliveryTag + 1);
+                    synchronized(ackSet) {
+                        for(Iterator iterator = treeHeadSet.iterator(); iterator.hasNext();) {
+                            long value = (long)iterator.next();
+                            iterator.remove();
+                            CompletableFuture<Void> future = futureConcurrentHashMap.get(value);
+                            if (future != null) {
+                                future.completeExceptionally(null);
+                                futureConcurrentHashMap.remove(value);
+                            }
                         }
-                        futureConcurrentHashMap.remove(i);
-                        ackSet.remove(i);
+                        treeHeadSet.clear();
                     }
-
 
                 } else {
                     CompletableFuture<Void> future = futureConcurrentHashMap.get(deliveryTag);
                     if (future != null) {
-                        future.complete(null);
+                        future.completeExceptionally(null);
+                        futureConcurrentHashMap.remove(deliveryTag);
                     }
-                    futureConcurrentHashMap.remove(deliveryTag);
+                    ackSet.remove(deliveryTag);
+                }
+            }
+            @Override
+            public void handleAck(long deliveryTag, boolean multiple) throws IOException {
+                if (multiple) {
+                    SortedSet<Long> treeHeadSet = ackSet.headSet(deliveryTag + 1);
+                    synchronized(ackSet) {
+                        for(long value : treeHeadSet) {
+                            CompletableFuture<Void> future = futureConcurrentHashMap.get(value);
+                            if (future != null) {
+                                future.complete(null);
+                                futureConcurrentHashMap.remove(value);
+                            }
+                        }
+                        treeHeadSet.clear();
+                    }
+                } else {
+                    CompletableFuture<Void> future = futureConcurrentHashMap.get(deliveryTag);
+                    if (future != null) {
+                        future.complete(null);
+                        futureConcurrentHashMap.remove(deliveryTag);
+                    }
                     ackSet.remove(deliveryTag);
                 }
 
@@ -84,8 +104,10 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public void close() throws Exception {
-        channel.removeConfirmListener(listener);
-
+        if (channel.isOpen()) {
+            channel.removeConfirmListener(listener);
+            channel.close();
+        }
     }
 
     private static final BasicProperties defaultProperties = new BasicProperties();
@@ -94,10 +116,11 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
         BasicProperties props = defaultProperties.builder().timestamp(new Date()).build();
         CompletableFuture<Void> future = new CompletableFuture<>();
+        long msgId = channel.getNextPublishSeqNo();
         ackSet.add(msgId);
-        futureConcurrentHashMap.putIfAbsent(msgId++, future);
+        futureConcurrentHashMap.putIfAbsent(msgId, future);
         try {
-            channel.basicPublish(exchange, key.orElse(""), props, payload);   
+            channel.basicPublish(exchange, key.orElse(""), props, payload);
         } catch (Exception e) {
             future.completeExceptionally(e);
         }
