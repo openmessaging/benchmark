@@ -359,7 +359,7 @@ public class WorkloadGenerator implements AutoCloseable {
         // Print report stats
         long oldTime = System.nanoTime();
 
-        long testEndTime = startTime + unit.toNanos(testDurations);
+        long testEndTime = testDurations > 0 ? startTime + unit.toNanos(testDurations) : Long.MAX_VALUE;
 
         TestResult result = new TestResult();
         result.workload = workload.name;
