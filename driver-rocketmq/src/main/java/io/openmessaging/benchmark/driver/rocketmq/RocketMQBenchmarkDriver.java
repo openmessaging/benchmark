@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 public class RocketMQBenchmarkDriver implements BenchmarkDriver {
     private DefaultMQAdminExt rmqAdmin;
     private RocketMQClientConfig rmqClientConfig;
+    DefaultMQProducer rmqProducer;
     @Override
     public void initialize(final File configurationFile, final StatsLogger statsLogger) throws IOException {
         this.rmqClientConfig = readConfig(configurationFile);
@@ -61,6 +62,7 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
         } catch (MQClientException e) {
             log.error("Start the RocketMQ admin tool failed.");
         }
+
     }
 
     @Override
@@ -94,14 +96,17 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(final String topic) {
-        DefaultMQProducer rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString());
-        rmqProducer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
-        rmqProducer.setInstanceName("ProducerInstance" + getRandomString());
-        try {
-            rmqProducer.start();
-        } catch (MQClientException e) {
-            log.error("Failed to start the created producer instance.", e);
+        if (rmqProducer == null) {
+            rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString());
+            rmqProducer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
+            rmqProducer.setInstanceName("ProducerInstance" + getRandomString());
+            try {
+                rmqProducer.start();
+            } catch (MQClientException e) {
+                log.error("Failed to start the created producer instance.", e);
+            }
         }
+
         return CompletableFuture.completedFuture(new RocketMQBenchmarkProducer(rmqProducer, topic));
     }
 
@@ -129,6 +134,9 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
+        if (this.rmqProducer != null) {
+            this.rmqProducer.shutdown();
+        }
         this.rmqAdmin.shutdown();
     }
 
