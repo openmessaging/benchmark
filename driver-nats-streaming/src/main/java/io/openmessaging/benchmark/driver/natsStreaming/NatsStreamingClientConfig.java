@@ -19,13 +19,13 @@
 package io.openmessaging.benchmark.driver.natsStreaming;
 
 public class NatsStreamingClientConfig {
-    /** common setting **/
+    /** Common setting **/
     public String natsHostUrl;
     public String clusterId;
 
-    /** publish setting **/
+    /** Publish setting **/
     public int maxPubAcksInFlight = 16384;
 
-    /** consumer setting **/
+    /** Consumer setting **/
     public int maxInFlight = 1024;
 }
