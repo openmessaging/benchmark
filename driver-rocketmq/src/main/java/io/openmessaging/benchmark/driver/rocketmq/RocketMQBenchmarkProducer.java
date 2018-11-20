@@ -65,6 +65,6 @@ public class RocketMQBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public void close() throws Exception {
-        /** producer close in driver **/
+        // Close in Driver
     }
 }
