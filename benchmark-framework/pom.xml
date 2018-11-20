@@ -128,12 +128,20 @@
 			<artifactId>driver-bookkeeper</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-nats</artifactId>
-	    <version>${project.version}</version>
+	    	<version>${project.version}</version>
 		</dependency>
-    <dependency>
+
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>driver-nats-streaming</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-nsq</artifactId>
 			<version>${project.version}</version>
