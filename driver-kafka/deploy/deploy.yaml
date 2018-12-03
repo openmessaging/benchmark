@@ -24,17 +24,23 @@
   tasks:
     - command: >
         tuned-adm profile latency-performance
-    - name: Format block device
+    - name: Format disks
       filesystem:
-        fstype: xfs
-        dev: /dev/nvme0n1
-    - name: Create and mount disks
+         fstype: xfs
+         dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme0n1'
+        - '/dev/nvme1n1'
+    - name: Mount disks
       mount:
-        path: /mnt/data
-        src: /dev/nvme0n1
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
         fstype: xfs
         opts: defaults,noatime,nodiscard
         state: mounted
+      with_items:
+        - { path: "/mnt/data-1", src: "/dev/nvme0n1" }
+        - { path: "/mnt/data-2", src: "/dev/nvme1n1" }
 
 - name: Kafka setup
   hosts: all
@@ -68,7 +74,7 @@
       shell: |
         echo 'LANG=en_US.utf-8
               LC_ALL=en_US.utf-8' > /etc/environment
-        
+
 - name: Setup ZooKeeper
   hosts: zookeeper
   connection: ssh
