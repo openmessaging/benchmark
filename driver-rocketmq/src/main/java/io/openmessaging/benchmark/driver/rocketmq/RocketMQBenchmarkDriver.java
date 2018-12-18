@@ -100,6 +100,15 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
             rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString());
             rmqProducer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
             rmqProducer.setInstanceName("ProducerInstance" + getRandomString());
+            if(null != this.rmqClientConfig.vipChannelEnabled){
+                rmqProducer.setVipChannelEnabled(this.rmqClientConfig.vipChannelEnabled);
+            }
+            if(null != this.rmqClientConfig.maxMessageSize){
+                rmqProducer.setMaxMessageSize(this.rmqClientConfig.maxMessageSize);
+            }
+            if(null != this.rmqClientConfig.compressMsgBodyOverHowmuch){
+                rmqProducer.setCompressMsgBodyOverHowmuch(this.rmqClientConfig.compressMsgBodyOverHowmuch);
+            }
             try {
                 rmqProducer.start();
             } catch (MQClientException e) {
@@ -116,6 +125,9 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
         DefaultMQPushConsumer rmqConsumer = new DefaultMQPushConsumer(subscriptionName);
         rmqConsumer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
         rmqConsumer.setInstanceName("ConsumerInstance" + getRandomString());
+        if(null != this.rmqClientConfig.vipChannelEnabled){
+            rmqConsumer.setVipChannelEnabled(this.rmqClientConfig.vipChannelEnabled);
+        }
         try {
             rmqConsumer.subscribe(topic, "*");
             rmqConsumer.registerMessageListener((MessageListenerConcurrently) (msgs, context) -> {
