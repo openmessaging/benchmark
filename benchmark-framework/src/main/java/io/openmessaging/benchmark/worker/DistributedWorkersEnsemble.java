@@ -95,7 +95,7 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void createProducers(List<String> topics) {
         List<List<String>> topicsPerProducer = Lists.partition(topics,
-                Math.max(1, topics.size() / producerWorkers.size()));
+                (int)Math.ceil((double)topics.size() / producerWorkers.size()));
         Map<String, List<String>> topicsPerProducerMap = Maps.newHashMap();
         int i = 0;
         for (List<String> assignedTopics : topicsPerProducer) {
