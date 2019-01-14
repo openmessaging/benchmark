@@ -32,6 +32,8 @@ public class PulsarClientConfig {
     public String namespacePrefix;
 
     public TopicDomain topicType = TopicDomain.persistent;
+    
+    public int namespaceBundles = 4;
 
     public PersistenceConfiguration persistence = new PersistenceConfiguration();
 

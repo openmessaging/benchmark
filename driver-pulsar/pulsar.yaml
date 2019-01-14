@@ -27,6 +27,7 @@ client:
   ioThreads: 8
   connectionsPerBroker: 8
   namespacePrefix: benchmark/local/ns
+  namespaceBundles: 4
   topicType: persistent
   persistence:
     ensembleSize: 3

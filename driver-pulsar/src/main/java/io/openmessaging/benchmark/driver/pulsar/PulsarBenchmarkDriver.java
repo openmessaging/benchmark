@@ -110,6 +110,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             // Create namespace and set the configuration
             String tenant = config.client.namespacePrefix.split("/")[0];
             String cluster = config.client.namespacePrefix.split("/")[1];
+            int bundles = config.client.namespaceBundles;
             if (!adminClient.tenants().getTenants().contains(tenant)) {
                 try {
                     adminClient.tenants().createTenant(tenant,
@@ -121,8 +122,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             log.info("Created Pulsar tenant {} with allowed cluster {}", tenant, cluster);
 
             this.namespace = config.client.namespacePrefix + "-" + getRandomString();
-            adminClient.namespaces().createNamespace(namespace);
-            log.info("Created Pulsar namespace {}", namespace);
+            adminClient.namespaces().createNamespace(namespace, bundles);
+            log.info("Created Pulsar namespace {} with {} bundles", namespace, bundles);
 
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
