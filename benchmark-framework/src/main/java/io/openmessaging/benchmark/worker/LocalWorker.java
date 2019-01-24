@@ -20,6 +20,7 @@ package io.openmessaging.benchmark.worker;
 
 import static java.util.stream.Collectors.toList;
 
+import io.openmessaging.benchmark.utils.RandomGenerator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -152,7 +153,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         List<String> topics = new ArrayList<>();
         for (int i = 0; i < topicsInfo.numberOfTopics; i++) {
-            String topic = String.format("%s-%s-%04d", topicPrefix, getRandomString(), i);
+            String topic = String.format("%s-%s-%04d", topicPrefix, RandomGenerator.getRandomString(), i);
             topics.add(topic);
             futures.add(benchmarkDriver.createTopic(topic, topicsInfo.numberOfPartitionsPerTopic));
         }
@@ -378,14 +379,6 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     static {
         mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
-    }
-
-    private static final Random random = new Random();
-
-    private static final String getRandomString() {
-        byte[] buffer = new byte[5];
-        random.nextBytes(buffer);
-        return BaseEncoding.base64Url().omitPadding().encode(buffer);
     }
 
     private static final Logger log = LoggerFactory.getLogger(LocalWorker.class);

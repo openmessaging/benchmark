@@ -18,6 +18,7 @@
  */
 package io.openmessaging.benchmark;
 
+import io.openmessaging.benchmark.utils.RandomGenerator;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -273,12 +274,14 @@ public class WorkloadGenerator implements AutoCloseable {
 
     private void createConsumers(List<String> topics) throws IOException {
         ConsumerAssignment consumerAssignment = new ConsumerAssignment();
-        for (int i = 0; i < workload.subscriptionsPerTopic; i++) {
-            String subscriptionName = String.format("sub-%03d", i);
 
-            for (int j = 0; j < workload.consumerPerSubscription; j++) {
-                topics.forEach(topic -> consumerAssignment.topicsSubscriptions
-                        .add(new TopicSubscription(topic, subscriptionName)));
+        for(String topic: topics){
+            for(int i = 0; i < workload.subscriptionsPerTopic; i++){
+                String subscriptionName = String.format("sub-%03d-%s", i, RandomGenerator.getRandomString());
+                for (int j = 0; j < workload.consumerPerSubscription; j++) {
+                    consumerAssignment.topicsSubscriptions
+                        .add(new TopicSubscription(topic, subscriptionName));
+                }
             }
         }
 
