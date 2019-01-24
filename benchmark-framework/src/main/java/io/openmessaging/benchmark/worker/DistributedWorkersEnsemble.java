@@ -21,11 +21,13 @@ package io.openmessaging.benchmark.worker;
 import static java.util.stream.Collectors.toList;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 
+import io.openmessaging.benchmark.utils.ListPartition;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -94,8 +96,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void createProducers(List<String> topics) {
-        List<List<String>> topicsPerProducer = Lists.partition(topics,
-                Math.max(1, topics.size() / producerWorkers.size()));
+        List<List<String>> topicsPerProducer = ListPartition.partitionList(topics,
+                                                            producerWorkers.size());
         Map<String, List<String>> topicsPerProducerMap = Maps.newHashMap();
         int i = 0;
         for (List<String> assignedTopics : topicsPerProducer) {
@@ -155,9 +157,9 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void createConsumers(ConsumerAssignment overallConsumerAssignment) {
-        List<List<TopicSubscription>> subscriptionsPerConsumer = Lists.partition(
-                overallConsumerAssignment.topicsSubscriptions,
-                Math.max(1, overallConsumerAssignment.topicsSubscriptions.size() / consumerWorkers.size()));
+        List<List<TopicSubscription>> subscriptionsPerConsumer = ListPartition.partitionList(
+                                                                        overallConsumerAssignment.topicsSubscriptions,
+                                                                        consumerWorkers.size());
         Map<String, ConsumerAssignment> topicsPerWorkerMap = Maps.newHashMap();
         int i = 0;
         for (List<TopicSubscription> tsl : subscriptionsPerConsumer) {
