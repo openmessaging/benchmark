@@ -23,3 +23,4 @@ driverClass: io.openmessaging.benchmark.driver.rocketmq.RocketMQBenchmarkDriver
 # RocketMQ client-specific configuration
 clusterName: DefaultCluster
 namesrvAddr: 127.0.0.1:9876
+vipChannelEnabled: false

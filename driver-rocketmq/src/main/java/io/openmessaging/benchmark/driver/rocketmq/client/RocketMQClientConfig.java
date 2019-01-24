@@ -21,4 +21,7 @@ package io.openmessaging.benchmark.driver.rocketmq.client;
 public class RocketMQClientConfig {
     public String namesrvAddr;
     public String clusterName;
+    public Boolean vipChannelEnabled;
+    public Integer maxMessageSize;
+    public Integer compressMsgBodyOverHowmuch;
 }
