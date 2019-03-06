@@ -1,0 +1,184 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Format and mount disks for Kafka hosts
+  hosts: kafka
+  connection: ssh
+  become: true
+  tasks:
+    - command: >
+        tuned-adm profile latency-performance
+    - name: Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
+      with_items:
+        - '/dev/vdb'
+        - '/dev/vdc'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/data-1", src: "/dev/vdb" }
+        - { path: "/mnt/data-2", src: "/dev/vdc" }
+
+- name: Kafka setup
+  hosts: all
+  connection: ssh
+  become: true
+  tasks:
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - wget
+          - java
+          - sysstat
+          - vim
+    - file: path=/opt/kafka state=absent
+    - file: path=/opt/kafka state=directory
+    - set_fact:
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        boostrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
+        kafkaVersion: "2.0.0"
+    - debug:
+        msg: "zookeeper servers: {{ zookeeperServers }}\nboostrap servers: {{ boostrapServers }}"
+    - name: Download Kafka package
+      unarchive:
+        src: http://mirrors.ocf.berkeley.edu/apache/kafka/{{ kafkaVersion }}/kafka_2.11-{{ kafkaVersion }}.tgz
+        remote_src: yes
+        dest: /opt/kafka
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        privateIp: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+
+- name: Setup ZooKeeper
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
+    - file:
+        path: "/opt/kafka/data/zookeeper"
+        state: directory
+    - template:
+        src: "../templates/zookeeper.properties"
+        dest: "/opt/kafka/config/zookeeper.properties"
+    - template:
+        src: ../templates/myid
+        dest: "/opt/kafka/data/zookeeper/myid"
+    - template:
+        src: "../templates/zookeeper.service"
+        dest: "/etc/systemd/system/zookeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "zookeeper"
+
+- name: Setup Kafka
+  hosts: kafka
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        brokerId: "{{ groups['kafka'].index(inventory_hostname) }}"
+    - name: Set up broker
+      template:
+        src: "../templates/server.properties"
+        dest: "/opt/kafka/config/server.properties"
+    - template:
+        src: "../templates/kafka.service"
+        dest: "/etc/systemd/system/kafka.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "kafka"
+
+- name: Setup Benchmark client
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/benchmark state=absent
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: tuned-adm profile latency-performance
+
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
+      register: drivers_list
+
+    - name: Configure URL
+      lineinfile:
+         dest: /opt/benchmark/driver-kafka/kafka.yaml
+         regexp: '^  bootstrap.servers='
+         line: '  bootstrap.servers={{ boostrapServers }}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx1G"'
+    - template:
+        src: "../templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Install benchmark systemd service
+      template:
+        src: "../templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+    - name: wait worker
+      wait_for:
+        host: '*'
+        port: 8080
+        state: started
+        timeout: 300
+
+- name:  Hosts addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "Zookeeper servers {{ item }}"
+      with_items: "{{ groups['zookeeper'] }}"
+    - debug:
+        msg: "Kafka brokers {{ item }}"
+      with_items: "{{ groups['kafka'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['client'] }}"
