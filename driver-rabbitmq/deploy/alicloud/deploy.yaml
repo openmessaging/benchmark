@@ -1,0 +1,247 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Prepare variable
+  hosts: localhost:all
+  become: false
+  tasks:
+    - set_fact:
+        erlangVersion: 19.3.6.5
+        rabbitMqVersion: 3.7.2
+    - set_fact:
+        erlang_bin_file: ./erlang-{{ erlangVersion }}-1.el7.centos.x86_64.rpm
+        rabbitmq_bin_file: ./rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
+
+- name: Download rpm file
+  hosts: localhost
+  become: false
+  tasks:
+    - name: check if erlang file exists
+      stat:
+        path: "{{ erlang_bin_file }}"
+      register: erlang_bin_file_stat
+    - name: Download erlang
+      get_url:
+        dest:  "{{ erlang_bin_file }}"
+        url: "https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el7.centos.x86_64.rpm"
+      when: erlang_bin_file_stat.stat.exists == False
+    - name: check if rabbitmq file exists
+      stat:
+        path: "{{ rabbitmq_bin_file }}"
+      register: rabbitmq_bin_file_stat
+    - name: Download erlang
+      get_url:
+        dest:  "{{ rabbitmq_bin_file }}"
+        url: "https://dl.bintray.com/rabbitmq/all/rabbitmq-server/{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm"
+      when: rabbitmq_bin_file_stat.stat.exists == False
+
+- name: Add entries to /etc/hosts
+  hosts: all
+  connection: ssh
+  tasks:
+    - lineinfile:
+        dest: /etc/hosts
+        line: "{{ item.line }}"
+        state: present
+      with_items:
+        - { line: "{{ hostvars[groups['rabbitmq'][0]].private_ip }} rabbitmaster" }
+        - { line: "{{ hostvars[groups['rabbitmq'][1]].private_ip }} rabbitslave1" }
+        - { line: "{{ hostvars[groups['rabbitmq'][2]].private_ip }} rabbitslave2" }
+
+
+- name: Install RabbitMQ Cluster
+  hosts: rabbitmq
+  connection: ssh
+  tasks:
+  - set_fact:
+  - name: Install RPM packages
+    yum:
+      name:
+        - wget
+        - java
+        - sysstat
+        - vim
+        - socat
+      state: latest
+  - name: Upload erlang
+    copy:
+      src: "{{ erlang_bin_file }}"
+      dest: /tmp/{{ erlang_bin_file }}
+  - name: Upload rabbitmq
+    copy:
+      src: "{{ rabbitmq_bin_file }}"
+      dest: /tmp/{{ rabbitmq_bin_file }}
+  - name: Install Erlang
+    yum:
+      name: /tmp/{{ erlang_bin_file }}
+      state: present
+  - name: Install Rabbitmq Server
+    yum:
+      name: /tmp/{{ rabbitmq_bin_file }}
+      state: present
+
+  - name: Change master hostname to rabbitmaster
+    hostname:
+      name: "rabbitmaster"
+    when: rabbitmq_master is defined
+
+  - name: Change slave1 hostname to rabbitslave1
+    hostname:
+      name: "rabbitslave1"
+    when: rabbitslave1 is defined
+
+  - name: Change slave2 hostname to rabbitslave2
+    hostname:
+      name: "rabbitslave2"
+    when: rabbitslave2 is defined
+
+  # - name: stop rabbitmq
+  #   shell: rabbitmqctl stop_app
+  # - name: kill rabbitmq
+  #   shell: rabbitmqctl stop ; ps aux | grep rabbitmq | grep -v grep | awk '{print $2}'| xargs kill -9
+  # - name: reset rabbitmq
+  #   shell: rabbitmqctl reset
+
+  - systemd:
+      state: started
+      daemon_reload: yes
+      name: "rabbitmq-server"
+  - name: Install web management
+    shell: rabbitmq-plugins enable rabbitmq_management
+  - systemd:
+      state: restarted
+      daemon_reload: yes
+      name: "rabbitmq-server"
+  - name: create admin/admin  profile
+    shell:  rabbitmqctl add_user admin  admin
+  - name: set admin tag
+    shell: rabbitmqctl set_user_tags admin administrator
+  - name: set admin permission
+    shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
+  - name: Clear servers' Erlang cookie
+    file:
+      path: /var/lib/rabbitmq/.erlang.cookie
+      state: absent
+  - name: Copy Erlang cookie
+    copy: src=../erlang.cookie  dest=/var/lib/rabbitmq/.erlang.cookie  owner=rabbitmq group=rabbitmq mode=0400
+  - systemd:
+      state: restarted
+      daemon_reload: yes
+      name: "rabbitmq-server"
+  - name: RabbitMQ status
+    shell: rabbitmqctl cluster_status
+    register: result
+  - debug:
+      msg: '{{ result.stdout }}'
+  - name: Rabbit cluster stop slaves
+    shell: rabbitmqctl stop_app
+    when: rabbitmq_slave is defined
+  - name: Rabbit cluster slaves join master
+    shell: rabbitmqctl join_cluster rabbit@rabbitmaster
+    when: rabbitmq_slave is defined
+  - name: Start RabbitMQ cluster slaves
+    shell: rabbitmqctl start_app
+    when: rabbitmq_slave is defined
+  - name: Show RabbitMQ cluster status
+    shell: rabbitmqctl cluster_status
+  - name: Create high availability pllicy
+    shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
+    when: rabbitmq_master is defined
+  # - name: add queue taxCodeInvoiceQueue
+  #   rabbitmq_queue: name=cmcc_zzs_taxCodeInvoiceQueue
+  #   when: rabbitmq_master is defined
+  # - name: add queue cmcc_zzs_generatorInvoiceQueue
+  #   rabbitmq_queue: name=cmcc_zzs_generatorInvoiceQueue
+  #   when: rabbitmq_master is defined
+  # - name: add queue cmcc_zzs_pushInvoiceQueue
+  #   rabbitmq_queue: name=cmcc_zzs_pushInvoiceQueue
+  #   when: rabbitmq_master is defined
+  # - name: add queue cmcc_zzs_sentToPlatformServerQueue
+  #   rabbitmq_queue: cmcc_zzs_sentToPlatformServerQueue
+  #   when: rabbitmq_master is defined
+  - name: Show queue list
+    shell: rabbitmqctl list_queues
+    register: result_queue
+  - debug: msg='{{result_queue.stdout}}'
+
+
+- name: Rabbitmq benchmarking client setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Install RPM packages
+      yum:
+        name:
+          - java
+          - sysstat
+          - vim
+        state: latest
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - shell: >
+        tuned-adm profile latency-performance &&
+        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - name: Configure service URL
+      lineinfile:
+        dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
+        regexp: '^brokerAddress\: '
+        line: 'brokerAddress: rabbitmaster'
+    - template:
+        src: "../templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark systemd service
+      template:
+        src: "../templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+    - name: wait worker
+      wait_for:
+        host: '*'
+        port: 8080
+        state: started
+        timeout: 300
+
+
+- name: List host addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "RabbitMQ brokers {{ item }}"
+      with_items: "{{ groups['rabbitmq'] }}"
+    - debug:
+        msg: "Benchmark client {{ item }}"
+      with_items: "{{ groups['client'] }}"
+
