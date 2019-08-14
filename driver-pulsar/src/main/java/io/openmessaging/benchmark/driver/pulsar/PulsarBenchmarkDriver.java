@@ -64,6 +64,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     private PulsarConfig config;
 
 
+
     private String namespace;
     private ProducerBuilder<byte[]> producerBuilder;
 
@@ -109,7 +110,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         try {
             // Create namespace and set the configuration
             String tenant = config.client.namespacePrefix.split("/")[0];
-            String cluster = config.client.namespacePrefix.split("/")[1];
+            String cluster = config.client.clusterName;
             if (!adminClient.tenants().getTenants().contains(tenant)) {
                 try {
                     adminClient.tenants().createTenant(tenant,
