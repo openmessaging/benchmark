@@ -59,7 +59,7 @@
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         boostrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
-        kafkaVersion: "2.0.0"
+        kafkaVersion: "2.3.0"
     - debug:
         msg: "zookeeper servers: {{ zookeeperServers }}\nboostrap servers: {{ boostrapServers }}"
     - name: Download Kafka package
@@ -137,7 +137,7 @@
 
     - name: Configure URL
       lineinfile:
-         dest: /opt/benchmark/driver-kafka/kafka.yaml
+         dest: '{{ item }}'
          regexp: '^  bootstrap.servers='
          line: '  bootstrap.servers={{ boostrapServers }}'
       with_items: '{{ drivers_list.stdout_lines }}'
