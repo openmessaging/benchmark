@@ -54,6 +54,7 @@
           - java
           - sysstat
           - vim
+          - chrony
     - file: path=/opt/kafka state=absent
     - file: path=/opt/kafka state=directory
     - set_fact:
@@ -117,6 +118,20 @@
         state: restarted
         daemon_reload: yes
         name: "kafka"
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
 
 - name: Setup Benchmark client
   hosts: client
