@@ -54,16 +54,17 @@
           - java
           - sysstat
           - vim
+          - chrony
     - set_fact:
-        zookeeperServers: "{{ groups['zookeeper']|map('extract', hostvars, ['ansible_default_ipv4', 'address'])|map('regex_replace', '(.*)', '\\1:2181') | join(',') }}"
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
-        pulsarVersion: "1.22.0-incubating"
+        pulsarVersion: "2.4.0"
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
-        src: "http://archive.apache.org/dist/incubator/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        src: "http://archive.apache.org/dist/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
@@ -112,7 +113,7 @@
     - command: >
         bin/pulsar initialize-cluster-metadata --cluster local
         --zookeeper localhost:2181
-        --global-zookeeper localhost:2181
+        --configuration-store localhost:2181
         --web-service-url {{ httpUrl }}
         --broker-service-url {{ serviceUrl }}
       args:
@@ -152,6 +153,21 @@
         state: restarted
         daemon_reload: yes
         name: "pulsar"
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
 
 - name: Get Maven version
   hosts: localhost
