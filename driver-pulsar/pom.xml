@@ -30,7 +30,7 @@
 
 	<artifactId>driver-pulsar</artifactId>
 	<properties>
-		<pulsar.version>2.1.1-incubating</pulsar.version>
+		<pulsar.version>2.4.1</pulsar.version>
 	</properties>
 
 	<dependencies>
