@@ -126,5 +126,15 @@
 			<version>2.9.3</version>
 		</dependency>
 	</dependencies>
+	
+	<dependencyManagement>
+		<dependencies>
+		  <dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>23.3-jre</version>
+		  </dependency>
+		</dependencies>
+	</dependencyManagement>
 
 </project>
