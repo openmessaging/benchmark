@@ -20,21 +20,19 @@ package io.openmessaging.benchmark.worker;
 
 import static java.util.stream.Collectors.toList;
 
-import io.openmessaging.benchmark.utils.RandomGenerator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.HdrHistogram.Recorder;
 import org.apache.bookkeeper.stats.Counter;
@@ -49,8 +47,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.io.BaseEncoding;
 import com.google.common.util.concurrent.RateLimiter;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -59,6 +55,7 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.utils.RandomGenerator;
 import io.openmessaging.benchmark.utils.Timer;
 import io.openmessaging.benchmark.utils.distributor.KeyDistributor;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
@@ -190,33 +187,36 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) {
         int processors = Runtime.getRuntime().availableProcessors();
 
-        final Function<BenchmarkProducer, KeyDistributor> assignKeyDistributor = (any) -> KeyDistributor
-                .build(producerWorkAssignment.keyDistributorType);
-
         rateLimiter.setRate(producerWorkAssignment.publishRate);
 
-        Lists.partition(producers, processors).stream()
-                .map(producersPerThread -> producersPerThread.stream()
-                        .collect(Collectors.toMap(Function.identity(), assignKeyDistributor)))
-                .forEach(producersWithKeyDistributor -> submitProducersToExecutor(producersWithKeyDistributor,
-                        producerWorkAssignment.payloadData));
+        Map<Integer, List<BenchmarkProducer>> processorAssignemnt = new TreeMap<>();
+
+        int processorIdx = 0;
+        for (BenchmarkProducer p : producers) {
+            processorAssignemnt.computeIfAbsent(processorIdx, x -> new ArrayList<BenchmarkProducer>()).add(p);
+
+            processorIdx = (processorIdx + 1) % processors;
+        }
+
+        processorAssignemnt.values().forEach(producers -> submitProducersToExecutor(producers,
+                KeyDistributor.build(producerWorkAssignment.keyDistributorType), producerWorkAssignment.payloadData));
     }
 
     @Override
     public void probeProducers() throws IOException {
-        producers.forEach(
-                producer -> producer.sendAsync(Optional.of("key"), new byte[10]).thenRun(() -> totalMessagesSent.increment()));
+        producers.forEach(producer -> producer.sendAsync(Optional.of("key"), new byte[10])
+                .thenRun(() -> totalMessagesSent.increment()));
     }
 
-    private void submitProducersToExecutor(Map<BenchmarkProducer, KeyDistributor> producersWithKeyDistributor,
+    private void submitProducersToExecutor(List<BenchmarkProducer> producers, KeyDistributor keyDistributor,
             byte[] payloadData) {
         executor.submit(() -> {
             try {
                 while (!testCompleted) {
-                    producersWithKeyDistributor.forEach((producer, producersKeyDistributor) -> {
+                    producers.forEach(producer -> {
                         rateLimiter.acquire();
                         final long sendTime = System.nanoTime();
-                        producer.sendAsync(Optional.ofNullable(producersKeyDistributor.next()), payloadData)
+                        producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
                                 .thenRun(() -> {
                             messagesSent.increment();
                             totalMessagesSent.increment();
