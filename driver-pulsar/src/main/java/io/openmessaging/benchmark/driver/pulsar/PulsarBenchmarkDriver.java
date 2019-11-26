@@ -73,11 +73,17 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         this.config = readConfig(configurationFile);
         log.info("Pulsar driver configuration: {}", writer.writeValueAsString(config));
 
-        ClientBuilder clientBuilder = PulsarClient.builder().ioThreads(config.client.ioThreads)
-                        .connectionsPerBroker(config.client.connectionsPerBroker).statsInterval(0, TimeUnit.SECONDS)
-                        .serviceUrl(config.client.serviceUrl);
+        ClientBuilder clientBuilder = PulsarClient.builder()
+                .ioThreads(config.client.ioThreads)
+                .connectionsPerBroker(config.client.connectionsPerBroker)
+                .statsInterval(0, TimeUnit.SECONDS)
+                .serviceUrl(config.client.serviceUrl)
+                .maxConcurrentLookupRequests(50000)
+                .maxLookupRequests(100000)
+                .listenerThreads(Runtime.getRuntime().availableProcessors());
+
         if (config.client.serviceUrl.startsWith("pulsar+ssl")) {
-            clientBuilder.enableTls(true).allowTlsInsecureConnection(config.client.tlsAllowInsecureConnection)
+            clientBuilder.allowTlsInsecureConnection(config.client.tlsAllowInsecureConnection)
                             .enableTlsHostnameVerification(config.client.tlsEnableHostnameVerification)
                             .tlsTrustCertsFilePath(config.client.tlsTrustCertsFilePath);
         }

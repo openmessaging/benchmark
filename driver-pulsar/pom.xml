@@ -42,14 +42,13 @@
 
 		<dependency>
 			<groupId>org.apache.pulsar</groupId>
-			<artifactId>pulsar-client-original</artifactId>
+			<artifactId>pulsar-client-all</artifactId>
 			<version>${pulsar.version}</version>
 		</dependency>
-
+		
 		<dependency>
-			<groupId>org.apache.pulsar</groupId>
-			<artifactId>pulsar-client-admin-original</artifactId>
-			<version>${pulsar.version}</version>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
 		</dependency>
 	</dependencies>
 </project>
