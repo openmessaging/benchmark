@@ -36,7 +36,7 @@ def create_charts(test_results):
         workload_results[result['workload']].append(result)
 
     for workload, results in workload_results.items():
-        print 'Generating charts for', workload
+        print('Generating charts for', workload)
         workload = workload.replace('/', '-')
 
         create_chart(workload, 'Publish latency 99pct',
