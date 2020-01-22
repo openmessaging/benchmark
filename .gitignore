@@ -15,6 +15,7 @@ core/*.json
 **/terraform.tfstate.backup
 **/*.lock.info
 .DS_Store
+.factorypath
 
 # IntelliJ artifacts
 .idea/
