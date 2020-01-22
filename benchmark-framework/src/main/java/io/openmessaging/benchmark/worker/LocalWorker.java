@@ -22,11 +22,7 @@ import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -208,13 +204,17 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 .thenRun(() -> totalMessagesSent.increment()));
     }
 
-    private void submitProducersToExecutor(List<BenchmarkProducer> producers, KeyDistributor keyDistributor,
-            byte[] payloadData) {
+    private void submitProducersToExecutor(List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
         executor.submit(() -> {
+            int payloadCount = payloads.size();
+            Random r = new Random();
+            byte[] firstPayload = payloads.get(0);
+
             try {
                 while (!testCompleted) {
                     producers.forEach(producer -> {
                         rateLimiter.acquire();
+                        byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
                         final long sendTime = System.nanoTime();
                         producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
                                 .thenRun(() -> {

@@ -20,9 +20,11 @@ package io.openmessaging.benchmark.worker.commands;
 
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
 
+import java.util.List;
+
 public class ProducerWorkAssignment {
     
-    public byte[] payloadData;
+    public List<byte[]> payloadData;
     
     public double publishRate;
 

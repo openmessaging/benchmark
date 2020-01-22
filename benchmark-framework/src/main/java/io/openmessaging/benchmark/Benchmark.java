@@ -46,11 +46,14 @@ public class Benchmark {
 
     static class Arguments {
 
+        @Parameter(names = {"-c", "--csv"}, description = "Print results from this directory to a csv file")
+        String resultsDir;
+
         @Parameter(names = { "-h", "--help" }, description = "Help message", help = true)
         boolean help;
 
         @Parameter(names = { "-d",
-                "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml", required = true)
+                "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml")//, required = true)
         public List<String> drivers;
 
         @Parameter(names = { "-w",
@@ -61,7 +64,7 @@ public class Benchmark {
                 "--workers-file" }, description = "Path to a YAML file containing the list of workers addresses")
         public File workersFile;
 
-        @Parameter(description = "Workloads", required = true)
+        @Parameter(description = "Workloads")//, required = true)
         public List<String> workloads;
     }
 
@@ -81,6 +84,12 @@ public class Benchmark {
         if (arguments.help) {
             jc.usage();
             System.exit(-1);
+        }
+
+        if(arguments.resultsDir != null) {
+            ResultsToCsv r = new ResultsToCsv();
+            r.writeAllResultFiles(arguments.resultsDir);
+            System.exit(0);
         }
 
         if (arguments.workers != null && arguments.workersFile != null) {

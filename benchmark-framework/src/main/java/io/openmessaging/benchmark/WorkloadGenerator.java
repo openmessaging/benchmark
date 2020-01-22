@@ -24,10 +24,12 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +102,26 @@ public class WorkloadGenerator implements AutoCloseable {
         ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
         producerWorkAssignment.keyDistributorType = workload.keyDistributor;
         producerWorkAssignment.publishRate = targetPublishRate;
-        producerWorkAssignment.payloadData = payloadReader.load(workload.payloadFile);
+        producerWorkAssignment.payloadData = new ArrayList<>();
+
+        if(workload.useRandomizedPayloads) {
+            // create messages that are part random and part zeros
+            // better for testing effects of compression
+            Random r = new Random();
+            int randomBytes = (int)(workload.messageSize * workload.randomBytesRatio);
+            int zerodBytes = workload.messageSize - randomBytes;
+            for(int i = 0; i<workload.randomizedPayloadPoolSize; i++) {
+                byte[] randArray = new byte[randomBytes];
+                r.nextBytes(randArray);
+                byte[] zerodArray = new byte[zerodBytes];
+                byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
+                producerWorkAssignment.payloadData.add(combined);
+            }
+        }
+        else {
+            producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
+        }
+
 
         log.info("----- Starting warm-up traffic ------");
 
@@ -367,6 +388,11 @@ public class WorkloadGenerator implements AutoCloseable {
         TestResult result = new TestResult();
         result.workload = workload.name;
         result.driver = driverName;
+        result.topics = workload.topics;
+        result.partitions = workload.partitionsPerTopic;
+        result.messageSize = workload.messageSize;
+        result.producersPerTopic = workload.producersPerTopic;
+        result.consumersPerTopic = workload.consumerPerSubscription;
 
         while (true) {
             try {
