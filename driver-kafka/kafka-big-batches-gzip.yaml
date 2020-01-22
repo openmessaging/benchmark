@@ -34,6 +34,8 @@ producerConfig: |
   acks=all
   linger.ms=200
   batch.size=524288
+  max.request.size=4194304
+  compression.type=gzip
 
 consumerConfig: |
   auto.offset.reset=earliest

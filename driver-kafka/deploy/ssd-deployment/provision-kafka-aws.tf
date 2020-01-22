@@ -30,6 +30,8 @@ variable "region" {}
 
 variable "ami" {}
 
+variable "az" {}
+
 variable "instance_types" {
   type = "map"
 }
@@ -42,7 +44,7 @@ variable "num_instances" {
 resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
-  tags {
+  tags = {
     Name = "Kafka-Benchmark-VPC-${random_id.hash.hex}"
   }
 }
@@ -64,6 +66,7 @@ resource "aws_subnet" "benchmark_subnet" {
   vpc_id                  = "${aws_vpc.benchmark_vpc.id}"
   cidr_block              = "10.0.0.0/24"
   map_public_ip_on_launch = true
+  availability_zone       = "${var.az}"
 }
 
 resource "aws_security_group" "benchmark_security_group" {
@@ -94,7 +97,7 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags {
+  tags = {
     Name = "Benchmark-Security-Group-${random_id.hash.hex}"
   }
 }
@@ -112,7 +115,7 @@ resource "aws_instance" "zookeeper" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["zookeeper"]}"
 
-  tags {
+  tags = {
     Name = "zk-${count.index}"
   }
 }
@@ -125,7 +128,7 @@ resource "aws_instance" "kafka" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["kafka"]}"
 
-  tags {
+  tags = {
     Name = "kafka-${count.index}"
   }
 }
@@ -138,7 +141,7 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
 
-  tags {
+  tags = {
     Name = "kafka-client-${count.index}"
   }
 }

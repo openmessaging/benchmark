@@ -18,23 +18,7 @@
 #
 
 
-name: Kafka
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
-
-# Kafka client-specific configuration
-replicationFactor: 3
-
-topicConfig: |
-  min.insync.replicas=2
-
-commonConfig: |
-  bootstrap.servers=localhost:9092
-
-producerConfig: |
-  acks=all
-  linger.ms=200
-  batch.size=524288
-
-consumerConfig: |
-  auto.offset.reset=earliest
-  enable.auto.commit=false
+workers:
+{% for worker in groups['client'] %}
+  - http://{{ hostvars[worker].private_ip }}:8080
+{% endfor %}

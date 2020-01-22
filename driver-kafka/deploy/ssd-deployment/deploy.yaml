@@ -41,6 +41,31 @@
       with_items:
         - { path: "/mnt/data-1", src: "/dev/nvme0n1" }
         - { path: "/mnt/data-2", src: "/dev/nvme1n1" }
+    - name: Increase hard file descriptor limit
+      pam_limits:
+        domain: '*'
+        limit_type: 'hard'
+        limit_item: nofile
+        value: 500000
+    - name: Increase soft file descriptor limit
+      pam_limits:
+        domain: '*'
+        limit_type: 'soft'
+        limit_item: nofile
+        value: 500000
+    - name: Enable pam_limits.so
+      lineinfile:
+        path: /etc/pam.d/login
+        insertafter: EOF
+        line: 'session required pam_limits.so'
+    - name: set vm.max_map_count
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+    - name: Reboot the machine with all defaults
+      reboot:
 
 - name: Kafka setup
   hosts: all
@@ -141,7 +166,7 @@
     - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
-        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - shell: tuned-adm profile latency-performance

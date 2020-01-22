@@ -18,10 +18,23 @@
 #
 
 
-broker.id={{ brokerId }}
+name: Kafka
+driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
-advertised.listeners=PLAINTEXT://{{ privateIp }}:9092
+# Kafka client-specific configuration
+replicationFactor: 3
 
-log.dirs=/mnt/data-1,/mnt/data-2
+topicConfig: |
+  min.insync.replicas=2
 
-zookeeper.connect={{ zookeeperServers }}
+commonConfig: |
+  bootstrap.servers=localhost:9092
+
+producerConfig: |
+  acks=all
+  linger.ms=0
+  batch.size=131072
+
+consumerConfig: |
+  auto.offset.reset=earliest
+  enable.auto.commit=false
