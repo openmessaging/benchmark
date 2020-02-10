@@ -50,7 +50,7 @@ public class Benchmark {
         boolean help;
 
         @Parameter(names = { "-d",
-                "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml", required = true)
+                "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml,mqtt/mqtt.yaml", required = true)
         public List<String> drivers;
 
         @Parameter(names = { "-w",

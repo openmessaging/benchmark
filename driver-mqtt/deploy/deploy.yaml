@@ -1,0 +1,122 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name:  Hosts addresses
+  hosts: mosquitto
+  become: false
+  tasks:
+    - debug:
+        msg: "mosquitto servers {{ item }}"
+      with_items: "{{ groups['mqtt-broker'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['mqtt-client'] }}"
+
+- name: MQTT setup
+  hosts: all
+  connection: ssh
+  become: true
+  tasks:
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - wget
+          - java
+          - sysstat
+          - vim
+          - unzip
+    - file: path=/opt/mqtt state=absent
+    - file: path=/opt/mqtt state=directory
+    - name: Download mosquitto package
+      unarchive:
+        src: https://mosquitto.org/files/binary/linux/mosquitto-0.5.3-bin-lin-x86-static.tar.gz
+        remote_src: yes
+        dest: /opt/mosquitto
+    - set_fact:
+        privateIp: "{{ hostvars[inventory_hostname]['ansible_facts']['eth0']['ipv4']['address'] }}"
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+
+- name: Setup MQTT Broker
+  hosts: mqtt-broker
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        brokerName: "{{ groups['mqtt-broker'].index(inventory_hostname) }}"
+        brokerAddr: "tcp://{{ hostvars[groups['mqtt-broker'][0]].private_ip }}:1883/"
+    - name: Set up mqtt broker
+      template:
+        src: "templates/mosquitto.conf"
+        dest: "/opt/mosquitto/mosquitto-0.5.3-bin-lin-x86-static/etc/mosquitto.conf"
+    - template:
+        src: "templates/mosquitto-broker.service"
+        dest: "/etc/systemd/system/mosquitto-broker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "mqtt-broker"
+
+- name: Setup Benchmark client
+  hosts: mqtt-client
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/benchmark state=absent
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - shell: rm -rf /opt/benchmark
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: tuned-adm profile latency-performance
+
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-mqtt/*.yaml
+      register: drivers_list
+
+    - name: Configure URL
+      lineinfile:
+         dest: /opt/benchmark/driver-mqtt/mqtt.yaml
+         regexp: '^brokerAddr: '
+         line: 'brokerAddr: {{ brokerAddr }}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx1G"'
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"

@@ -1,0 +1,14 @@
+[Unit]
+Description=mosquitto-Broker
+After=network.target
+
+[Service]
+ExecStart=/opt/mosquitto/mosquitto-0.5.3-bin-lin-x86-static/bin/mosquitto -c etc/mosquitto.conf -d
+WorkingDirectory=/opt/mosquitto/mosquitto-0.5.3-bin-lin-x86-static/
+RestartSec=1s
+Restart=on-failure
+Type=simple
+LimitNOFILE=300000
+
+[Install]
+WantedBy=multi-user.target

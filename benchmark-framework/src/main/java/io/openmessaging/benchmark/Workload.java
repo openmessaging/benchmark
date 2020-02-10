@@ -27,7 +27,7 @@ public class Workload {
     public int topics;
 
     /** Number of partitions each topic will contain */
-    public int partitionsPerTopic;
+    public int partitionsPerTopic = 1;
 
     public KeyDistributorType keyDistributor = KeyDistributorType.NO_KEY;
 
@@ -35,7 +35,7 @@ public class Workload {
 
     public String payloadFile;
 
-    public int subscriptionsPerTopic;
+    public int subscriptionsPerTopic = 1;
 
     public int producersPerTopic;
 
