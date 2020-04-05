@@ -29,6 +29,11 @@ spec:
     - name: {{ .Release.Name }}-driver
       imagePullPolicy: {{ .Values.imagePullPolicy }}
       image: {{ .Values.image }}
+      resources:
+        limits:
+          memory: {{ .Values.driverMemoryLimit }}
+        requests:
+          memory: {{ .Values.driverMemoryRequest }}
       env:
         - name: NUM_WORKERS
           value: "{{ .Values.numWorkers }}"
