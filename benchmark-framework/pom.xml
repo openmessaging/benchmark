@@ -31,7 +31,7 @@
 	<artifactId>benchmark-framework</artifactId>
 
 	<properties>
-		<log4j.version>2.9.1</log4j.version>
+		<log4j.version>2.13.3</log4j.version>
 	</properties>
 
 	<dependencies>
