@@ -108,7 +108,7 @@ public class WorkerHandler {
         ProducerWorkAssignment producerWorkAssignment = mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
 
         log.info("Start load publish-rate: {} msg/s -- payload-size: {}", producerWorkAssignment.publishRate,
-                producerWorkAssignment.payloadData.length);
+                producerWorkAssignment.payloadData.get(0).length);
 
         localWorker.startLoad(producerWorkAssignment);
     }

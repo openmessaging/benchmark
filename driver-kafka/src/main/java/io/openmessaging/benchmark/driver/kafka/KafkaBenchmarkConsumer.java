@@ -18,6 +18,7 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -52,7 +53,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
         this.consumerTask = this.executor.submit(() -> {
             while (!closing) {
                 try {
-                    ConsumerRecords<String, byte[]> records = consumer.poll(100);
+                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(100));
 
                     Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                     for (ConsumerRecord<String, byte[]> record : records) {
