@@ -1,0 +1,24 @@
+[Unit]
+Description=Pravega Dashboard
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStartPre=/usr/bin/docker pull grafana/grafana:latest
+
+# TODO: set random password
+
+ExecStart=\
+/bin/bash -c "\
+docker start --attach systemd_pravega_dashboard || \
+docker run --restart=always --name=systemd_pravega_dashboard -p 3000:3000 \
+--network=host \
+-e GF_SECURITY_ADMIN_PASSWORD=pravega \
+grafana/grafana:latest \
+"
+
+ExecStop=/usr/bin/docker stop systemd_pravega_dashboard
+ExecReload=/usr/bin/docker restart systemd_pravega_dashboard
+
+[Install]
+WantedBy=multi-user.target

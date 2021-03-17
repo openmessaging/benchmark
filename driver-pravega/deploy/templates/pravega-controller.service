@@ -1,0 +1,15 @@
+[Unit]
+Description=Pravega Controller
+After=network.target
+
+[Service]
+ExecStart=/opt/pravega/bin/pravega-controller
+WorkingDirectory=/opt/pravega
+RestartSec=15s
+Restart=on-failure
+Type=simple
+LimitNOFILE=300000
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target
