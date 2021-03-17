@@ -1,0 +1,20 @@
+[Unit]
+Description=InfluxDB
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStartPre=/usr/bin/docker pull claudiofahey/pravega-influxdb:02618a3
+
+ExecStart=\
+/bin/bash -c "\
+docker start --attach systemd_influxdb || \
+docker run --restart=always --name=systemd_influxdb -p 8086:8086 \
+claudiofahey/pravega-influxdb:02618a3 \
+"
+
+ExecStop=/usr/bin/docker stop systemd_influxdb
+ExecReload=/usr/bin/docker restart systemd_influxdb
+ 
+[Install]
+WantedBy=multi-user.target

@@ -32,6 +32,7 @@
 		<module>benchmark-framework</module>
 		<module>driver-api</module>
 
+		<module>driver-pravega</module>
 		<module>driver-pulsar</module>
 		<module>driver-kafka</module>
 		<module>driver-rabbitmq</module>
