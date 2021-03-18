@@ -30,8 +30,8 @@
     <artifactId>driver-pravega</artifactId>
 
     <properties>
-        <!--Specify pravegaVersion in properties or use default: 0.8.0-->
-        <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.8.0-2508.30406cf-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
+        <!--Specify pravegaVersion in properties or use default: 0.9.0-->
+        <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
         <pravegaVersion>0.9.0</pravegaVersion>
     </properties>
 
@@ -62,7 +62,7 @@
         <dependency>
             <groupId>io.pravega</groupId>
             <artifactId>pravega-keycloak-client</artifactId>
-            <version>0.8.0</version>
+            <version>0.9.0</version>
         </dependency>
 
         <dependency>
@@ -73,8 +73,14 @@
 
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-tcnative-boringssl-static</artifactId>
-            <version>2.0.17.Final</version>
+            <artifactId>netty-common</artifactId>
+            <version>4.1.50.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.50.Final</version>
         </dependency>
 
         <dependency>
