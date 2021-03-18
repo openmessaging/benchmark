@@ -359,11 +359,6 @@
       args:
         chdir: /opt/bookkeeper
       when: groups['bookkeeper'][0] == inventory_hostname
-      #- name: Format BookKeeper local filesystem data
-      #command: >
-      #  bin/bookkeeper shell bookieformat -nonInteractive --force -deleteCookie
-      #args:
-      #  chdir: /opt/bookkeeper
     - name: Start iostat
       shell: nohup iostat -xdct 1 10000 >> /opt/iostat.log &
       args:
@@ -468,7 +463,7 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms16G -Xmx16G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
