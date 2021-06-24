@@ -94,6 +94,12 @@
 
 		<dependency>
 			<groupId>${project.groupId}</groupId>
+			<artifactId>driver-pravega</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-pulsar</artifactId>
 			<version>${project.version}</version>
 		</dependency>
