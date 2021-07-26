@@ -31,10 +31,13 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
+import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
+import javax.jms.MessageConsumer;
+import javax.jms.Session;
 import javax.jms.Topic;
 
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -55,6 +58,7 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
 
 
     private ConnectionFactory connectionFactory;
+    private Connection connection;
     private JMSConfig config;
     private String destination;
     private URLClassLoader classLoader;
@@ -74,11 +78,11 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         try
         {
             connectionFactory = doWithClassloader(this::buildConnectionFactory);
+            connection = connectionFactory.createConnection();
+            connection.start();
         } catch (Throwable t) {
             log.error("Cannot initialize connectionFactoryClassName = "+config.connectionFactoryClassName, t);
             throw new IOException(t);
-        } finally {
-            Thread.currentThread().setContextClassLoader(previous);
         }
     }
 
@@ -132,9 +136,9 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return doWithClassloader( ()  -> {
-            JMSContext context = connectionFactory.createContext();
-            Destination destination = context.createTopic(topic);
-            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(connectionFactory.createContext(), destination));
+            Session session = connection.createSession(Session.AUTO_ACKNOWLEDGE);
+            Destination destination = session.createTopic(topic);
+            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination));
         });
     }
 
@@ -142,10 +146,10 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
         return doWithClassloader( ()  -> {
-            JMSContext context = connectionFactory.createContext();
-            Topic destination = context.createTopic(topic);
-            JMSConsumer durableConsumer = context.createSharedDurableConsumer(destination, subscriptionName, config.messageSelector);
-            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(context, durableConsumer, consumerCallback));
+            Session session = connection.createSession(Session.AUTO_ACKNOWLEDGE);
+            Topic destination = session.createTopic(topic);
+            MessageConsumer durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, config.messageSelector);
+            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(session, durableConsumer, consumerCallback));
         });
     }
 

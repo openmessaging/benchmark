@@ -21,50 +21,63 @@ package io.openmessaging.benchmark.driver.jms;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import javax.jms.BytesMessage;
 import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.JMSContext;
+import javax.jms.JMSException;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Session;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class JMSBenchmarkProducer implements BenchmarkProducer {
 
-    private final JMSContext context;
+    private final Session session;
     private final Destination destination;
+    private final MessageProducer producer;
 
-    public JMSBenchmarkProducer(JMSContext context, Destination destination) {
-        this.context = context;
+    public JMSBenchmarkProducer(Session session, Destination destination) throws Exception {
+        this.session = session;
         this.destination = destination;
+        this.producer = session.createProducer(destination);
     }
 
     @Override
     public void close() throws Exception {
-        context.close();
+        session.close();
     }
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        JMSProducer producer = context.createProducer();
-
-        if (key.isPresent()) {
-            producer.setProperty("JMSGroupId", key.get());
-        }
         CompletableFuture<Void> res = new CompletableFuture<>();
-        producer.setAsync(new CompletionListener() {
-            @Override
-            public void onCompletion(Message message)
+        try
+        {
+            BytesMessage bytesMessage = session.createBytesMessage();
+            bytesMessage.writeBytes(payload);
+            if (key.isPresent())
             {
-                res.complete(null);
+                bytesMessage.setStringProperty("JMSGroupId", key.get());
             }
+            producer.send(bytesMessage, new CompletionListener()
+            {
+                @Override
+                public void onCompletion(Message message)
+                {
+                    res.complete(null);
+                }
 
-            @Override
-            public void onException(Message message, Exception exception)
-            {
-                res.completeExceptionally(exception);
-            }
-        }).send(destination, payload);
+                @Override
+                public void onException(Message message, Exception exception)
+                {
+                    res.completeExceptionally(exception);
+                }
+            });
+        } catch (JMSException err) {
+            res.completeExceptionally(err);
+        }
         return res;
     }
 

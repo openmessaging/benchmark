@@ -21,6 +21,8 @@ package io.openmessaging.benchmark.driver.jms;
 import javax.jms.BytesMessage;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
+import javax.jms.MessageConsumer;
+import javax.jms.Session;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,12 +32,12 @@ import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
-    private final JMSContext context;
-    private final JMSConsumer consumer;
+    private final Session session;
+    private final MessageConsumer consumer;
 
-    public JMSBenchmarkConsumer(JMSContext context, JMSConsumer consumer, ConsumerCallback callback) {
+    public JMSBenchmarkConsumer(Session session, MessageConsumer consumer, ConsumerCallback callback) throws Exception {
         this.consumer = consumer;
-        this.context = context;
+        this.session = session;
         consumer.setMessageListener(message -> {
             try {
                 byte[] payload = message.getBody(byte[].class);
@@ -51,7 +53,7 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
     @Override
     public void close() throws Exception {
         consumer.close();
-        context.close();
+        session.close();
     }
 
     private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkConsumer.class);
