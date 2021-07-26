@@ -28,4 +28,6 @@ public class JMSConfig
     public String topicNamePrefix = "";
 
     public String messageSelector;
+
+    public String jmsDriverJar = "";
 }

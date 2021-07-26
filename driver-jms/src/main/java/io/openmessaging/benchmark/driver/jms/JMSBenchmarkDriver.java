@@ -21,7 +21,10 @@ package io.openmessaging.benchmark.driver.jms;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
 import javax.jms.ConnectionFactory;
@@ -50,18 +53,42 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     private ConnectionFactory connectionFactory;
     private JMSConfig config;
     private String destination;
+    private URLClassLoader classLoader;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
-        log.info("Pulsar driver configuration: {}", writer.writeValueAsString(config));
+        log.info("JMS driver configuration: {}", writer.writeValueAsString(config));
+        String jmsDriverPath = this.config.jmsDriverJar;
+        File file = new File(jmsDriverPath);
+        log.info("Loading JMS Driver from {}", file.getAbsolutePath());
+        if (!file.isFile()) {
+            throw new IOException("Cannot find file " + file.getAbsolutePath());
+        }
+        ClassLoader previous = Thread.currentThread().getContextClassLoader();
+        classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()}, previous);
         try
         {
-            this.connectionFactory = (ConnectionFactory) Class.forName(config.connectionFactoryClassName, true, Thread.currentThread().getContextClassLoader())
-                    .getConstructor(String.class).newInstance(config.connectionFactoryConfigurationParam);
+            connectionFactory = doWithClassloader(() -> (ConnectionFactory) Class.forName(config.connectionFactoryClassName, true, classLoader)
+                    .getConstructor(String.class).newInstance(config.connectionFactoryConfigurationParam));
         } catch (Throwable t) {
             log.error("Cannot initialize connectionFactoryClassName = "+config.connectionFactoryClassName, t);
             throw new IOException(t);
+        } finally {
+            Thread.currentThread().setContextClassLoader(previous);
+        }
+    }
+
+    private <V> V doWithClassloader(Callable<V> t) {
+        ClassLoader previous = Thread.currentThread().getContextClassLoader();
+        try
+        {
+            Thread.currentThread().setContextClassLoader(classLoader);
+            return t.call();
+        } catch (Exception err) {
+            throw new RuntimeException(err);
+        } finally {
+            Thread.currentThread().setContextClassLoader(previous);
         }
     }
 
@@ -77,20 +104,22 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        JMSContext context = connectionFactory.createContext();
-        Destination destination = context.createTopic(topic);
-        return CompletableFuture.completedFuture(new JMSBenchmarkProducer(connectionFactory.createContext(), destination));
+        return doWithClassloader( ()  -> {
+            JMSContext context = connectionFactory.createContext();
+            Destination destination = context.createTopic(topic);
+            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(connectionFactory.createContext(), destination));
+        });
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
-        JMSContext context = connectionFactory.createContext();
-        Topic destination = context.createTopic(topic);
-        JMSConsumer durableConsumer = context.createDurableConsumer(destination, subscriptionName, config.messageSelector, false);
-        return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(context, durableConsumer));
-
-
+        return doWithClassloader( ()  -> {
+            JMSContext context = connectionFactory.createContext();
+            Topic destination = context.createTopic(topic);
+            JMSConsumer durableConsumer = context.createSharedDurableConsumer(destination, subscriptionName, config.messageSelector);
+            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(context, durableConsumer, consumerCallback));
+        });
     }
 
     @Override
@@ -98,7 +127,14 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         log.info("Shutting down JMS benchmark driver");
 
         if (connectionFactory != null && (connectionFactory instanceof AutoCloseable)) {
-            ((AutoCloseable) connectionFactory).close();
+            doWithClassloader( ()  -> {
+                ((AutoCloseable) connectionFactory).close();
+                return null;
+            });
+        }
+
+        if (classLoader != null) {
+            classLoader.close();
         }
 
         log.info("JMS benchmark driver successfully shut down");

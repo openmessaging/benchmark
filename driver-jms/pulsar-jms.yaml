@@ -17,8 +17,9 @@
 # under the License.
 #
 
-name: Pulsar
+name: JMS
 driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
 
-connectionFactoryClassName: com.datastax.oss.pulsar.PulsarConnectionFactory
-connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "webServoceUrl": "http://localhost:8080"}'
+connectionFactoryClassName: com.datastax.oss.pulsar.jms.PulsarConnectionFactory
+connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "webServiceUrl": "http://localhost:8080", "producerConfig":{"blockIfQueueFull":"true"}}'
+jmsDriverJar: "/Users/enrico.olivelli/.m2/repository/com/datastax/oss/pulsar-jms-all/1.2.0-SNAPSHOT/pulsar-jms-all-1.2.0-SNAPSHOT.jar"

@@ -18,19 +18,34 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
+import javax.jms.BytesMessage;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
     private final JMSContext context;
     private final JMSConsumer consumer;
 
-    public JMSBenchmarkConsumer(JMSContext context, JMSConsumer consumer) {
+    public JMSBenchmarkConsumer(JMSContext context, JMSConsumer consumer, ConsumerCallback callback) {
         this.consumer = consumer;
         this.context = context;
+        consumer.setMessageListener(message -> {
+            try {
+                byte[] payload = message.getBody(byte[].class);
+                callback.messageReceived(payload, message.getJMSTimestamp());
+
+                message.acknowledge();
+            } catch (Exception e) {
+                log.warn("Failed to acknowledge message", e);
+            }
+        });
     }
 
     @Override
@@ -39,4 +54,5 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
         context.close();
     }
 
+    private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkConsumer.class);
 }

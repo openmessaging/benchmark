@@ -39,11 +39,11 @@
 			<artifactId>driver-api</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-                <dependency>
-                        <groupId>jakarta.jms</groupId>
-                        <artifactId>jakarta.jms-api</artifactId>
-                        <version>${jms.version}</version>
-                </dependency>
+		<dependency>
+			<groupId>jakarta.jms</groupId>
+			<artifactId>jakarta.jms-api</artifactId>
+			<version>${jms.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
