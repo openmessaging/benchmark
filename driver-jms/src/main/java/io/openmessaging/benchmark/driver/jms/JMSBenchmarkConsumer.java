@@ -19,6 +19,7 @@
 package io.openmessaging.benchmark.driver.jms;
 
 import javax.jms.BytesMessage;
+import javax.jms.Connection;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
 import javax.jms.MessageConsumer;
@@ -32,10 +33,14 @@ import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
+    private final Connection connection;
     private final Session session;
     private final MessageConsumer consumer;
 
-    public JMSBenchmarkConsumer(Session session, MessageConsumer consumer, ConsumerCallback callback) throws Exception {
+    public JMSBenchmarkConsumer(Connection connection,
+            Session session,
+            MessageConsumer consumer, ConsumerCallback callback) throws Exception {
+        this.connection = connection;
         this.consumer = consumer;
         this.session = session;
         consumer.setMessageListener(message -> {
@@ -48,12 +53,15 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
                 log.warn("Failed to acknowledge message", e);
             }
         });
+        // Kafka JMS client does not allow you to add a listener after the connection has been started
+        connection.start();
     }
 
     @Override
     public void close() throws Exception {
         consumer.close();
         session.close();
+        connection.close();
     }
 
     private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkConsumer.class);

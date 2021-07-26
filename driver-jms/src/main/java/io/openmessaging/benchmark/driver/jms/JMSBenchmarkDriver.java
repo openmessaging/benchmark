@@ -136,7 +136,7 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return doWithClassloader( ()  -> {
-            Session session = connection.createSession(Session.AUTO_ACKNOWLEDGE);
+            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Destination destination = session.createTopic(topic);
             return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination));
         });
@@ -146,10 +146,16 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
         return doWithClassloader( ()  -> {
-            Session session = connection.createSession(Session.AUTO_ACKNOWLEDGE);
+            Connection connection = connectionFactory.createConnection();
+            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Topic destination = session.createTopic(topic);
-            MessageConsumer durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, config.messageSelector);
-            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(session, durableConsumer, consumerCallback));
+            MessageConsumer durableConsumer;
+            try {
+                durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, config.messageSelector);
+            } catch (NoSuchMethodError | AbstractMethodError kafka) {
+                durableConsumer = session.createConsumer(destination);
+            }
+            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, durableConsumer, consumerCallback));
         });
     }
 
