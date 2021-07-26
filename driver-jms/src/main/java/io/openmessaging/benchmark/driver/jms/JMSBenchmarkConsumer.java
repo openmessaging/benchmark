@@ -22,6 +22,7 @@ import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
+import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.Session;
 
@@ -45,11 +46,11 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
         this.session = session;
         consumer.setMessageListener(message -> {
             try {
-                byte[] payload = message.getBody(byte[].class);
+                byte[] payload = getPayload(message);
                 callback.messageReceived(payload, message.getJMSTimestamp());
 
                 message.acknowledge();
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 log.warn("Failed to acknowledge message", e);
             }
         });
@@ -65,4 +66,15 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkConsumer.class);
+
+    private static byte[] getPayload(Message message) throws Exception {
+        try  {
+            return message.getBody(byte[].class);
+        } catch (AbstractMethodError kafka) {
+            BytesMessage msg = (BytesMessage) message;
+            byte[] res = new byte[(int) msg.getBodyLength()];
+            msg.readBytes(res);
+            return res;
+        }
+    }
 }

@@ -61,20 +61,27 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
             {
                 bytesMessage.setStringProperty("JMSGroupId", key.get());
             }
-            producer.send(bytesMessage, new CompletionListener()
+            try
             {
-                @Override
-                public void onCompletion(Message message)
+                producer.send(bytesMessage, new CompletionListener()
                 {
-                    res.complete(null);
-                }
+                    @Override
+                    public void onCompletion(Message message)
+                    {
+                        res.complete(null);
+                    }
 
-                @Override
-                public void onException(Message message, Exception exception)
-                {
-                    res.completeExceptionally(exception);
-                }
-            });
+                    @Override
+                    public void onException(Message message, Exception exception)
+                    {
+                        res.completeExceptionally(exception);
+                    }
+                });
+            } catch (AbstractMethodError kafka) {
+                // Kafka drivers do not support async send
+                producer.send(bytesMessage);
+                res.complete(null);
+            }
         } catch (JMSException err) {
             res.completeExceptionally(err);
         }
