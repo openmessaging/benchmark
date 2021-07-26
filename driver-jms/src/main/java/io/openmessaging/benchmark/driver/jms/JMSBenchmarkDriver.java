@@ -21,8 +21,12 @@ package io.openmessaging.benchmark.driver.jms;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -69,14 +73,37 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()}, previous);
         try
         {
-            connectionFactory = doWithClassloader(() -> (ConnectionFactory) Class.forName(config.connectionFactoryClassName, true, classLoader)
-                    .getConstructor(String.class).newInstance(config.connectionFactoryConfigurationParam));
+            connectionFactory = doWithClassloader(this::buildConnectionFactory);
         } catch (Throwable t) {
             log.error("Cannot initialize connectionFactoryClassName = "+config.connectionFactoryClassName, t);
             throw new IOException(t);
         } finally {
             Thread.currentThread().setContextClassLoader(previous);
         }
+    }
+
+    private ConnectionFactory buildConnectionFactory() throws Exception {
+        Class<ConnectionFactory> clazz = (Class<ConnectionFactory>) Class.forName(config.connectionFactoryClassName, true, classLoader);
+
+        // constructor with a String (like DataStax Pulsar JMS)
+        try {
+            Constructor<ConnectionFactory> constructor = clazz.getConstructor(String.class);
+            return constructor.newInstance(config.connectionFactoryConfigurationParam);
+        } catch (NoSuchMethodException ignore) {
+        }
+
+        // constructor with Properties (like Confluent Kafka)
+        try {
+            Constructor<ConnectionFactory> constructor = clazz.getConstructor(Properties.class);
+            Properties props = new Properties();
+            ObjectMapper mapper = new ObjectMapper();
+            Map map = mapper.readValue(new StringReader(config.connectionFactoryConfigurationParam), Map.class);
+            props.putAll(map);
+            return constructor.newInstance(props);
+        } catch (NoSuchMethodException ignore) {
+        }
+
+        throw new RuntimeException("Cannot find a suitable constructor for " + clazz);
     }
 
     private <V> V doWithClassloader(Callable<V> t) {
