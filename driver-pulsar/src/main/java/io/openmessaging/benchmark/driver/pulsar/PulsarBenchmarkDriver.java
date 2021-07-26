@@ -120,7 +120,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             if (!adminClient.tenants().getTenants().contains(tenant)) {
                 try {
                     adminClient.tenants().createTenant(tenant,
-                                    new TenantInfo(Collections.emptySet(), Sets.newHashSet(cluster)));
+                                    TenantInfo.builder().adminRoles(Collections.emptySet()).allowedClusters(Sets.newHashSet(cluster)).build());
                 } catch (ConflictException e) {
                     // Ignore. This can happen when multiple workers are initializing at the same time
                 }
@@ -136,7 +136,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                             new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
 
             adminClient.namespaces().setBacklogQuota(namespace,
-                            new BacklogQuota(Long.MAX_VALUE, RetentionPolicy.producer_exception));
+                    BacklogQuota.builder().limitSize(Long.MAX_VALUE).retentionPolicy(RetentionPolicy.producer_exception).build());
             adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
             log.info("Applied persistence configuration for namespace {}/{}/{}: {}", tenant, cluster, namespace,
                             writer.writeValueAsString(p));

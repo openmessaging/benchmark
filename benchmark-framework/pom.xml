@@ -174,7 +174,7 @@
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
-			<version>9.4.35.v20201120</version>
+			<version>9.4.42.v20210604</version>
 		</dependency>
 
 		<dependency>
@@ -187,8 +187,9 @@
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-util</artifactId>
-			<version>9.4.8.v20171121</version>
+			<version>9.4.42.v20210604</version>
 		</dependency>
+
 	</dependencies>
 
 	<build>
