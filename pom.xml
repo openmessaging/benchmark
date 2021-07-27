@@ -41,6 +41,7 @@
 		<module>driver-nats</module>
 		<module>driver-nats-streaming</module>
 		<module>driver-nsq</module>
+		<module>driver-jms</module>
 		<module>package</module>
 		<module>docker</module>
 	</modules>

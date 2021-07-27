@@ -1,0 +1,46 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: JMS
+driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
+
+connectionFactoryClassName: com.datastax.oss.pulsar.jms.PulsarConnectionFactory
+connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "webServiceUrl": "http://localhost:8080", "producerConfig":{"blockIfQueueFull":"true"}}'
+use20api: true
+
+# JMS API do not provide functions to admin the cluster
+# So we are going to delegate the initialization to another specific Driver
+delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
+
+# Pulsar specific configuration
+# the code that handles this configuration is the PulsarBenchmarkDriver
+client:
+  serviceUrl: pulsar://localhost:6650
+  httpUrl: http://localhost:8080
+  clusterName: local
+  namespacePrefix: public/default
+  topicType: persistent
+  persistence:
+    ensembleSize: 1
+    writeQuorum: 1
+    ackQuorum: 1
+    deduplicationEnabled: false
+producer:
+  blockIfQueueFull: true
+  pendingQueueSize: 10000
