@@ -22,4 +22,29 @@ driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
 
 connectionFactoryClassName: io.confluent.kafka.jms.KafkaConnectionFactory
 connectionFactoryConfigurationParam: '{"bootstrap.servers":"localhost:9092","client.id":"benchmarks","allow.out.of.order.acknowledge":"true","group.id":"jmsconsumergroup1"}'
+
+# Kafka JMS do not support JMS 2.0, so we can use only 1.1 API
 use20api: false
+
+# JMS API do not provide functions to admin the cluster
+# So we are going to delegate the initialization to another specific Driver
+delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+
+# Pulsar specific configuration
+# the code that handles this configuration is the KafkaBenchmarkDriver
+replicationFactor: 1
+
+topicConfig: |
+  min.insync.replicas=1
+
+commonConfig: |
+  bootstrap.servers=localhost:9092
+
+producerConfig: |
+  acks=all
+  linger.ms=200
+  batch.size=524288
+
+consumerConfig: |
+  auto.offset.reset=earliest
+  enable.auto.commit=false
