@@ -54,11 +54,29 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     private ConnectionFactory connectionFactory;
     private Connection connection;
     private JMSConfig config;
+    private BenchmarkDriver delegateForAdminOperations;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
         log.info("JMS driver configuration: {}", writer.writeValueAsString(config));
+
+        if (config.delegateForAdminOperationsClassName != null && !config.delegateForAdminOperationsClassName.isEmpty()) {
+            log.info("Initializing Driver for Admin operations {}", config.delegateForAdminOperationsClassName);
+            try
+            {
+                delegateForAdminOperations = (BenchmarkDriver) Class.forName(config.delegateForAdminOperationsClassName,
+                        true, JMSBenchmarkDriver.class.getClassLoader())
+                        .getConstructor().newInstance();
+                delegateForAdminOperations.initialize(configurationFile, statsLogger);
+            }
+            catch (Throwable e)
+            {
+                log.error("Cannot created delegate driver " + config.delegateForAdminOperationsClassName, e);
+                throw new IOException(e);
+            }
+        }
+
         try
         {
             connectionFactory = buildConnectionFactory();
@@ -96,11 +114,17 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public String getTopicNamePrefix() {
+        if (delegateForAdminOperations != null) {
+            return delegateForAdminOperations.getTopicNamePrefix();
+        }
         return config.topicNamePrefix;
     }
 
     @Override
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
+        if (delegateForAdminOperations != null) {
+            return delegateForAdminOperations.createTopic(topic, partitions);
+        }
         return CompletableFuture.completedFuture(null);
     }
 
@@ -151,6 +175,10 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         }
 
         log.info("JMS benchmark driver successfully shut down");
+
+        if (delegateForAdminOperations != null) {
+            delegateForAdminOperations.close();
+        }
     }
 
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())

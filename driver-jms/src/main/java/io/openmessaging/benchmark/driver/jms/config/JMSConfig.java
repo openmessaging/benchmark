@@ -30,4 +30,6 @@ public class JMSConfig
     public String messageSelector;
 
     public boolean use20api;
+
+    public String delegateForAdminOperationsClassName;
 }
