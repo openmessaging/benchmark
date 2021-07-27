@@ -41,3 +41,6 @@ client:
     writeQuorum: 1
     ackQuorum: 1
     deduplicationEnabled: false
+producer:
+  blockIfQueueFull: true
+  pendingQueueSize: 10000
