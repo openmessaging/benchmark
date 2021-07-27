@@ -18,6 +18,8 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -31,6 +33,7 @@ import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
+import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,12 +45,13 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     private final Destination destination;
     private final MessageProducer producer;
     private final boolean useAsyncSend;
-
-    public JMSBenchmarkProducer(Session session, Destination destination, boolean useAsyncSend) throws Exception {
+    private final List<JMSConfig.AddProperty> properties;
+    public JMSBenchmarkProducer(Session session, Destination destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
         this.session = session;
         this.destination = destination;
         this.useAsyncSend = useAsyncSend;
         this.producer = session.createProducer(destination);
+        this.properties = properties != null ? properties : Collections.emptyList();
     }
 
     @Override
@@ -64,7 +68,11 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
             bytesMessage.writeBytes(payload);
             if (key.isPresent())
             {
-                bytesMessage.setStringProperty("JMSGroupId", key.get());
+                // a behaviour similar to https://activemq.apache.org/message-groups
+                bytesMessage.setStringProperty("JMSXGroupID", key.get());
+            }
+            for (JMSConfig.AddProperty prop : properties) {
+                bytesMessage.setStringProperty(prop.name, prop.value);
             }
             if (useAsyncSend) {
                 producer.send(bytesMessage, new CompletionListener()

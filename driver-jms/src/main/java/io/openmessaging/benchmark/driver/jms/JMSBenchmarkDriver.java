@@ -134,7 +134,7 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         {
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Destination destination = session.createTopic(topic);
-            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api));
+            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
         } catch (Exception err) {
             CompletableFuture<BenchmarkProducer> res = new CompletableFuture<>();
             res.completeExceptionally(err);
