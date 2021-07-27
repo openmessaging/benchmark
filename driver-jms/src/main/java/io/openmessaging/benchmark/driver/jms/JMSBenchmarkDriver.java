@@ -23,19 +23,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
-import javax.jms.JMSConsumer;
-import javax.jms.JMSContext;
 import javax.jms.MessageConsumer;
 import javax.jms.Session;
 import javax.jms.Topic;
@@ -56,28 +51,17 @@ import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 
 public class JMSBenchmarkDriver implements BenchmarkDriver {
 
-
     private ConnectionFactory connectionFactory;
     private Connection connection;
     private JMSConfig config;
-    private String destination;
-    private URLClassLoader classLoader;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
         log.info("JMS driver configuration: {}", writer.writeValueAsString(config));
-        String jmsDriverPath = this.config.jmsDriverJar;
-        File file = new File(jmsDriverPath);
-        log.info("Loading JMS Driver from {}", file.getAbsolutePath());
-        if (!file.isFile()) {
-            throw new IOException("Cannot find file " + file.getAbsolutePath());
-        }
-        ClassLoader previous = Thread.currentThread().getContextClassLoader();
-        classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()}, previous);
         try
         {
-            connectionFactory = doWithClassloader(this::buildConnectionFactory);
+            connectionFactory = buildConnectionFactory();
             connection = connectionFactory.createConnection();
             connection.start();
         } catch (Throwable t) {
@@ -87,7 +71,7 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     }
 
     private ConnectionFactory buildConnectionFactory() throws Exception {
-        Class<ConnectionFactory> clazz = (Class<ConnectionFactory>) Class.forName(config.connectionFactoryClassName, true, classLoader);
+        Class<ConnectionFactory> clazz = (Class<ConnectionFactory>) Class.forName(config.connectionFactoryClassName, true, Thread.currentThread().getContextClassLoader());
 
         // constructor with a String (like DataStax Pulsar JMS)
         try {
@@ -110,19 +94,6 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         throw new RuntimeException("Cannot find a suitable constructor for " + clazz);
     }
 
-    private <V> V doWithClassloader(Callable<V> t) {
-        ClassLoader previous = Thread.currentThread().getContextClassLoader();
-        try
-        {
-            Thread.currentThread().setContextClassLoader(classLoader);
-            return t.call();
-        } catch (Exception err) {
-            throw new RuntimeException(err);
-        } finally {
-            Thread.currentThread().setContextClassLoader(previous);
-        }
-    }
-
     @Override
     public String getTopicNamePrefix() {
         return config.topicNamePrefix;
@@ -135,28 +106,40 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        return doWithClassloader( ()  -> {
+        try
+        {
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Destination destination = session.createTopic(topic);
-            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination));
-        });
+            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api));
+        } catch (Exception err) {
+            CompletableFuture<BenchmarkProducer> res = new CompletableFuture<>();
+            res.completeExceptionally(err);
+            return res;
+        }
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
-        return doWithClassloader( ()  -> {
+        try {
+            String selector = config.messageSelector != null && !config.messageSelector.isEmpty() ? config.messageSelector : null;
             Connection connection = connectionFactory.createConnection();
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Topic destination = session.createTopic(topic);
             MessageConsumer durableConsumer;
-            try {
-                durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, config.messageSelector);
-            } catch (NoSuchMethodError | AbstractMethodError kafka) {
-                durableConsumer = session.createConsumer(destination);
+            if (config.use20api) {
+                durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, selector);
+            } else {
+                // in JMS 1.0 we should use session.createDurableSubscriber()
+                // but it is not supported in Confluent Kafka JMS client
+                durableConsumer = session.createConsumer(destination, selector);
             }
-            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, durableConsumer, consumerCallback));
-        });
+            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, durableConsumer, consumerCallback, config.use20api));
+        } catch (Exception err) {
+            CompletableFuture<BenchmarkConsumer> res = new CompletableFuture<>();
+            res.completeExceptionally(err);
+            return res;
+        }
     }
 
     @Override
@@ -164,14 +147,7 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         log.info("Shutting down JMS benchmark driver");
 
         if (connectionFactory != null && (connectionFactory instanceof AutoCloseable)) {
-            doWithClassloader( ()  -> {
-                ((AutoCloseable) connectionFactory).close();
-                return null;
-            });
-        }
-
-        if (classLoader != null) {
-            classLoader.close();
+            ((AutoCloseable) connectionFactory).close();
         }
 
         log.info("JMS benchmark driver successfully shut down");
@@ -187,5 +163,5 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     private static final Random random = new Random();
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
-    private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkProducer.class);
+    private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkDriver.class);
 }

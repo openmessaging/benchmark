@@ -21,5 +21,5 @@ name: JMS
 driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
 
 connectionFactoryClassName: io.confluent.kafka.jms.KafkaConnectionFactory
-connectionFactoryConfigurationParam: '{"bootstrap.servers":"localhost:9092","client.id":"benchmarks","aconfluent.license":"RLKGWF3S8Q7LA5N4AEQ74VOWYD3VL297","group.id":"jmsconsumergroup1"}'
-jmsDriverJar: "/Users/enrico.olivelli/dev/kafka-jms/target/kafka-jms-client-fat-6.2.0.jar"
+connectionFactoryConfigurationParam: '{"bootstrap.servers":"localhost:9092","client.id":"benchmarks","allow.out.of.order.acknowledge":"true","group.id":"jmsconsumergroup1"}'
+use20api: false

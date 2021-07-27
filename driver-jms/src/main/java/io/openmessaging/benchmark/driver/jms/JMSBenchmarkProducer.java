@@ -31,6 +31,9 @@ import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class JMSBenchmarkProducer implements BenchmarkProducer {
@@ -38,10 +41,12 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     private final Session session;
     private final Destination destination;
     private final MessageProducer producer;
+    private final boolean useAsyncSend;
 
-    public JMSBenchmarkProducer(Session session, Destination destination) throws Exception {
+    public JMSBenchmarkProducer(Session session, Destination destination, boolean useAsyncSend) throws Exception {
         this.session = session;
         this.destination = destination;
+        this.useAsyncSend = useAsyncSend;
         this.producer = session.createProducer(destination);
     }
 
@@ -61,8 +66,7 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
             {
                 bytesMessage.setStringProperty("JMSGroupId", key.get());
             }
-            try
-            {
+            if (useAsyncSend) {
                 producer.send(bytesMessage, new CompletionListener()
                 {
                     @Override
@@ -74,11 +78,11 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                     @Override
                     public void onException(Message message, Exception exception)
                     {
+                        log.info("send completed with error", exception);
                         res.completeExceptionally(exception);
                     }
                 });
-            } catch (AbstractMethodError kafka) {
-                // Kafka drivers do not support async send
+            } else {
                 producer.send(bytesMessage);
                 res.complete(null);
             }
@@ -87,5 +91,5 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
         }
         return res;
     }
-
+    private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkProducer.class);
 }

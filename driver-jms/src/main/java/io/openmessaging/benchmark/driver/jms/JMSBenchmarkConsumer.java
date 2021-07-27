@@ -37,13 +37,16 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
     private final Connection connection;
     private final Session session;
     private final MessageConsumer consumer;
+    private final boolean useGetBody;
 
     public JMSBenchmarkConsumer(Connection connection,
             Session session,
-            MessageConsumer consumer, ConsumerCallback callback) throws Exception {
+            MessageConsumer consumer, ConsumerCallback callback,
+            boolean useGetBody) throws Exception {
         this.connection = connection;
         this.consumer = consumer;
         this.session = session;
+        this.useGetBody = useGetBody;
         consumer.setMessageListener(message -> {
             try {
                 byte[] payload = getPayload(message);
@@ -67,10 +70,10 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkConsumer.class);
 
-    private static byte[] getPayload(Message message) throws Exception {
-        try  {
+    private byte[] getPayload(Message message) throws Exception {
+        if (useGetBody) {
             return message.getBody(byte[].class);
-        } catch (AbstractMethodError kafka) {
+        } else {
             BytesMessage msg = (BytesMessage) message;
             byte[] res = new byte[(int) msg.getBodyLength()];
             msg.readBytes(res);

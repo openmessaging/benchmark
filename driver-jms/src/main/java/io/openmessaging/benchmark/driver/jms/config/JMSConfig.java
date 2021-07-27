@@ -29,5 +29,5 @@ public class JMSConfig
 
     public String messageSelector;
 
-    public String jmsDriverJar = "";
+    public boolean use20api;
 }
