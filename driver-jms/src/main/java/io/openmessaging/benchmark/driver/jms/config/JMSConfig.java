@@ -36,6 +36,8 @@ public class JMSConfig
 
     public boolean use20api;
 
+    public boolean sendWithTransactions = false;
+
     public String delegateForAdminOperationsClassName;
 
     public static class AddProperty {

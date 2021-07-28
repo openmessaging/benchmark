@@ -18,52 +18,43 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
-import javax.jms.BytesMessage;
-import javax.jms.CompletionListener;
-import javax.jms.Destination;
-import javax.jms.JMSContext;
-import javax.jms.JMSException;
-import javax.jms.JMSProducer;
-import javax.jms.Message;
-import javax.jms.MessageProducer;
-import javax.jms.Session;
-
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import javax.jms.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
-public class JMSBenchmarkProducer implements BenchmarkProducer {
+public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
 
-    private final Session session;
-    private final Destination destination;
-    private final MessageProducer producer;
+    private final String destination;
     private final boolean useAsyncSend;
+    private final Connection connection;
     private final List<JMSConfig.AddProperty> properties;
-    public JMSBenchmarkProducer(Session session, Destination destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
-        this.session = session;
+    public JMSBenchmarkTransactionProducer(Connection connection, String destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
         this.destination = destination;
         this.useAsyncSend = useAsyncSend;
-        this.producer = session.createProducer(destination);
+        this.connection = connection;
         this.properties = properties != null ? properties : Collections.emptyList();
     }
 
     @Override
-    public void close() throws Exception {
-        session.close();
+    public void close() {
     }
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        CompletableFuture<Void> res = new CompletableFuture<>();
         try
         {
+            // start a new Session every time, we cannot share the same Session
+            // among the Producers because we want to have control over the commit operation
+            Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
+            MessageProducer producer = session.createProducer(session.createTopic(destination));
             BytesMessage bytesMessage = session.createBytesMessage();
             bytesMessage.writeBytes(payload);
             if (key.isPresent())
@@ -75,6 +66,7 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                 bytesMessage.setStringProperty(prop.name, prop.value);
             }
             if (useAsyncSend) {
+                CompletableFuture<Void> res = new CompletableFuture<>();
                 producer.send(bytesMessage, new CompletionListener()
                 {
                     @Override
@@ -90,14 +82,49 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                         res.completeExceptionally(exception);
                     }
                 });
+                return res.whenCompleteAsync((msg, error) -> {
+                    if (error == null) {
+                        // you cannot close the producer and session inside the CompletionListener
+                        try {
+                            session.commit();
+                        } catch (JMSException err) {
+                            throw new CompletionException(err);
+                        }
+                    }
+                    ensureClosed(producer, session);;
+                });
             } else {
-                producer.send(bytesMessage);
-                res.complete(null);
+
+                try {
+                    producer.send(bytesMessage);
+                    session.commit();
+                    CompletableFuture<Void> res = new CompletableFuture<>();
+                    res.complete(null);
+                    return res;
+                } finally {
+                    ensureClosed(producer, session);
+                }
             }
         } catch (JMSException err) {
+            CompletableFuture<Void> res = new CompletableFuture<>();
             res.completeExceptionally(err);
+            return res;
         }
-        return res;
+
     }
-    private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkProducer.class);
+
+    private void ensureClosed(MessageProducer producer, Session session)  {
+        try {
+            producer.close();
+        } catch (Throwable err) {
+            log.error("Error closing producer {}", err.toString());
+        }
+        try {
+            session.close();
+        } catch (Throwable err) {
+            log.error("Error closing session {}", err.toString());
+        }
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkTransactionProducer.class);
 }
