@@ -33,11 +33,11 @@ variable "ami" {}
 variable "az" {}
 
 variable "instance_types" {
-  type = map(string)
+  type = "map"
 }
 
 variable "num_instances" {
-  type = map(string)
+  type = "map"
 }
 
 # Create a VPC to launch our instances into
