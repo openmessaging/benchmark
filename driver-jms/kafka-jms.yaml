@@ -30,7 +30,7 @@ use20api: false
 # So we are going to delegate the initialization to another specific Driver
 delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
-# Pulsar specific configuration
+# Kafka specific configuration
 # the code that handles this configuration is the KafkaBenchmarkDriver
 replicationFactor: 1
 
