@@ -64,18 +64,6 @@
 	<build>
 		<plugins>
 			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.3.2</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-					<encoding>UTF-8</encoding>
-					<showDeprecation>true</showDeprecation>
-					<showWarnings>true</showWarnings>
-					<optimize>true</optimize>
-				</configuration>
-			</plugin>
-			<plugin>
 				<groupId>com.mycila</groupId>
 				<artifactId>license-maven-plugin</artifactId>
 				<version>3.0</version>
@@ -138,4 +126,57 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<profiles>
+		<profile>
+			<id>modern-java-compile</id>
+			<activation>
+				<jdk>[9,)</jdk>
+			</activation>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-compiler-plugin</artifactId>
+							<version>3.8.1</version>
+							<configuration>
+								<source>8</source>
+								<target>8</target>
+								<release>8</release>
+								<encoding>UTF-8</encoding>
+								<showDeprecation>true</showDeprecation>
+								<showWarnings>true</showWarnings>
+								<optimize>true</optimize>
+							</configuration>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+			</build>
+		</profile>
+		<profile>
+			<id>jdk-8-compile</id>
+			<activation>
+				<jdk>[,8]</jdk>
+			</activation>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-compiler-plugin</artifactId>
+							<version>3.8.1</version>
+							<configuration>
+								<source>8</source>
+								<target>8</target>
+								<encoding>UTF-8</encoding>
+								<showDeprecation>true</showDeprecation>
+								<showWarnings>true</showWarnings>
+								<optimize>true</optimize>
+							</configuration>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+			</build>
+		</profile>
+	</profiles>
 </project>
