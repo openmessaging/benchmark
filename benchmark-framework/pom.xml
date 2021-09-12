@@ -147,6 +147,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>driver-redis</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
 			<groupId>org.apache.bookkeeper.stats</groupId>
 			<artifactId>bookkeeper-stats-api</artifactId>
 			<version>${bookkeeper.version}</version>
