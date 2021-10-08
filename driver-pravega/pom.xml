@@ -30,9 +30,9 @@
     <artifactId>driver-pravega</artifactId>
 
     <properties>
-        <!--Specify pravegaVersion in properties or use default: 0.9.0-->
+        <!--Specify pravegaVersion in properties or use default: 0.10.0-->
         <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
-        <pravegaVersion>0.9.0</pravegaVersion>
+        <pravegaVersion>0.10.0</pravegaVersion>
     </properties>
 
     <repositories>
@@ -68,19 +68,20 @@
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-all</artifactId>
-            <version>1.24.2</version>
+            <version>1.36.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.perfmark</groupId>
+            <artifactId>perfmark-api</artifactId>
+            <version>0.23.0</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-common</artifactId>
-            <version>4.1.50.Final</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-buffer</artifactId>
-            <version>4.1.50.Final</version>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.65.Final</version>
         </dependency>
 
         <dependency>

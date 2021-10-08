@@ -18,9 +18,9 @@
 #
 
 ---
-pravegaVersion: "0.9.0"
+pravegaVersion: "0.10.0"
 zookeeperVersion: "3.5.5"
-bookkeeperVersion: "4.11.1"
+bookkeeperVersion: "4.14.2"
 prometheusVersion: "2.2.1"
 pravegaContainersPerSegmentStore: 4
 benchmark_version: "0.0.1-SNAPSHOT"
