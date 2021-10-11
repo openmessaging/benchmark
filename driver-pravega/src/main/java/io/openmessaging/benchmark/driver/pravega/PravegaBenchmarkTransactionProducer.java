@@ -67,8 +67,9 @@ public class PravegaBenchmarkTransactionProducer implements BenchmarkProducer {
                 transaction = transactionWriter.beginTxn();
             }
             if (this.probeRequested(key)) { // Populate probe transaction with the sufficient amount of events.
-                for (int i = 0; i < this.eventsPerTransaction; i++) {
+                while (eventCount < this.eventsPerTransaction) {
                     transaction.writeEvent(key.get(), ByteBuffer.wrap(payload));
+                    eventCount++;
                 }
             }
             if (includeTimestampInEvent) {
