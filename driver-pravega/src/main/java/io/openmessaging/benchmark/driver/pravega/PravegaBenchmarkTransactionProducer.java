@@ -66,6 +66,11 @@ public class PravegaBenchmarkTransactionProducer implements BenchmarkProducer {
             if (transaction == null) {
                 transaction = transactionWriter.beginTxn();
             }
+            if (this.probeRequested(key)) { // Populate probe transaction with the sufficient amount of events.
+                for (int i = 0; i < this.eventsPerTransaction; i++) {
+                    transaction.writeEvent(key.get(), ByteBuffer.wrap(payload));
+                }
+            }
             if (includeTimestampInEvent) {
                 if (timestampAndPayload == null || timestampAndPayload.limit() != Long.BYTES + payload.length) {
                     timestampAndPayload = ByteBuffer.allocate(Long.BYTES + payload.length);
@@ -106,5 +111,15 @@ public class PravegaBenchmarkTransactionProducer implements BenchmarkProducer {
             }
         }
         transactionWriter.close();
+    }
+
+    /** Indicates if producer probe had been requested by OpenMessaging benchmark.
+     * @param key - key provided to the probe.
+     * @return true in case requested event had been created in context of producer probe.
+     */
+    private final boolean probeRequested(Optional<String> key) {
+        // For the expected key, see: LocalWorker.probeProducers()
+        final String expectedKey = "key";
+        return key.isPresent() && key.get().equals(expectedKey);
     }
 }
