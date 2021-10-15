@@ -1,10 +1,10 @@
 provider "aws" {
   region  = "${var.region}"
-  version = "~> 2.7"
+  version = "3.50"
 }
 
 provider "random" {
-  version = "~> 2.1"
+  version = "3.1"
 }
 
 variable "public_key_path" {
