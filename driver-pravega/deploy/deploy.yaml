@@ -494,4 +494,4 @@
         -e NUM_EVENTS="500" \
         -e pravega_client_auth_method= \
         -e pravega_client_auth_loadDynamic= \
-        claudiofahey/pravega-tester:0.7.0
+        pravega/pravega-tester:0.9.1
