@@ -130,11 +130,14 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        try
-        {
-            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-            Destination destination = session.createTopic(topic);
-            return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
+        try {
+            if (config.sendWithTransactions) {
+                return CompletableFuture.completedFuture(new JMSBenchmarkTransactionProducer(connection, topic, config.use20api, config.properties));
+            } else {
+                Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+                Destination destination = session.createTopic(topic);
+                return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
+            }
         } catch (Exception err) {
             CompletableFuture<BenchmarkProducer> res = new CompletableFuture<>();
             res.completeExceptionally(err);
