@@ -18,7 +18,7 @@
 #
 
 ---
-pravegaVersion: "0.10.0"
+pravegaVersion: "0.10.1"
 zookeeperVersion: "3.5.5"
 bookkeeperVersion: "4.14.2"
 prometheusVersion: "2.2.1"

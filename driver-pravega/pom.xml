@@ -32,7 +32,7 @@
     <properties>
         <!--Specify pravegaVersion in properties or use default: 0.10.0-->
         <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
-        <pravegaVersion>0.10.0</pravegaVersion>
+        <pravegaVersion>0.10.1</pravegaVersion>
     </properties>
 
     <repositories>
