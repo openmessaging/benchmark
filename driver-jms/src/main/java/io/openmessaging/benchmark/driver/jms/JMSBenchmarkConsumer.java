@@ -63,8 +63,12 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
     @Override
     public void close() throws Exception {
-        consumer.close();
-        session.close();
+	// This exception may be thrown: java.util.concurrent.ExecutionException: java.util.ConcurrentModificationException: KafkaConsumer is not safe for multi-threaded access
+	// See https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/session#close--
+	// and https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/connection#close--
+	// It should be enough to just close the connection.
+        // consumer.close();
+        // session.close();
         connection.close();
     }
 
