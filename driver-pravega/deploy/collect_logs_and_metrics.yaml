@@ -1,0 +1,164 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Get current time
+  hosts: ["localhost"]
+  tags: ["always"]
+  become: false
+  tasks:
+    - set_fact:
+        output_dir: "../../data/pravega_logs/pravega_logs_{{ ansible_date_time.iso8601_basic_short }}"
+
+- name: Set output directory
+  hosts: ["!tier2"]
+  tags: ["always"]
+  become: false
+  gather_facts: no
+  tasks:
+    - set_fact:
+        output_dir: "{{ hostvars['localhost'].output_dir }}"
+
+- name: Download Controller logs
+  hosts: ["controller"]
+  tags: ["controller"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - name: Compress logs
+      shell: "journalctl -u pravega-controller | gzip > /tmp/pravega-controller-{{ private_ip }}.log.gz"
+    - name: Download logs
+      fetch:
+        src: "/tmp/pravega-controller-{{ private_ip }}.log.gz"
+        dest: "{{ output_dir }}/pravega-controller-{{ private_ip }}.log.gz"
+        flat: yes
+
+- name: Download Segment Store logs
+  hosts: ["segmentstore"]
+  tags: ["segmentstore"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - name: Compress logs
+      shell: "journalctl -u pravega-segmentstore | gzip > /tmp/pravega-segmentstore-{{ private_ip }}.log.gz"
+    - name: Download logs
+      fetch:
+        src: "/tmp/pravega-segmentstore-{{ private_ip }}.log.gz"
+        dest: "{{ output_dir }}/pravega-segmentstore-{{ private_ip }}.log.gz"
+        flat: yes
+
+- name: Download BookKeeper logs
+  hosts: ["bookkeeper"]
+  tags: ["bookkeeper"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - name: Compress logs
+      shell: "journalctl -u bookkeeper | gzip > /tmp/bookkeeper-{{ private_ip }}.log.gz"
+    - name: Download logs
+      fetch:
+        src: "/tmp/bookkeeper-{{ private_ip }}.log.gz"
+        dest: "{{ output_dir }}/bookkeeper-{{ private_ip }}.log.gz"
+        flat: yes
+
+- name: Download ZooKeeper logs
+  hosts: ["zookeeper"]
+  tags: ["zookeeper"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - name: Compress logs
+      shell: "journalctl -u zookeeper | gzip > /tmp/zookeeper-{{ private_ip }}.log.gz"
+    - name: Download logs
+      fetch:
+        src: "/tmp/zookeeper-{{ private_ip }}.log.gz"
+        dest: "{{ output_dir }}/zookeeper-{{ private_ip }}.log.gz"
+        flat: yes
+
+- name: Download Benchmark logs
+  hosts: ["client"]
+  tags: ["client"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - name: Compress logs
+      shell: "journalctl -u benchmark-worker | gzip > /tmp/benchmark-worker-{{ private_ip }}.log.gz"
+    - name: Download logs
+      fetch:
+        src: "/tmp/benchmark-worker-{{ private_ip }}.log.gz"
+        dest: "{{ output_dir }}/benchmark-worker-{{ private_ip }}.log.gz"
+        flat: yes
+
+- name: Download Prometheus Metrics
+  hosts: ["metrics"]
+  tags: ["prometheus"]
+  connection: ssh
+  become: true
+  tasks:
+    - systemd:
+        name: "prometheus"
+        state: stopped
+    - name: Compress database
+      shell: "tar -czvf /tmp/prometheus.tgz /opt/prometheus"
+    - name: Download database
+      fetch:
+        src: "/tmp/prometheus.tgz"
+        dest: "{{ output_dir }}/prometheus.tgz"
+        flat: yes
+    - systemd:
+        name: "prometheus"
+        state: started
+
+- name: Download InfluxDB Metrics
+  hosts: ["metrics"]
+  tags: ["influxdb"]
+  connection: ssh
+  become: true
+  tasks:
+    - name: Backup InfluxDB database
+      shell: >
+        docker exec systemd_influxdb sh -c \
+        "rm -rf /tmp/backup && influxd backup -portable /tmp/backup && tar -czvf /tmp/influxdb.tgz -C /tmp/backup ." && \
+        docker cp systemd_influxdb:/tmp/influxdb.tgz /tmp/influxdb.tgz
+    - name: Download InfluxDB database
+      fetch:
+        src: "/tmp/influxdb.tgz"
+        dest: "{{ output_dir }}/influxdb.tgz"
+        flat: yes
+
+- name: Show output directory
+  hosts: ["localhost"]
+  tags: ["always"]
+  become: false
+  tasks:
+    - shell: "ls -lhR {{ output_dir }}"
+      register: output_dir_ls
+    - debug:
+        var: output_dir_ls.stdout_lines
+    - debug:
+        msg: "Logs and metrics saved to: {{ output_dir }}"

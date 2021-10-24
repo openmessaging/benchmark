@@ -10,6 +10,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 * [Apache Pulsar](https://pulsar.apache.org)
 * [NATS Streaming](https://nats.io/)
 * [Redis](https://redis.com/)
+* [Pravega](https://pravega.io/)
 
 > More details could be found at the [official documentation](http://openmessaging.cloud/docs/benchmarks/).
 

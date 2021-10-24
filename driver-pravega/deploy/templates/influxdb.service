@@ -1,0 +1,20 @@
+[Unit]
+Description=InfluxDB
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStartPre=/usr/bin/docker pull influxdb:1.8.10
+
+ExecStart=\
+/bin/bash -c "\
+docker start --attach systemd_influxdb || \
+docker run --restart=always --name=systemd_influxdb -p 8086:8086 \
+influxdb:1.8.10 \
+"
+
+ExecStop=/usr/bin/docker stop systemd_influxdb
+ExecReload=/usr/bin/docker restart systemd_influxdb
+ 
+[Install]
+WantedBy=multi-user.target

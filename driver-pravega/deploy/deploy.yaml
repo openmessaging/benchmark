@@ -1,0 +1,497 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Get common facts
+  hosts: ["!tier2"]
+  tags: ["always"]
+  connection: ssh
+  become: true
+  vars_files:
+    - vars.yaml
+  tasks:
+    - set_fact:
+        pravegaVersion: "{{ pravegaVersion }}"
+        zookeeperVersion: "{{ zookeeperVersion }}"
+        bookkeeperVersion: "{{ bookkeeperVersion }}"
+        prometheusVersion: "{{ prometheusVersion }}"
+        pravegaContainersPerSegmentStore: "{{ pravegaContainersPerSegmentStore }}"
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        controllerUrl: "tcp://{{ hostvars[groups['controller'][0]].private_ip }}:9090"
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        segmentStoreCount: "{{ groups['bookkeeper'] | length }}"
+        influxDBURI: "http://{{ hostvars[groups['metrics'][0]].private_ip }}:8086"
+    - set_fact:
+        # Change below to use a published release of Pravega or a local build.
+        pravegaSrc: "https://github.com/pravega/pravega/releases/download/v{{ pravegaVersion }}/pravega-{{ pravegaVersion }}.tgz"
+        pravegaSrcRemote: yes
+        # Here is the file path for local Pravega build
+        #pravegaSrc: "../../../pravega/build/distributions/pravega-{{ pravegaVersion }}.tgz"
+        #pravegaSrcRemote: no
+        pravegaContainerCount: "{{ segmentStoreCount|int * pravegaContainersPerSegmentStore|int }}"
+
+- name: Uninstall
+  hosts: ["!tier2"]
+  tags: ["uninstall"]
+  connection: ssh
+  become: true
+  tasks:
+    - name: Stop services
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+      with_items:
+        - "benchmark-worker"
+        - "pravega-segmentstore"
+        - "pravega-controller"
+        - "bookkeeper"
+        - "zookeeper"
+    - name: Delete files on hosts
+      shell: "rm -rf /opt/pravega /opt/zookeeper /opt/bookkeeper /opt/benchmark /mnt/journal/* /mnt/storage/*"
+      args:
+        warn: no
+    - name: Delete files on tier 2
+      shell: "rm -rf /mnt/tier2/*"
+      when: groups['bookkeeper'][0] == inventory_hostname
+      args:
+        warn: no
+    - name: Unmount tier 2
+      shell: "umount /mnt/tier2"
+      ignore_errors: yes
+
+- name: Common installation
+  hosts: ["!tier2"]
+  tags: ["controller", "segmentstore", "bookkeeper", "zookeeper", "client", "metrics"]
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set performance profile
+      command: tuned-adm profile latency-performance
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - chrony
+        - java-11
+        - nano
+        - nc
+        - nfs-utils
+        - screen
+        - sysstat
+        - unzip
+        - vim
+        - wget
+        - zip
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+
+#- name: Install nmon
+#  hosts: ["!tier2"]
+#  tags: ["nmon"]
+#  connection: ssh
+#  become: true
+#  tasks:
+#    - name: Download nmon
+#      unarchive:
+#        src: "http://sourceforge.net/projects/nmon/files/nmon16j.tar.gz"
+#        remote_src: yes
+#        dest: /tmp
+#    - command: cp /tmp/nmon_AMD64_ubuntu1804 /usr/local/bin/nmon
+#    - command: chmod a+x /usr/local/bin/nmon
+
+- name: Metrics installation
+  hosts: ["metrics"]
+  tags: ["metrics"]
+  connection: ssh
+  become: true
+  tasks:
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - docker
+    - systemd:
+        state: started
+        name: "docker"
+        enabled: yes
+
+- name: Prometheus installation
+  hosts: ["metrics"]
+  tags: ["prometheus"]
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/prometheus state=absent
+    - file: path=/opt/prometheus state=directory
+    - name: Download Prometheus Binary Package
+      unarchive:
+        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+        remote_src: yes
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+    - file:
+        path: "/opt/prometheus/data"
+        state: directory
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - systemd:
+        name: "prometheus"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: InfluxDB installation
+  hosts: ["metrics"]
+  tags: ["influxdb"]
+  connection: ssh
+  become: true
+  tasks:
+    - template:
+        src: "templates/influxdb.service"
+        dest: "/etc/systemd/system/influxdb.service"
+    - systemd:
+        name: "influxdb"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Pravega Dashboard installation
+  hosts: ["metrics"]
+  tags: ["dashboard"]
+  connection: ssh
+  become: true
+  tasks:
+    - template:
+        src: "templates/pravega-dashboard.service"
+        dest: "/etc/systemd/system/pravega-dashboard.service"
+    - systemd:
+        name: "pravega-dashboard"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Prometheus Node Exporter
+  hosts: ["!tier2"]
+  tags: ["node-exporter"]
+  roles:
+    - cloudalchemy.node-exporter
+
+- name: ZooKeeper setup
+  hosts: zookeeper
+  tags: ["zookeeper"]
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/zookeeper state=absent
+    - file: path=/opt/zookeeper state=directory
+    - name: Download ZooKeeper binary package
+      unarchive:
+        src: "http://archive.apache.org/dist/zookeeper/zookeeper-{{ zookeeperVersion }}/apache-zookeeper-{{ zookeeperVersion }}-bin.tar.gz"
+        remote_src: yes
+        dest: /opt/zookeeper
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
+        max_heap_memory: "512m"
+        max_direct_memory: "512m"
+    - file:
+        path: "/opt/zookeeper/{{ item }}"
+        state: directory
+      with_items:
+        - data/zookeeper
+    - template:
+        src: "templates/zoo.cfg"
+        dest: "/opt/zookeeper/conf/zoo.cfg"
+    - template:
+        src: templates/myid
+        dest: "/opt/zookeeper/data/zookeeper/myid"
+    - template:
+        src: "templates/zookeeper.service"
+        dest: "/etc/systemd/system/zookeeper.service"
+    - systemd:
+        name: "zookeeper"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+    - name: Initialize ZooKeeper
+      shell: >
+        bin/zkServer-initialize.sh init --force --myid={{ zid }} && \
+        (until bin/zkCli.sh ls / ; do sleep 1; done)
+      args:
+        chdir: /opt/zookeeper
+      when: groups['zookeeper'][0] == inventory_hostname
+    - name: Create Zookeeper nodes
+      shell: >
+        bin/zkCli.sh create {{ item }}
+      args:
+        chdir: /opt/zookeeper
+      when: groups['zookeeper'][0] == inventory_hostname
+      with_items:
+        - /pravega
+        - /pravega/pravega-cluster
+        - /pravega/pravega-cluster/bookkeeper
+
+- name: Pravega common installation
+  hosts: ["controller", "bookkeeper"]
+  tags: ["controller", "segmentstore"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+    - file: path=/opt/pravega state=absent
+    - file: path=/opt/pravega state=directory
+    - name: Download Pravega binary package
+      unarchive:
+        src: "{{ pravegaSrc }}"
+        remote_src: "{{ pravegaSrcRemote }}"
+        dest: /opt/pravega
+        extra_opts: ["--strip-components=1"]
+    - template:
+        src: "templates/config.properties"
+        dest: "/opt/pravega/conf/config.properties"
+    - template:
+        src: "templates/controller.config.properties"
+        dest: "/opt/pravega/conf/controller.config.properties"
+    - template:
+        src: "templates/logback.xml"
+        dest: "/opt/pravega/conf/logback.xml"
+
+- name: Pravega Controller installation
+  hosts: controller
+  tags: ["controller"]
+  connection: ssh
+  become: true
+  tasks:
+    - template:
+        src: "templates/pravega-controller.service"
+        dest: "/etc/systemd/system/pravega-controller.service"
+    - systemd:
+        name: "pravega-controller"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Format and mount disks for BookKeeper hosts
+  hosts: bookkeeper
+  tags: ["bookkeeper"]
+  connection: ssh
+  become: true
+  tasks:
+    - systemd:
+        name: "bookkeeper"
+        state: stopped
+      ignore_errors: yes
+    - name: Unmount disks
+      mount:
+        path: "{{ item.path }}"
+        state: unmounted
+      with_items:
+        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
+    - name: Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
+        force: yes
+      with_items:
+        - '/dev/nvme0n1'
+        - '/dev/nvme1n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
+
+- name: BookKeeper setup
+  hosts: bookkeeper
+  tags: ["bookkeeper"]
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/bookkeeper state=absent
+    - file: path=/opt/bookkeeper state=directory
+    - name: Download BookKeeper binary package
+      unarchive:
+        src: "https://archive.apache.org/dist/bookkeeper/bookkeeper-{{ bookkeeperVersion }}/bookkeeper-all-{{ bookkeeperVersion }}-bin.tar.gz"
+        remote_src: yes
+        dest: /opt/bookkeeper
+        extra_opts: ["--strip-components=1"]
+    - template:
+        src: "templates/bk_server.conf"
+        dest: "/opt/bookkeeper/conf/bk_server.conf"
+    - template:
+        src: "templates/bkenv.sh"
+        dest: "/opt/bookkeeper/conf/bkenv.sh"
+    - template:
+        src: "templates/common.sh"
+        dest: "/opt/bookkeeper/bin/common.sh"
+    - name: Format BookKeeper metadata in Zookeeper
+      command: >
+        bin/bookkeeper shell metaformat -nonInteractive --force
+      args:
+        chdir: /opt/bookkeeper
+      when: groups['bookkeeper'][0] == inventory_hostname
+    - name: Start iostat
+      shell: nohup iostat -xdct 1 10000 >> /opt/iostat.log &
+      args:
+        executable: /bin/bash
+    - name: Install bookkeeper systemd service
+      template:
+        src: "templates/bookkeeper.service"
+        dest: "/etc/systemd/system/bookkeeper.service"
+    - systemd:
+        name: "bookkeeper"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Pravega Segment Store installation
+  hosts: bookkeeper
+  tags: ["segmentstore"]
+  connection: ssh
+  become: true
+  tasks:
+    - name: Mount EFS volume for Pravega tier 2 storage
+      mount:
+        path: "/mnt/tier2"
+        src: "{{ groups['tier2'][0] }}:/"
+        fstype: nfs4
+        opts: nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport
+        state: mounted
+    - template:
+        src: "templates/pravega-segmentstore.service"
+        dest: "/etc/systemd/system/pravega-segmentstore.service"
+    - systemd:
+        name: "pravega-segmentstore"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Chrony setup
+  hosts: client
+  tags: ["client"]
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        name: "chronyd"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Get Benchmark version
+  hosts: localhost
+  tags: ["client"]
+  become: false
+  tasks:
+     - shell: >
+          cat ../../pom.xml | xmllint --format - \
+            | sed "s/xmlns=\".*\"//g" | xmllint --stream --pattern /project/version --debug - \
+            | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
+       register: maven_version
+     - set_fact:
+         benchmark_version: "{{ maven_version.stdout }}"
+     - debug:
+         msg: "benchmark_version: {{ benchmark_version }}"
+
+- name: Benchmark client setup
+  hosts: client
+  tags: ["client"]
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        benchmark_version: "{{ hostvars['localhost'].benchmark_version }}"
+    - debug:
+        msg: "benchmark_version: {{ benchmark_version }}"
+    - file: path=/opt/benchmark state=absent
+    - file: path=/opt/benchmark state=directory
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt/benchmark
+        extra_opts: ["--strip-components=1"]
+    - file:
+        dest: /opt/benchmark
+        mode: u=rwX,g=rwX,o=rwX
+        recurse: yes
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-pravega/*.yaml
+      register: drivers_list
+    - name: Configure service URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  controllerURI\: '
+         line: '  controllerURI: {{ controllerUrl }}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        name: "benchmark-worker"
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+- name: Run Pravega Tester
+  hosts: ["metrics"]
+  tags: ["pravega-tester"]
+  connection: ssh
+  become: true
+  tasks:
+    - shell: >
+        docker run --rm \
+        -e PRAVEGA_CONTROLLER_URI={{ controllerUrl }} \
+        -e PRAVEGA_SCOPE="examples" \
+        -e CREATE_SCOPE="true" \
+        -e DELETE_STREAM="false" \
+        -e NUM_EVENTS="500" \
+        -e pravega_client_auth_method= \
+        -e pravega_client_auth_loadDynamic= \
+        pravega/pravega-tester:0.9.1
