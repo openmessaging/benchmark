@@ -18,8 +18,18 @@
 #
 
 
-name: Kafka-exactly-once
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+name: JMS
+driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
+
+connectionFactoryClassName: io.confluent.kafka.jms.KafkaConnectionFactory
+connectionFactoryConfigurationParam: '{"bootstrap.servers":"localhost:9092","client.id":"benchmarks","allow.out.of.order.acknowledge":"true","group.id":"jmsconsumergroup1"}'
+
+# Kafka JMS do not support JMS 2.0, so we can use only 1.1 API
+use20api: false
+
+# JMS API do not provide functions to admin the cluster
+# So we are going to delegate the initialization to another specific Driver
+delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
 replicationFactor: 3
@@ -27,18 +37,21 @@ reset: true
 
 topicConfig: |
   min.insync.replicas=2
+  flush.messages=1
+  flush.ms=0
 
 commonConfig: |
   bootstrap.servers=localhost:9092
+  request.timeout.ms=120000
 
 producerConfig: |
-  enable.idempotence=true
-  max.in.flight.requests.per.connection=1
-  retries=2147483647
   acks=all
   linger.ms=1
   batch.size=131072
 
 consumerConfig: |
+  group.id=benchGroup
   auto.offset.reset=earliest
   enable.auto.commit=false
+  max.partition.fetch.bytes=1048576
+

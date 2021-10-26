@@ -18,7 +18,7 @@
 #
 
 
-name: Kafka-exactly-once
+name: Kafka
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
@@ -27,14 +27,13 @@ reset: true
 
 topicConfig: |
   min.insync.replicas=2
+  flush.messages=1
+  flush.ms=0
 
 commonConfig: |
   bootstrap.servers=localhost:9092
 
 producerConfig: |
-  enable.idempotence=true
-  max.in.flight.requests.per.connection=1
-  retries=2147483647
   acks=all
   linger.ms=1
   batch.size=131072

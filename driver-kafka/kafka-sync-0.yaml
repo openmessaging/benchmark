@@ -17,8 +17,9 @@
 # under the License.
 #
 
-
-name: Kafka-exactly-once
+# Kafka driver profile that is configuring to sync all
+# published messages to disk to achieve durability
+name: Kafka
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
@@ -27,15 +28,14 @@ reset: true
 
 topicConfig: |
   min.insync.replicas=2
+  flush.messages=1
+  flush.ms=0
 
 commonConfig: |
   bootstrap.servers=localhost:9092
 
 producerConfig: |
-  enable.idempotence=true
-  max.in.flight.requests.per.connection=1
-  retries=2147483647
-  acks=all
+  acks=0
   linger.ms=1
   batch.size=131072
 
