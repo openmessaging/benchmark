@@ -193,7 +193,7 @@
          line: '  bootstrap.servers={{ boostrapServers }}'
       with_items: '{{ jms_drivers_list.stdout_lines }}'
 
-    - name: Configure JMS Connection Handlers
+    - name: Configure JMS Connection Factory
       ansible.builtin.replace:
          dest: '{{ item }}'
          regexp: 'localhost\:9092'

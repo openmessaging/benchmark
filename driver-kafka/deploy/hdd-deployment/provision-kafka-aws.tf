@@ -120,13 +120,14 @@ resource "aws_instance" "zookeeper" {
   }
 }
 
-resource "aws_instance" "kafka" {
+resource "aws_spot_instance_request" "kafka" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["kafka"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["kafka"]}"
+  wait_for_fulfillment   = true
 
   ephemeral_block_device {
     device_name = "/dev/sdb"
@@ -143,13 +144,14 @@ resource "aws_instance" "kafka" {
   }
 }
 
-resource "aws_instance" "client" {
+resource "aws_spot_instance_request" "client" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["client"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
+  wait_for_fulfillment   = true
 
   tags = {
     Name = "kafka-client-${count.index}"
@@ -157,5 +159,5 @@ resource "aws_instance" "client" {
 }
 
 output "client_ssh_host" {
-  value = "${aws_instance.client.0.public_ip}"
+  value = "${aws_spot_instance_request.client.0.public_ip}"
 }

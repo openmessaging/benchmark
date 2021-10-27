@@ -9,12 +9,6 @@ instance_types = {
   "client"    = "c5.4xlarge"
 }
 
-spot_price = {
-  "kafka"     = "1.248"
-  "zookeeper" = "0.023"
-  "client"    = "0.680"
-}
-
 num_instances = {
   "client"    = 4
   "kafka"     = 3
