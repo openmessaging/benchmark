@@ -50,8 +50,7 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
         consumer.setMessageListener(message -> {
             try {
                 byte[] payload = getPayload(message);
-                callback.messageReceived(payload, message.getJMSTimestamp());
-
+                callback.messageReceived(payload, message.getLongProperty("E2EStartMillis"));
                 message.acknowledge();
             } catch (Throwable e) {
                 log.warn("Failed to acknowledge message", e);
