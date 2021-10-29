@@ -76,10 +76,11 @@ public class WorkloadGenerator implements AutoCloseable {
         List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
         log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
 
-        createConsumers(topics);
         createProducers(topics);
+        createConsumers(topics);
 
-        ensureTopicsAreReady();
+	// Current versions of Kafka don't need to ensure topics are ready. Just create the producers first
+        // ensureTopicsAreReady();
 
         if (workload.producerRate > 0) {
             targetPublishRate = workload.producerRate;
