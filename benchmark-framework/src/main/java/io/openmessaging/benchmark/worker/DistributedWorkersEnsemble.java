@@ -70,9 +70,15 @@ public class DistributedWorkersEnsemble implements Worker {
         Preconditions.checkArgument(workers.size() > 1);
 
         this.workers = workers;
-        List<List<String>> partitions = Lists.partition(workers, workers.size() / 2);
-        this.producerWorkers = partitions.get(0);
-        this.consumerWorkers = partitions.get(1);
+	if ( workers.size() > 1 ) {
+	    int numberOfProducerWorkers = (workers.size() + 2) / 3;
+	    List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
+	    this.producerWorkers = partitions.get(1); 
+	    this.consumerWorkers = partitions.get(0);
+	} else {
+	    this.producerWorkers = workers;
+	    this.consumerWorkers = workers;
+	}
 
         log.info("Workers list - producers: {}", producerWorkers);
         log.info("Workers list - consumers: {}", consumerWorkers);
