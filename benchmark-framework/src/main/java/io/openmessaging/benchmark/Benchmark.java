@@ -64,6 +64,9 @@ public class Benchmark {
                 "--workers-file" }, description = "Path to a YAML file containing the list of workers addresses")
         public File workersFile;
 
+        @Parameter(names = { "-x", "--extra" }, description = "Allocate extra consumer workers")
+        boolean extraConsumers;
+
         @Parameter(description = "Workloads")//, required = true)
         public List<String> workloads;
     }
@@ -126,7 +129,7 @@ public class Benchmark {
         Worker worker;
 
         if (arguments.workers != null && !arguments.workers.isEmpty()) {
-            worker = new DistributedWorkersEnsemble(arguments.workers);
+            worker = new DistributedWorkersEnsemble(arguments.workers, arguments.extraConsumers);
         } else {
             // Use local worker implementation
             worker = new LocalWorker();
