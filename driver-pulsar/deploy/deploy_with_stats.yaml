@@ -120,6 +120,12 @@
       args:
         chdir: /opt/pulsar
       when: groups['zookeeper'][0] == inventory_hostname
+    - command: >
+        bin/pulsar initialize-transaction-coordinator-metadata --cluster local
+        --configuration-store localhost:2181
+      args:
+        chdir: /opt/pulsar
+      when: groups['zookeeper'][0] == inventory_hostname
 
 - name: BookKeeper setup
   hosts: pulsar
