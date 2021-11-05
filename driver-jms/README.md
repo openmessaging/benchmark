@@ -8,37 +8,17 @@ For instructions on running the OpenMessaging benchmarks for JMS, see the [offic
 
 Rather than simply dropping a JMS Client Library into `/opt/benchmark/lib` the lib directory tar file is modified.
 
-### DataStax Starlight for JMS / Pulsar JMS
+### DataStax Starlight for JMS / Pulsar Fast JMS
 
 Follow these instructions to compile the openmessaging benchmark for Fast JMS for Apache Pulsar
 
-- Build the package
+- Build the openmessaging benchmark package as you would normally
   ```
-  mvn clean install
+  mvn clean package
   ```
-- Go to the `package/target` directory
+- Run the repacking script
   ```
-  cd package/target
-  ```
-- Unpack the package
-  ```
-  tar zxvf openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
-  cd openmessaging-benchmark-0.0.1-SNAPSHOT
-  ```
-- Remove Pulsar and Jackson jar files:
-  ```
-  rm lib/org.apache.pulsar-*
-  rm lib/*jackson*
-  ```
-- Add the Pulsar JMS file:
-  ```
-  curl https://repo1.maven.org/maven2/com/datastax/oss/pulsar-jms-all/1.2.2/pulsar-jms-all-1.2.2.jar -o lib/pulsar-jms-all-1.2.2.jar
-  ```
-- Create a new .tar.gz package
-  ```
-  cd ..
-  rm openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
-  tar zcvf openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz openmessaging-benchmark-0.0.1-SNAPSHOT
+  bash driver-jms/package-pulsar.sh
   ```
 
 You can now deploy to AWS from `driver-pulsar/deploy`.
@@ -62,22 +42,23 @@ Follow the [Confluent instructions][1] to create a fat jar.
 
 Follow these instructions to compile the openmessaging benchmark for Confluent JMS Client
 
-- Build the package
+- Build the openmessaging benchmark package
   ```
-  mvn clean install
+  mvn clean package
   ```
-- Go to the `package/target` directory
+- Run the repacking script passing in the location of the fat jar. EG. `~/kafka-jms-client/target/kafka-jms-client-fat-6.2.1.jar`
   ```
-  cd package/target
+  bash driver-jms/package-kafka.sh /path/to/the/kafka-jms-client.jar
   ```
-- Append the fat jar into the openmessaging benchmark tar file
-  ```
-  gunzip openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz 
-  mkdir -p openmessaging-benchmark-0.0.1-SNAPSHOT/lib 
-  cp -p ~/kafka-jms-client/target/kafka-jms-client-fat-6.2.1.jar openmessaging-benchmark-0.0.1-SNAPSHOT/lib/.
-  tar --append --file=openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar openmessaging-benchmark-0.0.1-SNAPSHOT/lib/kafka-jms-client-fat-6.2.1.jar		
-  gzip openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar
-  ```
+
+You can now deploy to AWS from `driver-kafka/deploy`.
+
+## JMS Driver Benchmarks
+
+For Pulsar JMS (and likely Kafka) you will likely want to allocate additional consumer clients.
+
+- Edit your `terraform.tfvars` file to adjust `num_instances["client"]`.
+- Run `bin/benchmark` with the `--extra` option to allocate more workers as consumers.
 
 
 
