@@ -76,10 +76,11 @@ public class WorkloadGenerator implements AutoCloseable {
         List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
         log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
 
-        createConsumers(topics);
         createProducers(topics);
+        createConsumers(topics);
 
-        ensureTopicsAreReady();
+	// Current versions of Kafka don't need to ensure topics are ready. Just create the producers first
+        // ensureTopicsAreReady();
 
         if (workload.producerRate > 0) {
             targetPublishRate = workload.producerRate;
@@ -159,9 +160,13 @@ public class WorkloadGenerator implements AutoCloseable {
         // In this case we just publish 1 message and then wait for consumers to receive the data
         worker.probeProducers();
 
-        while (true) {
-            CountersStats stats = worker.getCountersStats();
+	// do not loop forever
+	int countdown = 20;	
+        while (countdown > 0) {
+	    countdown--;
 
+            CountersStats stats = worker.getCountersStats();
+	    
             if (stats.messagesReceived < expectedMessages) {
                 try {
                     Thread.sleep(100);
