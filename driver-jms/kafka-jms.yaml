@@ -30,19 +30,18 @@ use20api: false
 # So we are going to delegate the initialization to another specific Driver
 delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
-# Kafka specific configuration
 # the code that handles this configuration is the KafkaBenchmarkDriver
-replicationFactor: 1
+replicationFactor: 3
 
 topicConfig: |
-  min.insync.replicas=1
+  min.insync.replicas=2
 
 commonConfig: |
   bootstrap.servers=localhost:9092
 
 producerConfig: |
   acks=all
-  linger.ms=200
+  linger.ms=1
   batch.size=524288
 
 consumerConfig: |
