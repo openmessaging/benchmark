@@ -21,12 +21,10 @@ package io.openmessaging.benchmark.driver.kafka;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -47,11 +45,11 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private final ExecutorService executor;
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
-    private boolean autoCommit;
-    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, Properties consumerConfig, ConsumerCallback callback) {
+
+    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, ConsumerCallback callback) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
-        this.autoCommit= Boolean.valueOf((String)consumerConfig.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,"false"));
+
         this.consumerTask = this.executor.submit(() -> {
             while (!closing) {
                 try {
@@ -62,10 +60,10 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                         callback.messageReceived(record.value(), record.timestamp());
 
                         offsetMap.put(new TopicPartition(record.topic(), record.partition()),
-                            new OffsetAndMetadata(record.offset()+1));
+                            new OffsetAndMetadata(record.offset()));
                     }
 
-                    if (!autoCommit&&!offsetMap.isEmpty()) {
+                    if (!offsetMap.isEmpty()) {
                         consumer.commitSync(offsetMap);
                     }
                 }catch(Exception e){
