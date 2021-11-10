@@ -32,6 +32,7 @@
 		<module>benchmark-framework</module>
 		<module>driver-api</module>
 
+		<module>driver-pravega</module>
 		<module>driver-pulsar</module>
 		<module>driver-kafka</module>
 		<module>driver-rabbitmq</module>
@@ -42,6 +43,7 @@
 		<module>driver-nats-streaming</module>
 		<module>driver-nsq</module>
 		<module>driver-jms</module>
+		<module>driver-redis</module>
 		<module>package</module>
 		<module>docker</module>
 	</modules>
