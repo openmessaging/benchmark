@@ -65,7 +65,7 @@
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
-        src: "https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
