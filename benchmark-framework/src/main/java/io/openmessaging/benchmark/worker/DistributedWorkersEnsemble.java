@@ -66,13 +66,17 @@ public class DistributedWorkersEnsemble implements Worker {
 
     private int numberOfUsedProducerWorkers;
 
-    public DistributedWorkersEnsemble(List<String> workers) {
+    public DistributedWorkersEnsemble(List<String> workers, boolean extraConsumerWorkers) {
         Preconditions.checkArgument(workers.size() > 1);
 
         this.workers = workers;
-        List<List<String>> partitions = Lists.partition(workers, workers.size() / 2);
-        this.producerWorkers = partitions.get(0);
-        this.consumerWorkers = partitions.get(1);
+
+	// For driver-jms extra consumers are required.
+	// If there is an odd number of workers then allocate the extra to consumption.
+	int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
+	List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
+	this.producerWorkers = partitions.get(1); 
+	this.consumerWorkers = partitions.get(0);
 
         log.info("Workers list - producers: {}", producerWorkers);
         log.info("Workers list - consumers: {}", consumerWorkers);
