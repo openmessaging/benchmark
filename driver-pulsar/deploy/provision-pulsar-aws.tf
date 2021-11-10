@@ -1,10 +1,10 @@
 provider "aws" {
   region  = "${var.region}"
-  version = "1.8"
+  version = "3.50"
 }
 
 provider "random" {
-  version = "1.1"
+  version = "3.1"
 }
 
 variable "public_key_path" {
@@ -31,18 +31,18 @@ variable "region" {}
 variable "ami" {}
 
 variable "instance_types" {
-  type = "map"
+  type = map(string)
 }
 
 variable "num_instances" {
-  type = "map"
+  type = map(string)
 }
 
 # Create a VPC to launch our instances into
 resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
-  tags {
+  tags = {
     Name = "Pulsar-Benchmark-VPC-${random_id.hash.hex}"
   }
 }
@@ -108,7 +108,7 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags {
+  tags = {
     Name = "Benchmark-Security-Group-${random_id.hash.hex}"
   }
 }
@@ -126,33 +126,35 @@ resource "aws_instance" "zookeeper" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["zookeeper"]}"
 
-  tags {
+  tags = {
     Name = "zk-${count.index}"
   }
 }
 
-resource "aws_instance" "pulsar" {
+resource "aws_spot_instance_request" "pulsar" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["pulsar"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["pulsar"]}"
+  wait_for_fulfillment   = true
 
-  tags {
+  tags = {
     Name = "pulsar-${count.index}"
   }
 }
 
-resource "aws_instance" "client" {
+resource "aws_spot_instance_request" "client" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["client"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
+  wait_for_fulfillment   = true
 
-  tags {
+  tags = {
     Name = "pulsar-client-${count.index}"
   }
 }
@@ -165,13 +167,13 @@ resource "aws_instance" "prometheus" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["prometheus"]}"
 
-  tags {
+  tags = {
     Name = "prometheus-${count.index}"
   }
 }
 
 output "client_ssh_host" {
-  value = "${aws_instance.client.0.public_ip}"
+  value = "${aws_spot_instance_request.client.0.public_ip}"
 }
 
 output "prometheus_host" {
