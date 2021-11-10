@@ -52,6 +52,8 @@ PULSAR_GC="${PULSAR_GC} -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime  
 # Extra options to be passed to the jvm
 PULSAR_EXTRA_OPTS="${PULSAR_EXTRA_OPTS} ${PULSAR_MEM} ${PULSAR_GC} -Dio.netty.leakDetectionLevel=disabled -Dio.netty.recycler.maxCapacity.default=1000 -Dio.netty.recycler.linkCapacity=1024"
 
+BOOKIE_EXTRA_OPTS="${PULSAR_EXTRA_OPTS} ${PULSAR_MEM} ${PULSAR_GC} -Dio.netty.leakDetectionLevel=disabled -Dio.netty.recycler.maxCapacity.default=1000 -Dio.netty.recycler.linkCapacity=1024"
+
 # Add extra paths to the bookkeeper classpath
 # PULSAR_EXTRA_CLASSPATH=
 
