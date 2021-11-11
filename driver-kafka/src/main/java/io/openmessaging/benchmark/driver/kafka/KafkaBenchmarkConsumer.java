@@ -46,7 +46,8 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, ConsumerCallback callback) {
+    private boolean autoCommit;
+    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, Properties consumerConfig, ConsumerCallback callback) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
 
