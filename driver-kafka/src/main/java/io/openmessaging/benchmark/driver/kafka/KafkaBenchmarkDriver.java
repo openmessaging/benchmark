@@ -125,7 +125,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(properties);
         try {
             consumer.subscribe(Arrays.asList(topic));
-            return CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer, consumerCallback));
+            return CompletableFuture.completedFuture(new KafkaBenchmarkConsumer(consumer,consumerProperties,consumerCallback));
         } catch (Throwable t) {
             consumer.close();
             CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
