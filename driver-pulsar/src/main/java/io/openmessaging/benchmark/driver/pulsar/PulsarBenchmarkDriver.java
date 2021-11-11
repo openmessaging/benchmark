@@ -134,7 +134,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
                             new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
-
+            
             adminClient.namespaces().setBacklogQuota(namespace,
                     BacklogQuota.builder()
                             .limitSize(-1L)

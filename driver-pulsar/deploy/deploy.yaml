@@ -51,7 +51,8 @@
       yum: pkg={{ item }} state=latest
       with_items:
           - wget
-          - java
+          - java-11-openjdk
+          - java-11-openjdk-devel
           - sysstat
           - vim
           - screen
@@ -216,11 +217,41 @@
          regexp: '^  httpUrl: '
          line: '  httpUrl: {{ httpUrl }}'
       with_items: '{{ drivers_list.stdout_lines }}'
+
+    - name: Get list of jms driver config files
+      raw: ls -1 /opt/benchmark/driver-jms/pulsar*.yaml
+      register: jms_drivers_list
+
+    - name: Configure JMS service URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  serviceUrl\: '
+         line: '  serviceUrl: {{ serviceUrl }}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure JMS service Connection Handler
+      ansible.builtin.replace:
+         dest: '{{ item }}'
+         regexp: 'pulsar\:\/\/localhost\:6650'
+         replace: '{{ serviceUrl }}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure JMS http URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  httpUrl: '
+         line: '  httpUrl: {{ httpUrl }}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure JMS http Connection Handler
+      ansible.builtin.replace:
+         dest: '{{ item }}'
+         regexp: 'http\:\/\/localhost\:8080'
+         replace: '{{ httpUrl }}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms6G -Xmx6G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
