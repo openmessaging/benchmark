@@ -120,7 +120,7 @@ resource "aws_instance" "zookeeper" {
   }
 }
 
-resource "aws_spot_instance_request" "kafka" {
+resource "aws_instance" "kafka" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["kafka"]}"
   key_name               = "${aws_key_pair.auth.id}"
@@ -134,7 +134,7 @@ resource "aws_spot_instance_request" "kafka" {
   }
 }
 
-resource "aws_spot_instance_request" "client" {
+resource "aws_instance" "client" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["client"]}"
   key_name               = "${aws_key_pair.auth.id}"
@@ -149,5 +149,5 @@ resource "aws_spot_instance_request" "client" {
 }
 
 output "client_ssh_host" {
-  value = "${aws_spot_instance_request.client.0.public_ip}"
+  value = "${aws_instance.client.0.public_ip}"
 }
