@@ -66,8 +66,6 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 	// See https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/session#close--
 	// and https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/connection#close--
 	// It should be enough to just close the connection.
-        // consumer.close();
-        // session.close();
         connection.close();
     }
 
