@@ -164,7 +164,7 @@
 			<version>${project.version}</version>
 		</dependency>
 
-		<dependency>
+ 		<dependency>
 			<groupId>org.apache.bookkeeper.stats</groupId>
 			<artifactId>bookkeeper-stats-api</artifactId>
 			<version>${bookkeeper.version}</version>

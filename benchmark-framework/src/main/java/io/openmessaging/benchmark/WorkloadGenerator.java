@@ -159,9 +159,9 @@ public class WorkloadGenerator implements AutoCloseable {
         // In this case we just publish 1 message and then wait for consumers to receive the data
         worker.probeProducers();
 
-        while (true) {
+	while (true) {
             CountersStats stats = worker.getCountersStats();
-
+	    
             if (stats.messagesReceived < expectedMessages) {
                 try {
                     Thread.sleep(100);

@@ -185,16 +185,16 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         rateLimiter.setRate(producerWorkAssignment.publishRate);
 
-        Map<Integer, List<BenchmarkProducer>> processorAssignemnt = new TreeMap<>();
+        Map<Integer, List<BenchmarkProducer>> processorAssignment = new TreeMap<>();
 
         int processorIdx = 0;
         for (BenchmarkProducer p : producers) {
-            processorAssignemnt.computeIfAbsent(processorIdx, x -> new ArrayList<BenchmarkProducer>()).add(p);
+            processorAssignment.computeIfAbsent(processorIdx, x -> new ArrayList<BenchmarkProducer>()).add(p);
 
             processorIdx = (processorIdx + 1) % processors;
         }
 
-        processorAssignemnt.values().forEach(producers -> submitProducersToExecutor(producers,
+        processorAssignment.values().forEach(producers -> submitProducersToExecutor(producers,
                 KeyDistributor.build(producerWorkAssignment.keyDistributorType), producerWorkAssignment.payloadData));
     }
 
