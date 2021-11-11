@@ -74,6 +74,8 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
             for (JMSConfig.AddProperty prop : properties) {
                 bytesMessage.setStringProperty(prop.name, prop.value);
             }
+	    // Add a timer property for end to end
+	    bytesMessage.setLongProperty("E2EStartMillis",System.currentTimeMillis());
             if (useAsyncSend) {
                 producer.send(bytesMessage, new CompletionListener()
                 {
@@ -86,7 +88,7 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                     @Override
                     public void onException(Message message, Exception exception)
                     {
-                        log.info("send completed with error", exception);
+                        log.error("send completed with error", exception);
                         res.completeExceptionally(exception);
                     }
                 });
