@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package io.openmessaging.benchmark.driver.pulsar.config;
 
-public class PulsarConfig {
-    public PulsarClientConfig client;
-    public PulsarProducerConfig producer;
-    public PulsarConsumerConfig consumer;
+public class PulsarConsumerConfig {
+
+    public int receiverQueueSize = 10000;
 }
