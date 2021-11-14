@@ -36,8 +36,9 @@ producerConfig: |
   retries=2147483647
   acks=all
   linger.ms=1
-  batch.size=131072
+  batch.size=1048576
 
 consumerConfig: |
   auto.offset.reset=earliest
   enable.auto.commit=false
+  max.partition.fetch.bytes=10485760

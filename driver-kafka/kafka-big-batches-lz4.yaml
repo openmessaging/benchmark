@@ -33,10 +33,10 @@ commonConfig: |
 producerConfig: |
   acks=all
   linger.ms=200
-  batch.size=524288
-  max.request.size=4194304
+  batch.size=1048576
   compression.type=lz4
 
 consumerConfig: |
   auto.offset.reset=earliest
   enable.auto.commit=false
+  max.partition.fetch.bytes=10485760
