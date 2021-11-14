@@ -34,6 +34,7 @@ import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
 import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.SizeUnit;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.common.policies.data.BacklogQuota;
 import org.apache.pulsar.common.policies.data.BacklogQuota.RetentionPolicy;
@@ -80,6 +81,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                 .serviceUrl(config.client.serviceUrl)
                 .maxConcurrentLookupRequests(50000)
                 .maxLookupRequests(100000)
+                .memoryLimit(config.client.clientMemoryLimitMB, SizeUnit.MEGA_BYTES)
                 .listenerThreads(Runtime.getRuntime().availableProcessors());
 
         if (config.client.serviceUrl.startsWith("pulsar+ssl")) {

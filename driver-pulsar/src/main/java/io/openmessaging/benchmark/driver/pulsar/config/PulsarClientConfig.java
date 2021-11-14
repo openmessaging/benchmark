@@ -25,6 +25,8 @@ public class PulsarClientConfig {
 
     public String httpUrl;
 
+    public long clientMemoryLimitMB = 256;
+
     public int ioThreads = 8;
 
     public int connectionsPerBroker = 8;
