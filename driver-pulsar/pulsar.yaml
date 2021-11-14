@@ -46,4 +46,4 @@ producer:
   batchingEnabled: true
   batchingMaxPublishDelayMs: 1
   blockIfQueueFull: true
-  pendingQueueSize: 10000
+  pendingQueueSize: 0
