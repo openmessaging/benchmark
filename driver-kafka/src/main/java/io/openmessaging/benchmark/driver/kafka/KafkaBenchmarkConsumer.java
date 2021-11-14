@@ -66,9 +66,10 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                     }
 
                     if (!autoCommit&&!offsetMap.isEmpty()) {
-                        consumer.commitSync(offsetMap);
+                        // Async commit all messages polled so far
+                        consumer.commitAsync(offsetMap, null);
                     }
-                }catch(Exception e){
+                } catch(Exception e){
                     log.error("exception occur while consuming message", e);
                 }
             }

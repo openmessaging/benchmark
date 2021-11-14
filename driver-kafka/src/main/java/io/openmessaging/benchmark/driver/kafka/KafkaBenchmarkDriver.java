@@ -28,11 +28,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.DeleteTopicsResult;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -56,7 +59,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     private Config config;
 
-    private KafkaProducer<String, byte[]> producer;
+    private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
     private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
     private Properties topicProperties;
@@ -89,7 +92,19 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
         admin = AdminClient.create(commonProperties);
 
-        producer = new KafkaProducer<>(producerProperties);
+        if (config.reset) {
+            // List existing topics
+            ListTopicsResult result = admin.listTopics();
+            try {
+                Set<String> topics = result.names().get();
+                // Delete all existing topics
+                DeleteTopicsResult deletes = admin.deleteTopics(topics);
+                deletes.all().get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+                throw new IOException(e);
+            }
+        }
     }
 
     @Override
@@ -113,7 +128,18 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        return CompletableFuture.completedFuture(new KafkaBenchmarkProducer(producer, topic));
+        KafkaProducer<String, byte[]> kafkaProducer = new KafkaProducer<>(producerProperties);
+        BenchmarkProducer benchmarkProducer = new KafkaBenchmarkProducer(kafkaProducer, topic);
+        try {
+            // Add to producer list to close later
+            producers.add(benchmarkProducer);
+            return CompletableFuture.completedFuture(benchmarkProducer);
+        } catch (Throwable t) {
+            kafkaProducer.close();
+            CompletableFuture<BenchmarkProducer> future = new CompletableFuture<>();
+            future.completeExceptionally(t);
+            return future;
+        }
     }
 
     @Override
@@ -137,7 +163,9 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
-        producer.close();
+        for (BenchmarkProducer producer : producers) {
+            producer.close();
+        }
 
         for (BenchmarkConsumer consumer : consumers) {
             consumer.close();
