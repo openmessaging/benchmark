@@ -17,170 +17,170 @@
 # under the License.
 #
 
-#- name: Format and mount disks for Pulsar/BookKeeper hosts
-#  hosts: pulsar
-#  connection: ssh
-#  become: true
-#  tasks:
-#    - name: Format disks
-#      filesystem:
-#         fstype: xfs
-#         dev: '{{ item }}'
-#      with_items:
-#        - '/dev/nvme1n1'
-#        - '/dev/nvme2n1'
-#    - name: Mount disks
-#      mount:
-#        path: "{{ item.path }}"
-#        src: "{{ item.src }}"
-#        fstype: xfs
-#        opts: defaults,noatime,nodiscard
-#        state: mounted
-#      with_items:
-#        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
-#        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
-#
-#- name: Install Node exporter on Brokers to collect system metrics
-#  hosts: pulsar
-#  become: true
-#  tasks:
-#    - set_fact:
-#        nodeExporterVersion: "1.2.2"
-#    - name: Add user node_exporter
-#      user:
-#        name: node_exporter
-#        shell: /bin/false
-#        system: true
-#        create_home: no
-#
-#    - name: Download and extract
-#      unarchive:
-#        src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
-#        dest: /tmp
-#        remote_src: yes
-#
-#    - name: Copy bin node_exporter to /usr/local/bin
-#      copy:
-#        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
-#        remote_src: yes
-#        dest: /usr/local/bin/
-#        owner: node_exporter
-#        group: node_exporter
-#        mode: u+x,g+x,o+x
-#
-#    - name: Create service node_exporter.service
-#      blockinfile:
-#        path: /etc/systemd/system/node_exporter.service
-#        block: |
-#          [Unit]
-#          Description=Prometheus Node Exporter
-#          Wants=network-online.target
-#          After=network-online.target
-#          [Service]
-#          User=node_exporter
-#          Group=node_exporter
-#          Type=simple
-#          ExecStart=/usr/local/bin/node_exporter
-#          [Install]
-#          WantedBy=multi-user.target
-#        create: true
-#
-#    - name: systemctl daemon_reload
-#      systemd:
-#        daemon_reload: yes
-#
-#    - name: Start and Enable node_exporter
-#      service:
-#        name: node_exporter
-#        state: started
-#        enabled: yes
-#
-#    - name: Check whether port 9100 is available
-#      wait_for:
-#        port: 9100
-#        state: started
-#        timeout: 5
-#
-#- name: Pulsar installation
-#  hosts: all
-#  connection: ssh
-#  become: true
-#  tasks:
-#    - name: Set performance profile
-#      command: tuned-adm profile latency-performance
-#    - name: Install RPM packages
-#      yum: pkg={{ item }} state=latest
-#      with_items:
-#          - wget
-#          - java-11-openjdk
-#          - java-11-openjdk-devel
-#          - sysstat
-#          - vim
-#          - chrony
-#    - set_fact:
-#        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
-#        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
-#        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
-#        pulsarVersion: "2.8.1"
-#    - file: path=/opt/pulsar state=absent
-#    - file: path=/opt/pulsar state=directory
-#    - name: Download Pulsar binary package
-#      unarchive:
-#        src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
-#        remote_src: yes
-#        dest: /opt/pulsar
-#        extra_opts: ["--strip-components=1"]
-#    - set_fact:
-#        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-#        max_heap_memory: "8g"
-#        max_direct_memory: "16g"
-#    - template:
-#        src: "templates/pulsar_env.sh"
-#        dest: "/opt/pulsar/conf/pulsar_env.sh"
-#    - name: Change locale to en_US.utf-8
-#      shell: |
-#        echo 'LANG=en_US.utf-8
-#              LC_ALL=en_US.utf-8' > /etc/environment
-#
-#- name: ZooKeeper setup
-#  hosts: zookeeper
-#  connection: ssh
-#  become: true
-#  tasks:
-#    - set_fact:
-#        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
-#        max_heap_memory: "512m"
-#        max_direct_memory: "512m"
-#    - file:
-#        path: "/opt/pulsar/{{ item }}"
-#        state: directory
-#      with_items:
-#        - data/zookeeper
-#    - template:
-#        src: "templates/pulsar_env.sh"
-#        dest: "/opt/pulsar/conf/pulsar_env.sh"
-#    - template:
-#        src: "templates/zoo.cfg"
-#        dest: "/opt/pulsar/conf/zookeeper.conf"
-#    - template:
-#        src: templates/myid
-#        dest: "/opt/pulsar/data/zookeeper/myid"
-#    - template:
-#        src: "templates/zookeeper.service"
-#        dest: "/etc/systemd/system/zookeeper.service"
-#    - systemd:
-#        state: restarted
-#        daemon_reload: yes
-#        name: "zookeeper"
-#    - command: >
-#        bin/pulsar initialize-cluster-metadata --cluster local
-#        --zookeeper localhost:2181
-#        --configuration-store localhost:2181
-#        --web-service-url {{ httpUrl }}
-#        --broker-service-url {{ serviceUrl }}
-#      args:
-#        chdir: /opt/pulsar
-#      when: groups['zookeeper'][0] == inventory_hostname
+- name: Format and mount disks for Pulsar/BookKeeper hosts
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - name: Format disks
+      filesystem:
+         fstype: xfs
+         dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
+
+- name: Install Node exporter on Brokers to collect system metrics
+  hosts: pulsar
+  become: true
+  tasks:
+    - set_fact:
+        nodeExporterVersion: "1.2.2"
+    - name: Add user node_exporter
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+
+    - name: Download and extract
+      unarchive:
+        src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy bin node_exporter to /usr/local/bin
+      copy:
+        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes
+
+    - name: Check whether port 9100 is available
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
+
+- name: Pulsar installation
+  hosts: all
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set performance profile
+      command: tuned-adm profile latency-performance
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - wget
+          - java-11-openjdk
+          - java-11-openjdk-devel
+          - sysstat
+          - vim
+          - chrony
+    - set_fact:
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        pulsarVersion: "2.8.1"
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
+    - name: Download Pulsar binary package
+      unarchive:
+        src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        remote_src: yes
+        dest: /opt/pulsar
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        max_heap_memory: "8g"
+        max_direct_memory: "16g"
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+
+- name: ZooKeeper setup
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
+        max_heap_memory: "512m"
+        max_direct_memory: "512m"
+    - file:
+        path: "/opt/pulsar/{{ item }}"
+        state: directory
+      with_items:
+        - data/zookeeper
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - template:
+        src: "templates/zoo.cfg"
+        dest: "/opt/pulsar/conf/zookeeper.conf"
+    - template:
+        src: templates/myid
+        dest: "/opt/pulsar/data/zookeeper/myid"
+    - template:
+        src: "templates/zookeeper.service"
+        dest: "/etc/systemd/system/zookeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "zookeeper"
+    - command: >
+        bin/pulsar initialize-cluster-metadata --cluster local
+        --zookeeper localhost:2181
+        --configuration-store localhost:2181
+        --web-service-url {{ httpUrl }}
+        --broker-service-url {{ serviceUrl }}
+      args:
+        chdir: /opt/pulsar
+      when: groups['zookeeper'][0] == inventory_hostname
 
 - name: BookKeeper setup
   hosts: pulsar
@@ -189,8 +189,6 @@
   vars:
     skip_journal: false
   tasks:
-    - set_fact:
-        zookeeperServers: 127.0.0.1:2181
     - name: Apply BookKeeper configuration file [Bypass Journal]
       template:
         src: "templates/bookkeeper-skip-journal.conf"
