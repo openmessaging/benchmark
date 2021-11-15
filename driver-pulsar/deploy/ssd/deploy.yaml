@@ -27,8 +27,8 @@
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - '/dev/nvme0n1'
         - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -37,8 +37,8 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
-        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
+        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
 
 - name: Pulsar installation
   hosts: all
@@ -55,6 +55,7 @@
           - java-11-openjdk-devel
           - sysstat
           - vim
+          - screen
           - chrony
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
@@ -71,8 +72,8 @@
         extra_opts: ["--strip-components=1"]
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-        max_heap_memory: "24g"
-        max_direct_memory: "24g"
+        max_heap_memory: "8g"
+        max_direct_memory: "16g"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
@@ -155,7 +156,7 @@
         daemon_reload: yes
         name: "pulsar"
 
-- name: Chrony setup
+- name: Chrony setup 
   hosts: client
   connection: ssh
   become: true
@@ -168,7 +169,6 @@
         state: restarted
         daemon_reload: yes
         name: "chronyd"
-
 
 - name: Get Maven version
   hosts: localhost
@@ -251,7 +251,7 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=8 -XX:ConcGCThreads=8 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
@@ -266,57 +266,6 @@
         daemon_reload: yes
         name: "benchmark-worker"
 
-- name: Prometheus installation
-  hosts: prometheus
-  connection: ssh
-  become: true
-  tasks:
-    - name: Add Extras Repo
-      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
-    - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
-          - docker
-    - set_fact:
-        prometheusVersion: "2.2.1"
-    - file: path=/opt/prometheus state=absent
-    - file: path=/opt/prometheus state=directory
-    - name: Download Prometheus Binary Package
-      unarchive:
-        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
-        remote_src: yes
-        dest: /opt/prometheus
-        extra_opts: ["--strip-components=1"]
-    - set_fact:
-        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-
-- name: Prometheus setup
-  hosts: prometheus
-  connection: ssh
-  become: true
-  tasks:
-    - file:
-        path: "/opt/prometheus/{{ item }}"
-        state: directory
-      with_items:
-        - data
-    - template:
-        src: "templates/prometheus.service"
-        dest: "/etc/systemd/system/prometheus.service"
-    - template:
-        src: "templates/pulsar-dashboard.service"
-        dest: "/etc/systemd/system/pulsar-dashboard.service"
-    - template:
-        src: "templates/prometheus.yml"
-        dest: "/opt/prometheus/prometheus.yml"
-    - systemd:
-        state: restarted
-        daemon_reload: yes
-        name: "prometheus"
-    - systemd:
-        state: restarted
-        daemon_reload: yes
-        name: "pulsar-dashboard"
 
 - name: List host addresses
   hosts: localhost
@@ -331,6 +280,3 @@
     - debug:
         msg: "Benchmark clients {{ item }}"
       with_items: "{{ groups['client'] }}"
-    - debug:
-        msg: "Prometheus servers {{ item }}"
-      with_items: "{{ groups['prometheus'] }}"

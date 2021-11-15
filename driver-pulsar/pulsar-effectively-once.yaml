@@ -24,7 +24,7 @@ driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
 client:
   serviceUrl: pulsar://localhost:6650
   httpUrl: http://localhost:8080
-  ioThreads: 8
+  ioThreads: 4
   connectionsPerBroker: 8
   clusterName: local
   namespacePrefix: benchmark/ns
@@ -46,4 +46,6 @@ producer:
   batchingEnabled: true
   batchingMaxPublishDelayMs: 1
   blockIfQueueFull: true
-  pendingQueueSize: 10000
+
+consumer:
+  receiverQueueSize: 10000
