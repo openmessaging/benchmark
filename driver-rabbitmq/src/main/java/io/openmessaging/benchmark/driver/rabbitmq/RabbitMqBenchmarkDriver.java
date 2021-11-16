@@ -65,7 +65,9 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
-        connection.close();
+        if (connection != null) {
+            connection.close();
+        }
     }
 
     @Override

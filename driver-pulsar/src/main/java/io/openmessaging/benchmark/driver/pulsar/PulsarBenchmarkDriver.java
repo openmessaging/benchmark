@@ -170,7 +170,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         return producerBuilder.topic(topic).createAsync()
-                        .thenApply(pulsarProducer -> new PulsarBenchmarkProducer(pulsarProducer));
+                        .thenApply(PulsarBenchmarkProducer::new);
     }
 
     @Override
