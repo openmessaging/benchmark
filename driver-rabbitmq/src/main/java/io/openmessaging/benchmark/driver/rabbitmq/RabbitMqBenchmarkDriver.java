@@ -71,7 +71,6 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
             }
             it.remove();
         }
-
     }
 
     @Override
