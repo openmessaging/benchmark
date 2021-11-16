@@ -27,8 +27,8 @@
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - '/dev/nvme0n1'
         - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -37,8 +37,69 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
-        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
+        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
+
+- name: Install Node exporter on Brokers to collect system metrics
+  hosts: pulsar
+  become: true
+  tasks:
+    - set_fact:
+        nodeExporterVersion: "1.2.2"
+    - name: Add user node_exporter
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+
+    - name: Download and extract
+      unarchive:
+        src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy bin node_exporter to /usr/local/bin
+      copy:
+        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes
+
+    - name: Check whether port 9100 is available
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
 
 - name: Pulsar installation
   hosts: all
@@ -71,8 +132,8 @@
         extra_opts: ["--strip-components=1"]
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-        max_heap_memory: "24g"
-        max_direct_memory: "24g"
+        max_heap_memory: "8g"
+        max_direct_memory: "16g"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
@@ -125,10 +186,19 @@
   hosts: pulsar
   connection: ssh
   become: true
+  vars:
+    skip_journal: false
   tasks:
-    - template:
-        src: "templates/bookkeeper.conf"
+    - name: Apply BookKeeper configuration file [Bypass Journal]
+      template:
+        src: "templates/bookkeeper-skip-journal.conf"
         dest: "/opt/pulsar/conf/bookkeeper.conf"
+      when: skip_journal
+    - name: Apply BookKeeper configuration file
+      template:
+        src: "templates/bookkeeper-skip-journal.conf"
+        dest: "/opt/pulsar/conf/bookkeeper.conf"
+      when: not skip_journal
     - name: Install bookkeeper systemd service
       template:
         src: "templates/bookkeeper.service"
@@ -194,7 +264,7 @@
     - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
-        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
 
@@ -251,7 +321,7 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=8 -XX:ConcGCThreads=8 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
@@ -276,9 +346,9 @@
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
-          - docker
+        - docker
     - set_fact:
-        prometheusVersion: "2.2.1"
+        prometheusVersion: "2.31.1"
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package
