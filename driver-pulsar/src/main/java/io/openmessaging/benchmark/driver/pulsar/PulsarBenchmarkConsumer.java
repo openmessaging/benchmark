@@ -18,25 +18,23 @@
  */
 package io.openmessaging.benchmark.driver.pulsar;
 
-import org.apache.pulsar.client.api.Consumer;
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-
+import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.pulsar.client.api.Consumer;
 
 public class PulsarBenchmarkConsumer implements BenchmarkConsumer {
 
-    private final List<Consumer<byte[]>> consumer;
+    private final List<Consumer<ByteBuffer>> consumer;
 
-    public PulsarBenchmarkConsumer(List<Consumer<byte[]>> consumer) {
+    public PulsarBenchmarkConsumer(List<Consumer<ByteBuffer>> consumer) {
         this.consumer = consumer;
     }
 
     @Override
     public void close() throws Exception {
-        for (Consumer<byte[]> c : consumer) {
+        for (Consumer<?> c : consumer) {
             c.close();
         }
     }
-
 }

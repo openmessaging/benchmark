@@ -21,6 +21,7 @@ package io.openmessaging.benchmark.driver.pulsar;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +39,7 @@ import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SizeUnit;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.common.policies.data.BacklogQuota;
@@ -184,7 +186,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
-        List<CompletableFuture<Consumer<byte[]>>> futures = new ArrayList<>();
+        List<CompletableFuture<Consumer<ByteBuffer>>> futures = new ArrayList<>();
         return client.getPartitionsForTopic(topic)
                 .thenCompose(partitions -> {
                     partitions.forEach(p -> futures.add(createInternalConsumer(p, subscriptionName, consumerCallback)));
@@ -195,18 +197,28 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                 );
     }
 
-    CompletableFuture<Consumer<byte[]>> createInternalConsumer(String topic, String subscriptionName,
+    CompletableFuture<Consumer<ByteBuffer>> createInternalConsumer(String topic, String subscriptionName,
             ConsumerCallback consumerCallback) {
-        return client.newConsumer().priorityLevel(0).subscriptionType(SubscriptionType.Failover)
+        return client.newConsumer(Schema.BYTEBUFFER)
+                .priorityLevel(0)
+                .subscriptionType(SubscriptionType.Failover)
                 .messageListener((c, msg) -> {
                     consumerCallback.messageReceived(msg.getData(),
                             TimeUnit.MILLISECONDS.toNanos(msg.getPublishTime()));
                     c.acknowledgeAsync(msg);
+
+                    try {
+                        consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
+                        c.acknowledgeAsync(msg);
+                    } finally {
+                        msg.release();
+                    }
                 })
                 .topic(topic)
                 .subscriptionName(subscriptionName)
                 .receiverQueueSize(config.consumer.receiverQueueSize)
                 .maxTotalReceiverQueueSizeAcrossPartitions(Integer.MAX_VALUE)
+                .poolMessages(true)
                 .subscribeAsync();
     }
 
