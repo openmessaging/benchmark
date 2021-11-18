@@ -4,9 +4,9 @@ ami             = "ami-9fa343e7" // RHEL-7.4 us-west-2
 
 instance_types = {
   "controller"   = "m5.large"
-  "bookkeeper"   = "i3en.2xlarge"
+  "bookkeeper"   = "i3en.6xlarge"
   "zookeeper"    = "t2.small"
-  "client"       = "c5.2xlarge"
+  "client"       = "m5n.8xlarge"
   "metrics"      = "t2.large"
 }
 
