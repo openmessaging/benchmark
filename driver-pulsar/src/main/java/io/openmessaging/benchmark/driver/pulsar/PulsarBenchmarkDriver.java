@@ -203,10 +203,6 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                 .priorityLevel(0)
                 .subscriptionType(SubscriptionType.Failover)
                 .messageListener((c, msg) -> {
-                    consumerCallback.messageReceived(msg.getData(),
-                            TimeUnit.MILLISECONDS.toNanos(msg.getPublishTime()));
-                    c.acknowledgeAsync(msg);
-
                     try {
                         consumerCallback.messageReceived(msg.getValue(), msg.getPublishTime());
                         c.acknowledgeAsync(msg);
