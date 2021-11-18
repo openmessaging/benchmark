@@ -21,17 +21,21 @@ package io.openmessaging.benchmark.driver.pulsar;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import java.util.stream.Collectors;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminBuilder;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
 import org.apache.pulsar.client.api.ClientBuilder;
+import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.SizeUnit;
@@ -40,6 +44,7 @@ import org.apache.pulsar.common.policies.data.BacklogQuota;
 import org.apache.pulsar.common.policies.data.BacklogQuota.RetentionPolicy;
 import org.apache.pulsar.common.policies.data.PersistencePolicies;
 import org.apache.pulsar.common.policies.data.TenantInfo;
+import org.apache.pulsar.common.util.FutureUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,10 +115,13 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
         log.info("Created Pulsar admin client for HTTP URL {}", config.client.httpUrl);
 
-        producerBuilder = client.newProducer().enableBatching(config.producer.batchingEnabled)
-                        .batchingMaxPublishDelay(config.producer.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
-                        .blockIfQueueFull(config.producer.blockIfQueueFull)
-                        .maxPendingMessages(config.producer.pendingQueueSize);
+        producerBuilder = client.newProducer()
+                .enableBatching(config.producer.batchingEnabled)
+                .batchingMaxPublishDelay(config.producer.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
+                .batchingMaxMessages(Integer.MAX_VALUE)
+                .batchingMaxBytes(config.producer.batchingMaxBytes)
+                .blockIfQueueFull(config.producer.blockIfQueueFull)
+                .maxPendingMessages(config.producer.pendingQueueSize);
 
         try {
             // Create namespace and set the configuration
@@ -176,18 +184,30 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
-        return client.newConsumer()
-                .subscriptionType(SubscriptionType.Failover)
-                .messageListener((consumer, msg) -> {
-                    consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
-                    consumer.acknowledgeAsync(msg);
+        List<CompletableFuture<Consumer<byte[]>>> futures = new ArrayList<>();
+        return client.getPartitionsForTopic(topic)
+                .thenCompose(partitions -> {
+                    partitions.forEach(p -> futures.add(createInternalConsumer(p, subscriptionName, consumerCallback)));
+                    return FutureUtil.waitForAll(futures);
+                }).thenApply(__ -> new PulsarBenchmarkConsumer(
+                                futures.stream().map(CompletableFuture::join).collect(Collectors.toList())
+                        )
+                );
+    }
+
+    CompletableFuture<Consumer<byte[]>> createInternalConsumer(String topic, String subscriptionName,
+            ConsumerCallback consumerCallback) {
+        return client.newConsumer().priorityLevel(0).subscriptionType(SubscriptionType.Failover)
+                .messageListener((c, msg) -> {
+                    consumerCallback.messageReceived(msg.getData(),
+                            TimeUnit.MILLISECONDS.toNanos(msg.getPublishTime()));
+                    c.acknowledgeAsync(msg);
                 })
                 .topic(topic)
                 .subscriptionName(subscriptionName)
                 .receiverQueueSize(config.consumer.receiverQueueSize)
                 .maxTotalReceiverQueueSizeAcrossPartitions(Integer.MAX_VALUE)
-                .subscribeAsync()
-                        .thenApply(PulsarBenchmarkConsumer::new);
+                .subscribeAsync();
     }
 
     @Override
