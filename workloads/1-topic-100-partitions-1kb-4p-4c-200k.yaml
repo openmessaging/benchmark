@@ -17,36 +17,22 @@
 # under the License.
 #
 
-name: Pulsar
-driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
+name: 200k rate 4 producers and 4 consumers on 1 topic / 100 partition
 
-# Pulsar client-specific configuration
-client:
-  serviceUrl: pulsar://localhost:6650
-  httpUrl: http://localhost:8080
-  ioThreads: 16
-  connectionsPerBroker: 8
-  clusterName: local
-  namespacePrefix: benchmark/ns
-  topicType: persistent
-  persistence:
-    ensembleSize: 3
-    writeQuorum: 3
-    ackQuorum: 2
-    deduplicationEnabled: false
-  tlsAllowInsecureConnection: false
-  tlsEnableHostnameVerification: false
-  tlsTrustCertsFilePath:
-  authentication:
-    plugin:
-    data:
+topics: 1
+partitionsPerTopic: 100
 
-# Producer configuration
-producer:
-  batchingEnabled: true
-  batchingMaxPublishDelayMs: 1
-  blockIfQueueFull: true
-  pendingQueueSize: 0
+messageSize: 1024
+useRandomizedPayloads: true
+randomBytesRatio: 0.5
+randomizedPayloadPoolSize: 1000
 
-consumer:
-  receiverQueueSize: 10000
+subscriptionsPerTopic: 1
+consumerPerSubscription: 4
+producersPerTopic: 4
+
+# Discover max-sustainable rate
+producerRate: 200000
+
+consumerBacklogSizeGB: 0
+testDurationMinutes: 5
