@@ -193,12 +193,12 @@
       template:
         src: "templates/bookkeeper-skip-journal.conf"
         dest: "/opt/pulsar/conf/bookkeeper.conf"
-      when: skip_journal
+      when: skip_journal|bool
     - name: Apply BookKeeper configuration file
       template:
-        src: "templates/bookkeeper-skip-journal.conf"
+        src: "templates/bookkeeper.conf"
         dest: "/opt/pulsar/conf/bookkeeper.conf"
-      when: not skip_journal
+      when: not skip_journal|bool
     - name: Install bookkeeper systemd service
       template:
         src: "templates/bookkeeper.service"
