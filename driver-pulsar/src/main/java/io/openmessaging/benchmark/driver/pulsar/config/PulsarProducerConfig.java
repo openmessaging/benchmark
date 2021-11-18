@@ -20,8 +20,8 @@ package io.openmessaging.benchmark.driver.pulsar.config;
 
 public class PulsarProducerConfig {
     public boolean batchingEnabled = true;
-    public boolean blockIfQueueFull = true;
     public int batchingMaxPublishDelayMs = 1;
-
+    public int batchingMaxBytes = 1024 * 1024;
+    public boolean blockIfQueueFull = true;
     public int pendingQueueSize = 0;
 }
