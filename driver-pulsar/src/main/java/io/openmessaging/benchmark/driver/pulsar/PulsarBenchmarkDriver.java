@@ -28,6 +28,7 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import java.util.stream.Collectors;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminBuilder;
@@ -183,27 +184,15 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
-        return adminClient.topics().getPartitionedTopicMetadataAsync(topic).thenCompose(metadata -> {
-            int partitions = 0;
-            if (metadata != null) {
-                partitions = metadata.partitions;
-            }
-            if (partitions == 0) {
-                return createInternalConsumer(topic,subscriptionName, consumerCallback)
-                        .thenApply(c -> new PulsarBenchmarkConsumer(Collections.singletonList(c)));
-            }
-            List<CompletableFuture<Consumer<byte[]>>> consumers = new ArrayList<>(partitions > 0 ? partitions : 1);
-            for (int i = 0; i < partitions; i++) {
-                consumers.add(createInternalConsumer(topic + "-partition-" + i, subscriptionName, consumerCallback));
-            }
-            return FutureUtil.waitForAll(consumers).thenCompose(v -> {
-                List<Consumer<byte[]>> cs = new ArrayList<>(consumers.size());
-                for (CompletableFuture<Consumer<byte[]>> cf : consumers) {
-                    cf.thenAccept(cs::add);
-                }
-                return CompletableFuture.completedFuture(new PulsarBenchmarkConsumer(cs));
-            });
-        });
+        List<CompletableFuture<Consumer<byte[]>>> futures = new ArrayList<>();
+        return client.getPartitionsForTopic(topic)
+                .thenCompose(partitions -> {
+                    partitions.forEach(p -> futures.add(createInternalConsumer(p, subscriptionName, consumerCallback)));
+                    return FutureUtil.waitForAll(futures);
+                }).thenApply(__ -> new PulsarBenchmarkConsumer(
+                                futures.stream().map(CompletableFuture::join).collect(Collectors.toList())
+                        )
+                );
     }
 
     CompletableFuture<Consumer<byte[]>> createInternalConsumer(String topic, String subscriptionName,
