@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -285,11 +286,20 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public void messageReceived(byte[] data, long publishTimestamp) {
+        internalMessageReceived(data.length, publishTimestamp);
+    }
+
+    @Override
+    public void messageReceived(ByteBuffer data, long publishTimestamp) {
+        internalMessageReceived(data.remaining(), publishTimestamp);
+    }
+
+    public void internalMessageReceived(int size, long publishTimestamp) {
         messagesReceived.increment();
         totalMessagesReceived.increment();
         messagesReceivedCounter.inc();
-        bytesReceived.add(data.length);
-        bytesReceivedCounter.add(data.length);
+        bytesReceived.add(size);
+        bytesReceivedCounter.add(size);
 
         long now = System.currentTimeMillis();
         long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);

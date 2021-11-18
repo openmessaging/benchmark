@@ -74,9 +74,7 @@ public class PravegaBenchmarkConsumer implements BenchmarkConsumer {
                            // This will result in an invalid end-to-end latency measurement of 0 seconds.
                            eventTimestamp = TimeUnit.MICROSECONDS.toMillis(Long.MAX_VALUE);
                        }
-                       byte[] payload = new byte[event.remaining()];
-                       event.get(payload);
-                       consumerCallback.messageReceived(payload, eventTimestamp);
+                       consumerCallback.messageReceived(event, eventTimestamp);
                    }
                } catch (ReinitializationRequiredException e) {
                    log.error("Exception during read", e);
