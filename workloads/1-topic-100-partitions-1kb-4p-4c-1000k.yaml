@@ -17,8 +17,22 @@
 # under the License.
 #
 
-- name: Restart all benchmark worker for Pulsar
-  hosts: client
-  tasks:
-    - name: Restart Pulsar benckmark workers
-      shell: sudo service benchmark-worker restart
+name: 1000k rate 4 producers and 4 consumers on 1 topic / 100 partition
+
+topics: 1
+partitionsPerTopic: 100
+
+messageSize: 1024
+useRandomizedPayloads: true
+randomBytesRatio: 0.5
+randomizedPayloadPoolSize: 1000
+
+subscriptionsPerTopic: 1
+consumerPerSubscription: 4
+producersPerTopic: 4
+
+# Discover max-sustainable rate
+producerRate: 1000000
+
+consumerBacklogSizeGB: 0
+testDurationMinutes: 5

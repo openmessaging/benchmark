@@ -3,9 +3,9 @@ region          = "us-west-2"
 ami             = "ami-9fa343e7" // RHEL-7.4
 
 instance_types = {
-  "pulsar"      = "i3en.2xlarge"
+  "pulsar"      = "i3en.6xlarge"
   "zookeeper"   = "t2.small"
-  "client"      = "c5n.2xlarge"
+  "client"      = "m5n.8xlarge"
   "prometheus"  = "t2.large"
 }
 
