@@ -17,25 +17,23 @@
 # under the License.
 #
 
+name: max-rate-1-topic-1-partition-4p-1c-1kb
 
-name: Kafka
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+topics: 1
+partitionsPerTopic: 1
 
-# Kafka client-specific configuration
-replicationFactor: 3
+messageSize: 1024
+#payloadFile: "payload/payload-1Kb.data"
+useRandomizedPayloads: true
+randomBytesRatio: 0.5
+randomizedPayloadPoolSize: 1000
 
-topicConfig: |
-  min.insync.replicas=2
+subscriptionsPerTopic: 1
+consumerPerSubscription: 1
+producersPerTopic: 4
 
-commonConfig: |
-  bootstrap.servers=localhost:9092
+# Discover max-sustainable rate
+producerRate: 10000000
 
-producerConfig: |
-  acks=all
-  linger.ms=100
-  batch.size=1048576
-
-consumerConfig: |
-  auto.offset.reset=earliest
-  enable.auto.commit=false
-  max.partition.fetch.bytes=10485760
+consumerBacklogSizeGB: 0
+testDurationMinutes: 5

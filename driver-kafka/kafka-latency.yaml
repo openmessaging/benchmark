@@ -33,9 +33,8 @@ commonConfig: |
 
 producerConfig: |
   acks=all
-  linger.ms=200
-  batch.size=1048576
-  compression.type=lz4
+  linger.ms=1
+  batch.size=131072
 
 consumerConfig: |
   auto.offset.reset=earliest
