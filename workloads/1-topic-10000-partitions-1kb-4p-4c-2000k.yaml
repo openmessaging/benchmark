@@ -32,7 +32,7 @@ consumerPerSubscription: 0
 producersPerTopic: 4
 
 # Discover max-sustainable rate
-producerRate: 1000000
+producerRate: 2000000
 
 consumerBacklogSizeGB: 0
 testDurationMinutes: 5
