@@ -127,7 +127,6 @@ resource "aws_instance" "kafka" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["kafka"]}"
-  wait_for_fulfillment   = true
 
   tags = {
     Name = "kafka-${count.index}"
@@ -141,7 +140,6 @@ resource "aws_instance" "client" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
-  wait_for_fulfillment   = true
 
   tags = {
     Name = "kafka-client-${count.index}"

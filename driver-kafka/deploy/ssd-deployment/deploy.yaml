@@ -29,8 +29,8 @@
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - '/dev/nvme0n1'
         - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -39,8 +39,8 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/data-1", src: "/dev/nvme0n1" }
-        - { path: "/mnt/data-2", src: "/dev/nvme1n1" }
+        - { path: "/mnt/data-1", src: "/dev/nvme1n1" }
+        - { path: "/mnt/data-2", src: "/dev/nvme2n1" }
     - name: Increase hard file descriptor limit
       pam_limits:
         domain: '*'

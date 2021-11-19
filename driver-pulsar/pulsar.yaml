@@ -45,6 +45,7 @@ client:
 producer:
   batchingEnabled: true
   batchingMaxPublishDelayMs: 1
+  batchingMaxBytes: 131072
   blockIfQueueFull: true
   pendingQueueSize: 0
 
