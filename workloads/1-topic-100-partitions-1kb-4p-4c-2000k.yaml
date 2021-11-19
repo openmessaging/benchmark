@@ -27,8 +27,8 @@ useRandomizedPayloads: true
 randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
 
-subscriptionsPerTopic: 1
-consumerPerSubscription: 4
+subscriptionsPerTopic: 0
+consumerPerSubscription: 0
 producersPerTopic: 4
 
 # Discover max-sustainable rate
