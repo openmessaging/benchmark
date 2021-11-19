@@ -19,9 +19,15 @@
 
 
 name: StarlightRabbitMQ
-driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
+driverClass: io.openmessaging.benchmark.driver.starlightrabbitmq.StarlightRabbitMqBenchmarkDriver
 
-# RabbitMq client specific configurations
+amqpUri: amqp://localhost
 
-brokerAddress: {{ hostvars[inventory_hostname].private_ip }}
-messagePersistence: true
+pulsarHttpUrl: http://localhost:8080
+clusterName: local
+namespacePrefix: benchmark/ns
+persistence:
+  ensembleSize: 3
+  writeQuorum: 3
+  ackQuorum: 2
+  deduplicationEnabled: false

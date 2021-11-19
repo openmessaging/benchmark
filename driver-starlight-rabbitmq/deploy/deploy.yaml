@@ -201,60 +201,21 @@
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
-    - name: Configure service URL
-      lineinfile:
-        dest: /opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml
-        regexp: '^brokerAddress\: '
-        line: "brokerAddress: {{ hostvars[groups['pulsar'][0]].private_ip }}"
 
     - template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
-    - name: Get list of driver config files
-      raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
-      register: drivers_list
 
-    - name: Configure service URL
-      lineinfile:
-         dest: '{{ item }}'
-         regexp: '^  serviceUrl\: '
-         line: '  serviceUrl: {{ serviceUrl }}'
-      with_items: '{{ drivers_list.stdout_lines }}'
     - name: Configure http URL
       lineinfile:
-         dest: '{{ item }}'
-         regexp: '^  httpUrl: '
-         line: '  httpUrl: {{ httpUrl }}'
-      with_items: '{{ drivers_list.stdout_lines }}'
-
-    - name: Get list of jms driver config files
-      raw: ls -1 /opt/benchmark/driver-jms/pulsar*.yaml
-      register: jms_drivers_list
-
-    - name: Configure JMS service URL
+         dest: /opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml
+         regexp: '^pulsarHttpUrl: '
+         line: 'pulsarHttpUrl: {{ httpUrl }}'
+    - name: Configure AMQP URI
       lineinfile:
-         dest: '{{ item }}'
-         regexp: '^  serviceUrl\: '
-         line: '  serviceUrl: {{ serviceUrl }}'
-      with_items: '{{ jms_drivers_list.stdout_lines }}'
-    - name: Configure JMS service Connection Handler
-      ansible.builtin.replace:
-         dest: '{{ item }}'
-         regexp: 'pulsar\:\/\/localhost\:6650'
-         replace: '{{ serviceUrl }}'
-      with_items: '{{ jms_drivers_list.stdout_lines }}'
-    - name: Configure JMS http URL
-      lineinfile:
-         dest: '{{ item }}'
-         regexp: '^  httpUrl: '
-         line: '  httpUrl: {{ httpUrl }}'
-      with_items: '{{ jms_drivers_list.stdout_lines }}'
-    - name: Configure JMS http Connection Handler
-      ansible.builtin.replace:
-         dest: '{{ item }}'
-         regexp: 'http\:\/\/localhost\:8080'
-         replace: '{{ httpUrl }}'
-      with_items: '{{ jms_drivers_list.stdout_lines }}'
+        dest: /opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml
+        regexp: '^amqpUri: '
+        line: "amqpUri: amqp://{{ hostvars[groups['pulsar'][0]].private_ip }}"
 
     - name: Configure memory
       lineinfile:
