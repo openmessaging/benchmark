@@ -22,5 +22,10 @@ image: openmessaging/openmessaging-benchmark:latest
 imagePullPolicy: Always
 workload: workloads/1-topic-16-partitions-1kb.yaml
 driver: driver-pulsar/pulsar.yaml
+
+# Resource Configurations
 driverMemoryRequest: 512Mi
 driverMemoryLimit: 2048Mi
+
+#workersMemoryRequest: 512Mi
+#workersMemoryLimit: 2048Mi

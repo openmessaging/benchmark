@@ -42,6 +42,13 @@ spec:
         - name: {{ .Release.Name }}-worker
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           image: {{ .Values.image }}
+          {{- if .Values.workersMemoryRequest }}
+          resources:
+            limits:
+              memory: {{ .Values.workersMemoryLimit }}
+            requests:
+              memory: {{ .Values.workersMemoryRequest }}
+          {{- end }}
           command: ["sh", "-c"]
           args:
             - >
