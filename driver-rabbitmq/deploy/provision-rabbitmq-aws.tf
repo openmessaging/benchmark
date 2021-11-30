@@ -8,6 +8,10 @@ Example: ~/.ssh/rabbitmq_aws.pub
 DESCRIPTION
 }
 
+resource "random_id" "hash" {
+  byte_length = 8
+}
+
 variable "key_name" {
   default     = "rabbitmq-benchmark-key"
   description = "Desired name of AWS key pair"
@@ -57,7 +61,7 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name   = "terraform"
+  name   = "terraform-rabbitmq-${random_id.hash.hex}"
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
 
   # SSH access from anywhere
@@ -85,12 +89,12 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags {
-    Name = "Benchmark-Security-Group-RabbitMQ"
+    Name = "Benchmark-Security-Group-${random_id.hash.hex}"
   }
 }
 
 resource "aws_key_pair" "auth" {
-  key_name   = "${var.key_name}"
+  key_name   = "${var.key_name}-${random_id.hash.hex}"
   public_key = "${file(var.public_key_path)}"
 }
 
