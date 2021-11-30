@@ -110,11 +110,17 @@
 			<version>${project.version}</version>
 		</dependency>
 
+		<!--<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>driver-pravega</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-rocketmq</artifactId>
 			<version>${project.version}</version>
-		</dependency>
+		</dependency>-->
 
 		<dependency>
 			<groupId>${project.groupId}</groupId>
@@ -134,7 +140,7 @@
 			<version>${project.version}</version>
 		</dependency>
 
-		<dependency>
+		<!--<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-nats</artifactId>
 	    	<version>${project.version}</version>
@@ -153,6 +159,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>driver-redis</artifactId>
+			<version>${project.version}</version>
+		</dependency>-->
+
+ 		<dependency>
 			<groupId>org.apache.bookkeeper.stats</groupId>
 			<artifactId>bookkeeper-stats-api</artifactId>
 			<version>${bookkeeper.version}</version>
@@ -163,12 +175,6 @@
 			<artifactId>prometheus-metrics-provider</artifactId>
 			<version>${bookkeeper.version}</version>
 		</dependency>
-
-		<dependency>
-		  <groupId>io.netty</groupId>
-		  <artifactId>netty-all</artifactId>
-		  <version>4.1.48.Final</version>
-		</dependency> 
 
 		<dependency>
             <groupId>io.javalin</groupId>
