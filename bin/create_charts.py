@@ -55,6 +55,11 @@ def create_charts(test_results):
                      y_label='Rate (msg/s)',
                      time_series=[(x['driver'], x['consumeRate']) for x in results])
 
+        create_chart_2(workload, 'Publish and Consumption Rates',
+                     y_label='Rate (msg/s)',
+                     time_series=[(x['driver']+' Publish', x['publishRate']) for x in results],
+                     time_series_2=[(x['driver']+' Consumption', x['consumeRate']) for x in results])
+
         create_chart(workload, 'End To End Latency Avg',
                      y_label='Latency Avg (msec)',
                      time_series=[(x['driver'], x['endToEndLatencyAvg']) for x in results])
@@ -79,6 +84,26 @@ def create_chart(workload, title, y_label, time_series):
     # line_chart.x_labels = [str(10 * x) for x in range(len(time_series[0][1]))]
 
     for label, values in time_series:
+        chart.add(label, [(10*x, y) for x, y in enumerate(values)])
+
+    chart.range = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
+    chart.render_to_file('%s - %s.svg' % (workload, title))
+
+
+def create_chart_2(workload, title, y_label, time_series, time_series_2):
+    chart = pygal.XY(dots_size=.3,
+                     legend_at_bottom=True,)
+    chart.title = title
+
+    chart.human_readable = True
+    chart.y_title = y_label
+    chart.x_title = 'Time (seconds)'
+    # line_chart.x_labels = [str(10 * x) for x in range(len(time_series[0][1]))]
+
+    for label, values in time_series:
+        chart.add(label, [(10*x, y) for x, y in enumerate(values)])
+
+    for label, values in time_series_2:
         chart.add(label, [(10*x, y) for x, y in enumerate(values)])
 
     chart.range = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
