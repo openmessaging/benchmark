@@ -90,7 +90,7 @@ public class WorkloadGenerator implements AutoCloseable {
             executor.execute(() -> {
                 // Run background controller to adjust rate
                 try {
-                    findMaximumSustainableRate(targetPublishRate);
+                    findMaximumSustainableRate(topics, targetPublishRate);
                 } catch (IOException e) {
                     log.warn("Failure in finding max sustainable rate", e);
                 }
@@ -180,7 +180,7 @@ public class WorkloadGenerator implements AutoCloseable {
      * Adjust the publish rate to a level that is sustainable, meaning that we can consume all the messages that are
      * being produced
      */
-    private void findMaximumSustainableRate(double currentRate) throws IOException {
+    private void findMaximumSustainableRate(List<String> topics, double currentRate) throws IOException {
         double maxRate = Double.MAX_VALUE; // Discovered max sustainable rate
         double minRate = 0.1;
 
@@ -229,35 +229,29 @@ public class WorkloadGenerator implements AutoCloseable {
                 log.debug("Current rate: {} -- Publish rate {} -- Consume Rate: {} -- min-rate: {} -- max-rate: {}",
                         dec.format(currentRate), dec.format(publishRateInLastPeriod),
                         dec.format(receiveRateInLastPeriod), dec.format(minRate), dec.format(maxRate));
-            }
+            } else {
+		log.info("Current rate: {} -- Publish rate {} -- Consume Rate: {} -- min-rate: {} -- max-rate: {}",
+                        dec.format(currentRate), dec.format(publishRateInLastPeriod),
+                        dec.format(receiveRateInLastPeriod), dec.format(minRate), dec.format(maxRate));
+	    }
+
 
             if (publishRateInLastPeriod < currentRate * 0.95) {
                 // Producer is not able to publish as fast as requested
                 maxRate = currentRate * 1.1;
-                currentRate = minRate + (currentRate - minRate) / 2;
+                currentRate = minRate + (currentRate - minRate) * 0.95;
 
                 log.debug("Publishers are not meeting requested rate. reducing to {}", currentRate);
-            } else if (receiveRateInLastPeriod < publishRateInLastPeriod * 0.98) {
+            } else if (receiveRateInLastPeriod < publishRateInLastPeriod * 0.95) {
                 // If the consumers are building backlog, we should slow down publish rate
                 maxRate = currentRate;
-                currentRate = minRate + (currentRate - minRate) / 2;
+                currentRate = minRate + (currentRate - minRate) * 0.95;
                 log.debug("Consumers are not meeting requested rate. reducing to {}", currentRate);
 
                 // Slows the publishes to let the consumer time to absorb the backlog
-                worker.adjustPublishRate(minRate / 10);
-                while (true) {
-                    stats = worker.getCountersStats();
-                    long backlog = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
-                    if (backlog < 1000) {
-                        break;
-                    }
+                worker.adjustPublishRate(minRate / 100);
 
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                }
+		drainBacklog(topics, 10000L);
 
                 log.debug("Resuming load at reduced rate");
                 worker.adjustPublishRate(currentRate);
@@ -275,7 +269,10 @@ public class WorkloadGenerator implements AutoCloseable {
 
             } else if (currentRate < maxRate) {
                 minRate = currentRate;
-                currentRate = Math.min(currentRate * 2, maxRate);
+                currentRate = currentRate * 1.05;
+		if ( maxRate < currentRate ) {
+		    maxRate = currentRate;
+		}
                 log.debug("No bottleneck found, increasing the rate to {}", currentRate);
             } else if (++successfulPeriods > 3) {
                 minRate = currentRate * 0.95;
@@ -358,7 +355,11 @@ public class WorkloadGenerator implements AutoCloseable {
 
         worker.resumeConsumers();
 
-        final long minBacklog = 1000;
+	drainBacklog(topics, 1000L);
+
+    }
+
+    private void drainBacklog(List<String> topics, long minBacklog) throws IOException {
 
         while (true) {
             CountersStats stats = worker.getCountersStats();
@@ -376,7 +377,7 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         }
     }
-
+    
     private TestResult printAndCollectStats(long testDurations, TimeUnit unit) throws IOException {
         long startTime = System.nanoTime();
 

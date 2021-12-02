@@ -55,20 +55,28 @@
           - java-11-openjdk-devel
           - sysstat
           - vim
+          - screen
           - chrony
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        bootstrapServers: "{{ groups['pulsar'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
         pulsarVersion: "2.8.1"
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
-    - name: Download Pulsar binary package
+    - name: Download Luna binary package
       unarchive:
-        src: "http://archive.apache.org/dist/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        src: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.7/lunastreaming-2.8.0.1.1.7-bin.tar.gz"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
+    - file: path=/opt/pulsar/protocols state=absent
+    - file: path=/opt/pulsar/protocols state=directory
+    - name: Download Starlight for Kafka binary package
+      get_url:
+        url: "https://github.com/datastax/starlight-for-kafka/releases/download/2.8.0.1.0.2/pulsar-protocol-handler-kafka-2.8.0.1.0.2.nar"
+        dest: /opt/pulsar/protocols
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
@@ -169,7 +177,6 @@
         daemon_reload: yes
         name: "chronyd"
 
-
 - name: Get Maven version
   hosts: localhost
   become: false
@@ -194,7 +201,7 @@
     - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
-        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
 
@@ -217,6 +224,17 @@
          regexp: '^  httpUrl: '
          line: '  httpUrl: {{ httpUrl }}'
       with_items: '{{ drivers_list.stdout_lines }}'
+
+    - name: Get list of jms driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
+      register: kafka_drivers_list
+
+    - name: Configure Kafka Bootstrap Servers
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  bootstrap.servers='
+         line: '  bootstrap.servers={{ bootstrapServers }}'
+      with_items: '{{ kafka_drivers_list.stdout_lines }}'
 
     - name: Get list of jms driver config files
       raw: ls -1 /opt/benchmark/driver-jms/pulsar*.yaml
@@ -251,7 +269,7 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
@@ -317,6 +335,7 @@
         state: restarted
         daemon_reload: yes
         name: "pulsar-dashboard"
+
 
 - name: List host addresses
   hosts: localhost

@@ -74,13 +74,13 @@
     - file: path=/opt/pulsar/protocols state=absent
     - file: path=/opt/pulsar/protocols state=directory
     - name: Download Starlight for Kafka binary package
-      ansible.builtin.copy:
-        src: "../../../../luna-packages/pulsar-protocol-handler-kafka-2.8.0.1.0.2-SNAPSHOT.nar"
-        dest: /opt/pulsar/protocols/pulsar-protocol-handler-kafka-2.8.0.1.0.2-SNAPSHOT.nar
+      get_url:
+        url: "https://github.com/datastax/starlight-for-kafka/releases/download/2.8.0.1.0.2/pulsar-protocol-handler-kafka-2.8.0.1.0.2.nar"
+        dest: /opt/pulsar/protocols
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-        max_heap_memory: "6g"
-        max_direct_memory: "6g"
+        max_heap_memory: "24g"
+        max_direct_memory: "24g"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"

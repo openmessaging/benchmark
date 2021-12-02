@@ -37,4 +37,4 @@ producerConfig: |
 
 consumerConfig: |
   auto.offset.reset=earliest
-  enable.auto.commit=false
+  enable.auto.commit=true
