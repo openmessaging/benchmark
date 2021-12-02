@@ -46,6 +46,11 @@ public class Workload {
     public int consumerPerSubscription;
 
     public int producerRate;
+    /**
+     * If the producerRate = 0, the generator will slowly grow producerRate to find the maximum balanced rate
+     * This starts at 10000. Add an optional parameter to start the value closer to the balanced rate
+     */
+    public int producerStartRate = 10000;
 
     /**
      * If the consumer backlog is > 0, the generator will accumulate messages until the requested amount of storage is

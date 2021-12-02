@@ -64,7 +64,7 @@ public class Benchmark {
                 "--workers-file" }, description = "Path to a YAML file containing the list of workers addresses")
         public File workersFile;
 
-        @Parameter(names = { "-x", "--extra" }, description = "Allocate extra consumer workers")
+        @Parameter(names = { "-x", "--extra" }, description = "Allocate extra consumer workers when your backlog builds.")
         boolean extraConsumers;
 
         @Parameter(description = "Workloads")//, required = true)

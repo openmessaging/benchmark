@@ -134,9 +134,13 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             PersistenceConfiguration p = config.client.persistence;
             adminClient.namespaces().setPersistence(namespace,
                             new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
-
-//            adminClient.namespaces().setBacklogQuota(namespace,
-//                    BacklogQuota.builder().limitSize(-1).limitTime(-1).retentionPolicy(RetentionPolicy.producer_exception).build());
+            
+            adminClient.namespaces().setBacklogQuota(namespace,
+                    BacklogQuota.builder()
+                            .limitSize(-1L)
+                            .limitTime(-1)
+                            .retentionPolicy(RetentionPolicy.producer_exception)
+                            .build());
             adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
             log.info("Applied persistence configuration for namespace {}/{}/{}: {}", tenant, cluster, namespace,
                             writer.writeValueAsString(p));

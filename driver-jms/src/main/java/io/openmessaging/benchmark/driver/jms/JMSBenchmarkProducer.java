@@ -88,7 +88,7 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                     @Override
                     public void onException(Message message, Exception exception)
                     {
-                        log.info("send completed with error", exception);
+                        log.error("send completed with error", exception);
                         res.completeExceptionally(exception);
                     }
                 });
