@@ -37,9 +37,9 @@ client:
   namespacePrefix: public/default
   topicType: persistent
   persistence:
-    ensembleSize: 1
-    writeQuorum: 1
-    ackQuorum: 1
+    ensembleSize: 3
+    writeQuorum: 3
+    ackQuorum: 2
     deduplicationEnabled: false
 producer:
   blockIfQueueFull: true
