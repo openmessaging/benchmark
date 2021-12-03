@@ -60,6 +60,7 @@ public class WorkloadGenerator implements AutoCloseable {
     private volatile boolean needToWaitForBacklogDraining = false;
 
     private volatile double targetPublishRate;
+    private volatile double acceptableBacklog;
 
     public WorkloadGenerator(String driverName, Workload workload, Worker worker) {
         this.driverName = driverName;
@@ -86,11 +87,12 @@ public class WorkloadGenerator implements AutoCloseable {
         } else {
             // Producer rate is 0 and we need to discover the sustainable rate
             targetPublishRate = workload.producerStartRate;
+            acceptableBacklog = workload.acceptableBacklog;
 
             executor.execute(() -> {
                 // Run background controller to adjust rate
                 try {
-                    findMaximumSustainableRate(topics, targetPublishRate);
+                    findMaximumSustainableRate(topics, targetPublishRate, acceptableBacklog);
                 } catch (IOException e) {
                     log.warn("Failure in finding max sustainable rate", e);
                 }
@@ -180,7 +182,7 @@ public class WorkloadGenerator implements AutoCloseable {
      * Adjust the publish rate to a level that is sustainable, meaning that we can consume all the messages that are
      * being produced
      */
-    private void findMaximumSustainableRate(List<String> topics, double currentRate) throws IOException {
+    private void findMaximumSustainableRate(List<String> topics, double currentRate, double acceptableBacklog) throws IOException {
         double maxRate = Double.MAX_VALUE; // Discovered max sustainable rate
         double minRate = 0.1;
 
@@ -205,14 +207,13 @@ public class WorkloadGenerator implements AutoCloseable {
             // Consider multiple copies when using multiple subscriptions
             stats = worker.getCountersStats();
             long currentTime = System.nanoTime();
+	    double timeInterval = currentTime - lastControlTimestamp;
             long totalMessagesSent = stats.messagesSent;
             long totalMessagesReceived = stats.messagesReceived;
             long messagesPublishedInPeriod = totalMessagesSent - localTotalMessagesSentCounter;
             long messagesReceivedInPeriod = totalMessagesReceived - localTotalMessagesReceivedCounter;
-            double publishRateInLastPeriod = messagesPublishedInPeriod / (double) (currentTime - lastControlTimestamp)
-                    * TimeUnit.SECONDS.toNanos(1);
-            double receiveRateInLastPeriod = messagesReceivedInPeriod / (double) (currentTime - lastControlTimestamp)
-                    * TimeUnit.SECONDS.toNanos(1);
+            double publishRateInLastPeriod = messagesPublishedInPeriod / timeInterval * TimeUnit.SECONDS.toNanos(1);
+            double receiveRateInLastPeriod = messagesReceivedInPeriod / timeInterval * TimeUnit.SECONDS.toNanos(1);
 
             if (log.isDebugEnabled()) {
                 log.debug(
@@ -251,7 +252,7 @@ public class WorkloadGenerator implements AutoCloseable {
                 // Slows the publishes to let the consumer time to absorb the backlog
                 worker.adjustPublishRate(minRate / 100);
 
-		drainBacklog(topics, 10000L);
+		drainBacklog(topics, acceptableBacklog);
 
                 log.debug("Resuming load at reduced rate");
                 worker.adjustPublishRate(currentRate);
@@ -355,16 +356,16 @@ public class WorkloadGenerator implements AutoCloseable {
 
         worker.resumeConsumers();
 
-	drainBacklog(topics, 1000L);
+	drainBacklog(topics, 1000.);
 
     }
 
-    private void drainBacklog(List<String> topics, long minBacklog) throws IOException {
+    private void drainBacklog(List<String> topics, double acceptableBacklog) throws IOException {
 
         while (true) {
             CountersStats stats = worker.getCountersStats();
-            long currentBacklog = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
-            if (currentBacklog <= minBacklog) {
+            double currentBacklog = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
+            if (currentBacklog <= acceptableBacklog) {
                 log.info("--- Completed backlog draining ---");
                 needToWaitForBacklogDraining = false;
                 return;
