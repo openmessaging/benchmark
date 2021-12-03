@@ -78,6 +78,7 @@
 						<exclude>payload/**</exclude>
 						<exclude>**/*.pyc</exclude>
 						<exclude>**/.pydevproject</exclude>
+                                                <exclude>**/*.sh</exclude>
 					</excludes>
 					<mapping>
 						<benchmark>SCRIPT_STYLE</benchmark>
