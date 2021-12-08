@@ -65,17 +65,18 @@
         pulsarVersion: "2.8.1"
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
-    - name: Download Luna binary package
+    - name: "Download {{ pulsar_package['title'] }} {{ pulsar_package['version'] }} binary package"
       unarchive:
-        src: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.7/lunastreaming-2.8.0.1.1.7-bin.tar.gz"
+        src: "{{ pulsar_package['url'] }}"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
     - file: path=/opt/pulsar/protocols state=absent
     - file: path=/opt/pulsar/protocols state=directory
-    - name: Download Starlight for Kafka binary package
+    - name: "Download {{ protocol_handlers['title'] }} {{ protocol_handlers['version'] }} binary package"
+      when: protocol_handlers is defined
       get_url:
-        url: "https://github.com/datastax/starlight-for-kafka/releases/download/2.8.0.1.0.2/pulsar-protocol-handler-kafka-2.8.0.1.0.2.nar"
+        url: "{{ protocol_handlers['url'] }}"
         dest: /opt/pulsar/protocols
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
@@ -189,7 +190,7 @@
      - set_fact:
          benchmark_version: "{{ maven_version.stdout }}"
 
-- name: Pulsar benchmarking client setup
+- name: "{{ benchmark_package['title'] }} setup"
   hosts: client
   connection: ssh
   become: true
@@ -201,11 +202,15 @@
     - file: path=/opt/benchmark state=absent
     - name: Copy benchmark code
       unarchive:
-        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        src: "{{ benchmark_package['path'] }}"
         dest: /opt
-    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
-
-    - template:
+    - shell: "mv /opt/{{ benchmark_package['name'] }} /opt/benchmark"
+    - name: Configure installation information
+      template:
+        src: "templates/install.yaml"
+        dest: "/opt/benchmark/install.yaml"
+    - name: Configure workers information 
+      template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
     - name: Get list of driver config files
@@ -285,6 +290,68 @@
         name: "benchmark-worker"
 
 
+- name: Prometheus {{ prometheus_package['version'] }} installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+      when: prometheus_package is defined
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - docker
+      when: prometheus_package is defined
+    - file: path=/opt/prometheus state=absent
+      when: prometheus_package is defined
+    - file: path=/opt/prometheus state=directory
+      when: prometheus_package is defined
+    - name: Download Prometheus Binary Package
+      when: prometheus_package is defined
+      unarchive:
+        src: "{{ prometheus_package['url'] }}"
+        remote_src: yes
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+- name: Prometheus {{ prometheus_package['version'] }} setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - file:
+        path: "/opt/prometheus/{{ item }}"
+        state: directory
+      with_items:
+        - data
+      when: prometheus_package is defined
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+      when: prometheus_package is defined
+    - template:
+        src: "templates/pulsar-dashboard.service"
+        dest: "/etc/systemd/system/pulsar-dashboard.service"
+      when: prometheus_package is defined
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+      when: prometheus_package is defined
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+      when: prometheus_package is defined
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "pulsar-dashboard"
+      when: prometheus_package is defined
+
+
 - name: List host addresses
   hosts: localhost
   become: false
@@ -298,3 +365,7 @@
     - debug:
         msg: "Benchmark clients {{ item }}"
       with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"
+      when: prometheus_package is defined

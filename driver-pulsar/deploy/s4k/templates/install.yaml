@@ -17,28 +17,22 @@
 # under the License.
 #
 
+workers:
+  title: {{ benchmark_package['title'] }}
+  path: {{ benchmark_package['path'] }}
+  name: {{ benchmark_package['name'] }}
+  count: {{ groups['client'] | count }}
+  instance_type: {{ hostvars[groups['client'][0]].instance_type }}
 
-name: Kafka
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
-
-# Kafka client-specific configuration
-replicationFactor: 3
-
-topicConfig: |
-  min.insync.replicas=2
-
-commonConfig: |
-  bootstrap.servers=localhost:9092
-
-producerConfig: |
-  acks=all
-  linger.ms=1
-  batch.size=131072
-
-consumerConfig: |
-  auto.offset.reset=earliest
-  enable.auto.commit=false
-  max.partition.fetch.bytes=10485760
-  fetch.min.bytes=0
-  fetch.max.wait.ms=5
-  max.poll.records=100000
+brokers:
+  title: {{ pulsar_package['title'] }}
+  version: {{ pulsar_package['version'] }}
+  url: {{ pulsar_package['url'] }}
+{% if protocol_handlers is defined %}
+  protocol_handlers:
+    title: {{ protocol_handlers['title'] }}
+    version: {{ protocol_handlers['version'] }}
+    url: {{ protocol_handlers['url'] }}
+{% endif %}
+  count: {{ groups['pulsar'] | count }}
+  instance_type: {{ hostvars[groups['pulsar'][0]].instance_type }}
