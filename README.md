@@ -1,4 +1,7 @@
-# The OpenMessaging Benchmark Framework
+# OpenMessaging Benchmark Framework
+[![Build Status](https://app.travis-ci.com/openmessaging/benchmark.svg?branch=master)](https://app.travis-ci.com/openmessaging/benchmark)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+
 
 **Notice：** We do not consider or plan to release any unilateral test results based on this standard. For reference, you can purchase server tests on the cloud by yourself. 
 
