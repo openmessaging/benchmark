@@ -17,8 +17,23 @@
 # under the License.
 #
 
+# required
+java_jdk: java-11-openjdk
 
-# Pulsar Client configuration
-webServiceUrl=http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/
+# required
+benchmark_package:
+  title: "Open Messaging Benchmark Client"
+  path: "../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
+  name: "openmessaging-benchmark-0.0.1-SNAPSHOT"
 
-brokerServiceUrl=pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/
+# required
+pulsar_package:
+  title: "Apache Pulsar"
+  version: "2.8.1"
+  url: "https://downloads.apache.org/pulsar/pulsar-2.8.1/apache-pulsar-2.8.1-bin.tar.gz"
+  broker: "broker.conf"
+
+# optional
+prometheus_package:
+  version: "2.2.1"
+  url: "https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz"
