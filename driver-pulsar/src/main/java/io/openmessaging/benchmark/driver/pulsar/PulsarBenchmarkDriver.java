@@ -123,6 +123,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                 .batchingMaxMessages(Integer.MAX_VALUE)
                 .batchingMaxBytes(config.producer.batchingMaxBytes)
                 .blockIfQueueFull(config.producer.blockIfQueueFull)
+                .sendTimeout(0, TimeUnit.MILLISECONDS)
                 .maxPendingMessages(config.producer.pendingQueueSize);
 
         try {
