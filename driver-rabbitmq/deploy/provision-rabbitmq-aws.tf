@@ -18,11 +18,11 @@ variable "key_name" {
 }
 
 variable "instance_types" {
-  type = "map"
+  type = map(string)
 }
 
 variable "num_instances" {
-  type = "map"
+  type = map(string)
 }
 
 variable "region" {}
@@ -36,7 +36,7 @@ provider "aws" {
 resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
-  tags {
+  tags = {
     Name = "Benchmark-VPC"
   }
 }
@@ -88,7 +88,7 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags {
+  tags = {
     Name = "Benchmark-Security-Group-${random_id.hash.hex}"
   }
 }
@@ -106,7 +106,7 @@ resource "aws_instance" "rabbitmq" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["rabbitmq"]}"
 
-  tags {
+  tags = {
     Name = "rabbitmq-${count.index}"
   }
 }
@@ -119,7 +119,7 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
 
-  tags {
+  tags = {
     Name = "rabbitmq-client-${count.index}"
   }
 }
