@@ -18,9 +18,12 @@
  */
 package io.openmessaging.benchmark.driver.starlightrabbitmq;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StarlightRabbitMqConfig {
 
-    public String amqpUri;
+    public List<String> amqpUris = new ArrayList<>();
 
     public String pulsarHttpUrl;
 

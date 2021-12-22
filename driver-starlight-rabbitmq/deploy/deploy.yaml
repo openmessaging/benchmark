@@ -66,7 +66,8 @@
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
-        src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        #src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        src: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.10/lunastreaming-2.8.0.1.1.10-bin.tar.gz"
         remote_src: yes
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
@@ -88,8 +89,8 @@
     - name: Install Starlight-for-RabbitMQ
       get_url:
         dest: /opt/pulsar/protocols/starlight-rabbitmq.nar
-        url: "https://github.com/datastax/starlight-for-rabbitmq/releases/download/v1.0.0/starlight-rabbitmq-1.0.0.nar"
-        checksum: "sha256:cd9fb3c7cb542ba7e2a379408e181e687c5b38780dd453d859747c260371f5fb"
+        url: "https://github.com/datastax/starlight-for-rabbitmq/releases/download/v1.1.2/starlight-rabbitmq-1.1.2.nar"
+        checksum: "sha256:b9a8b4937746825dfe8ac3e842420171f2056db88638c6a8c4d33151ab8b3f06"
 
 - name: ZooKeeper setup
   hosts: zookeeper
@@ -206,16 +207,9 @@
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
 
-    - name: Configure http URL
-      lineinfile:
-         dest: /opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml
-         regexp: '^pulsarHttpUrl: '
-         line: 'pulsarHttpUrl: {{ httpUrl }}'
-    - name: Configure AMQP URI
-      lineinfile:
-        dest: /opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml
-        regexp: '^amqpUri: '
-        line: "amqpUri: amqp://{{ hostvars[groups['pulsar'][0]].private_ip }}"
+    - template:
+        src: "templates/starlight-rabbitmq.yaml"
+        dest: "/opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml"
 
     - name: Configure memory
       lineinfile:

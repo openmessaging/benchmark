@@ -10,7 +10,7 @@ instance_types = {
 }
 
 num_instances = {
-  "client"      = 4
+  "client"      = 12
   "pulsar"      = 3
   "zookeeper"   = 3
   "prometheus"  = 1

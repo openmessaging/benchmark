@@ -22,13 +22,15 @@ name: StarlightRabbitMQ
 driverClass: io.openmessaging.benchmark.driver.starlightrabbitmq.StarlightRabbitMqBenchmarkDriver
 
 amqpUris:
-  - amqp://localhost
+{% for pulsar in groups['pulsar'] %}
+  - amqp://{{ hostvars[pulsar].private_ip }}:5672
+{% endfor %}
 
-pulsarHttpUrl: http://localhost:8080
-clusterName: standalone
+pulsarHttpUrl: {{ httpUrl }}
+clusterName: local
 namespacePrefix: benchmark/ns
 persistence:
-  ensembleSize: 1
-  writeQuorum: 1
-  ackQuorum: 1
+  ensembleSize: 3
+  writeQuorum: 3
+  ackQuorum: 2
   deduplicationEnabled: false
