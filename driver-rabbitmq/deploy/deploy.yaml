@@ -42,8 +42,6 @@
     yum: pkg={{ item }} state=latest
     with_items:
       - wget
-      - java-11-openjdk
-      - java-11-openjdk-devel
       - sysstat
       - vim
       - socat
@@ -88,7 +86,7 @@
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
-  - name: create admin/admin  profile
+  - name: create admin/admin profile
     shell:  rabbitmqctl add_user admin  admin
   - name: set admin tag
     shell: rabbitmqctl set_user_tags admin administrator
@@ -139,8 +137,21 @@
     shell: rabbitmqctl list_queues
     register: result_queue
   - debug: msg='{{result_queue.stdout}}'
-  
-  
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
 - name: Rabbitmq benchmarking client setup
   hosts: client
   connection: ssh
@@ -161,17 +172,34 @@
     - shell: >
         tuned-adm profile latency-performance &&
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+
     - name: Configure service URL
       lineinfile:
         dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
         regexp: '^brokerAddress\: '
         line: 'brokerAddress: rabbitmaster'
-    - name: Configure benchmark JVM settings
+    - name: Configure benchmark-worker memory
       lineinfile:
-         dest: /opt/benchmark/bin/benchmark
-         regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
-
+        dest: /opt/benchmark/bin/benchmark-worker
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
+    - name: Configure benchmark memory
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark-worker systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
 
 - name: List host addresses
   hosts: localhost
