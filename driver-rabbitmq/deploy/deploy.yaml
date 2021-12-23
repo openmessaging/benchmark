@@ -36,23 +36,24 @@
   connection: ssh
   tasks:
   - set_fact:
-      erlangVersion: 19.3.6.5
-      rabbitMqVersion: 3.7.2
+      erlangVersion: 23.3.4.10
+      rabbitMqVersion: 3.9.11
   - name: Install RPM packages
     yum: pkg={{ item }} state=latest
     with_items:
       - wget
-      - java
+      - java-11-openjdk
+      - java-11-openjdk-devel
       - sysstat
       - vim
       - socat
   - name: Install Erlang
     yum:
-      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el7.centos.x86_64.rpm
+      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el7.x86_64.rpm
       state: present
   - name: Install Rabbitmq Server
     yum:
-      name: https://dl.bintray.com/rabbitmq/all/rabbitmq-server/{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
+      name: https://github.com/rabbitmq/rabbitmq-server/releases/download/v{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
       state: present
 
   - name: Change master hostname to rabbitmaster
@@ -119,7 +120,7 @@
     when: rabbitmq_slave is defined
   - name: Show RabbitMQ cluster status
     shell: rabbitmqctl cluster_status
-  - name: Create high availability pllicy
+  - name: Create high availability policy
     shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
     when: rabbitmq_master is defined
   # - name: add queue taxCodeInvoiceQueue
@@ -145,6 +146,14 @@
   connection: ssh
   become: true
   tasks:
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - wget
+        - java-11-openjdk
+        - java-11-openjdk-devel
+        - sysstat
+        - vim
     - name: Copy benchmark code
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
