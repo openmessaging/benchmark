@@ -31,6 +31,32 @@
         - { line: "{{ hostvars[groups['rabbitmq'][2]].private_ip }} rabbitslave2" }
 
 
+- name: Format and mount disks for RabbitMQ hosts
+  hosts: rabbitmq
+  connection: ssh
+  become: true
+  tasks:
+    - name: Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme1n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/data", src: "/dev/nvme1n1" }
+    - name: Set permissions
+      file:
+        path: "/mnt/data"
+        state: touch
+        mode: "0777"
+
 - name: Install RabbitMQ Cluster
   hosts: rabbitmq
   connection: ssh
@@ -69,12 +95,11 @@
       name: "rabbitslave2"
     when: rabbitslave2 is defined
 
-  # - name: stop rabbitmq
-  #   shell: rabbitmqctl stop_app
-  # - name: kill rabbitmq
-  #   shell: rabbitmqctl stop ; ps aux | grep rabbitmq | grep -v grep | awk '{print $2}'| xargs kill -9
-  # - name: reset rabbitmq
-  #   shell: rabbitmqctl reset
+  - name: Create rabbitmq-env.conf file
+    copy:
+      dest: "/etc/rabbitmq/rabbitmq-env.conf"
+      content: |
+        MNESIA_BASE=/mnt/data
 
   - systemd:
       state: started
@@ -121,18 +146,6 @@
   - name: Create high availability policy
     shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
     when: rabbitmq_master is defined
-  # - name: add queue taxCodeInvoiceQueue
-  #   rabbitmq_queue: name=cmcc_zzs_taxCodeInvoiceQueue
-  #   when: rabbitmq_master is defined
-  # - name: add queue cmcc_zzs_generatorInvoiceQueue
-  #   rabbitmq_queue: name=cmcc_zzs_generatorInvoiceQueue
-  #   when: rabbitmq_master is defined
-  # - name: add queue cmcc_zzs_pushInvoiceQueue
-  #   rabbitmq_queue: name=cmcc_zzs_pushInvoiceQueue
-  #   when: rabbitmq_master is defined
-  # - name: add queue cmcc_zzs_sentToPlatformServerQueue
-  #   rabbitmq_queue: cmcc_zzs_sentToPlatformServerQueue
-  #   when: rabbitmq_master is defined
   - name: Show queue list
     shell: rabbitmqctl list_queues
     register: result_queue
