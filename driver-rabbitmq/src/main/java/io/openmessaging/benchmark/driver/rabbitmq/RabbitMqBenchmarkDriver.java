@@ -65,7 +65,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
-        if (connection != null) {
+        if (connection != null && connection.isOpen()) {
             connection.close();
         }
     }
@@ -92,7 +92,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         Channel channel = null;
         try {
             channel = connection.createChannel();
-            channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT);
+            channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT, true);
             channel.confirmSelect();
         } catch (IOException e) {
             e.printStackTrace();
@@ -111,7 +111,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                 Channel channel = null;
                 try {
                     channel = connection.createChannel();
-                    channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT);
+                    channel.exchangeDeclare(topic, BuiltinExchangeType.FANOUT, true);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
