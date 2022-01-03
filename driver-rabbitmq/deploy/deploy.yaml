@@ -173,11 +173,10 @@
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
 
-    - name: Configure service URL
-      lineinfile:
-        dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
-        regexp: '^brokerAddress\: '
-        line: "brokerAddress: {{ hostvars[groups['rabbitmq'][0]].private_ip }}"
+    - template:
+        src: "templates/rabbitmq.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq.yaml"
+
     - name: Configure benchmark-worker memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark-worker

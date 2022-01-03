@@ -143,10 +143,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         Timer timer = new Timer();
 
-        String topicPrefix = benchmarkDriver.getTopicNamePrefix();
 
         List<String> topics = new ArrayList<>();
         for (int i = 0; i < topicsInfo.numberOfTopics; i++) {
+            String topicPrefix = benchmarkDriver.getTopicNamePrefix();
             String topic = String.format("%s-%s-%04d", topicPrefix, RandomGenerator.getRandomString(), i);
             topics.add(topic);
             futures.add(benchmarkDriver.createTopic(topic, topicsInfo.numberOfPartitionsPerTopic));
