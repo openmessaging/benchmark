@@ -36,8 +36,8 @@ pulsar_package:
 # optional
 protocol_handlers:
   title: "Starlight for Kafka"
-  version: "2.8.0.1.0.4"
-  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.4/pulsar-protocol-handler-kafka-2.8.0.1.0.4.nar"
+  version: "2.8.0.1.0.5"
+  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.5/pulsar-protocol-handler-kafka-2.8.0.1.0.5.nar"
 
 # optional
 prometheus_package:
