@@ -106,7 +106,9 @@ def create_chart_2(workload, title, y_label, time_series, time_series_2):
     for label, values in time_series_2:
         chart.add(label, [(10*x, y) for x, y in enumerate(values)])
 
-    chart.range = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
+    range1 = (0, max(chain(* [l for (x, l) in time_series])) * 1.20)
+    range2 = (0, max(chain(* [l for (x, l) in time_series_2])) * 1.20)
+    chart.range = max(range1, range2)
     chart.render_to_file('%s - %s.svg' % (workload, title))
 
 
