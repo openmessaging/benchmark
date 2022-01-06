@@ -21,6 +21,8 @@ package io.openmessaging.benchmark.driver.kafka;
 public class Config {
     public short replicationFactor;
 
+    public boolean reset;
+
     public String topicConfig;
 
     public String commonConfig;
