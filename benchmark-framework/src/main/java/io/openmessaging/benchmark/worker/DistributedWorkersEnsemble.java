@@ -83,9 +83,15 @@ public class DistributedWorkersEnsemble implements Worker {
     }
 
     @Override
-    public void initializeDriver(File configurationFile) throws IOException {
+    public void initializeDriver(File configurationFile, File consumerDriverFile) throws IOException {
         byte[] confFileContent = Files.readAllBytes(Paths.get(configurationFile.toString()));
-        sendPost(workers, "/initialize-driver", confFileContent);
+	if ( consumerDriverFile == null ) {
+	    sendPost(workers, "/initialize-driver", confFileContent);
+	} else {
+	    sendPost(producerWorkers, "/initialize-driver", confFileContent);
+	    confFileContent = Files.readAllBytes(Paths.get(consumerDriverFile.toString()));
+	    sendPost(consumerWorkers, "/initialize-driver", confFileContent);
+	}
     }
 
     @Override
@@ -145,6 +151,16 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void stopAll() {
         sendPost(workers, "/stop-all", new byte[0]);
+    }
+
+    @Override
+    public void pauseProducers() throws IOException {
+        sendPost(producerWorkers, "/pause-producers", new byte[0]);
+    }
+
+    @Override
+    public void resumeProducers() throws IOException {
+        sendPost(producerWorkers, "/resume-producers", new byte[0]);
     }
 
     @Override

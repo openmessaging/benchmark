@@ -134,7 +134,7 @@ public class WorkloadGenerator implements AutoCloseable {
         if (workload.consumerBacklogSizeGB > 0) {
             executor.execute(() -> {
                 try {
-                    buildAndDrainBacklog(topics);
+                    buildAndDrainBacklog(topics, acceptableBacklog);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -328,7 +328,7 @@ public class WorkloadGenerator implements AutoCloseable {
         log.info("Created {} producers in {} ms", fullListOfTopics.size(), timer.elapsedMillis());
     }
 
-    private void buildAndDrainBacklog(List<String> topics) throws IOException {
+    private void buildAndDrainBacklog(List<String> topics, double acceptableBacklog) throws IOException {
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
 
@@ -352,11 +352,24 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         }
 
+	if ( workload.producerPauseBeforeDrain > 0 ) {
+
+	    log.info("--- Pause production for {} seconds ---", workload.producerPauseBeforeDrain);
+
+	    worker.pauseProducers();
+	    try {
+		Thread.sleep(workload.producerPauseBeforeDrain * 1000);
+	    } catch (InterruptedException e) {
+		throw new RuntimeException(e);
+	    }
+	    worker.resumeProducers();
+	}
+	
         log.info("--- Start draining backlog ---");
 
         worker.resumeConsumers();
 
-	drainBacklog(topics, 1000.);
+	drainBacklog(topics, acceptableBacklog);
 
     }
 

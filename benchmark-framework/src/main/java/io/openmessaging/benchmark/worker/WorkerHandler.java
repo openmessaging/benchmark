@@ -51,6 +51,8 @@ public class WorkerHandler {
         app.post("/create-topics", this::handleCreateTopics);
         app.post("/create-producers", this::handleCreateProducers);
         app.post("/probe-producers", this::handleProbeProducers);
+        app.post("/pause-producers", this::handlePauseProducers);
+        app.post("/resume-producers", this::handleResumeProducers);
         app.post("/create-consumers", this::handleCreateConsumers);
         app.post("/pause-consumers", this::handlePauseConsumers);
         app.post("/resume-consumers", this::handleResumeConsumers);
@@ -68,7 +70,7 @@ public class WorkerHandler {
         File tempFile = File.createTempFile("driver-configuration", "conf");
         Files.write(ctx.bodyAsBytes(), tempFile);
 
-        localWorker.initializeDriver(tempFile);
+        localWorker.initializeDriver(tempFile, null);
         tempFile.delete();
     }
 
@@ -87,6 +89,14 @@ public class WorkerHandler {
 
     private void handleProbeProducers(Context ctx) throws Exception {
         localWorker.probeProducers();
+    }
+
+    private void handlePauseProducers(Context ctx) throws Exception {
+        localWorker.pauseProducers();
+    }
+
+    private void handleResumeProducers(Context ctx) throws Exception {
+        localWorker.resumeProducers();
     }
 
     private void handleCreateConsumers(Context ctx) throws Exception {

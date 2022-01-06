@@ -65,5 +65,7 @@ public class Workload {
      */
     public long consumerBacklogSizeGB = 0;
 
+    public long producerPauseBeforeDrain = 0;
+    
     public int testDurationMinutes;
 }

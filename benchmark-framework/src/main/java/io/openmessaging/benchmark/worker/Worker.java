@@ -31,7 +31,7 @@ import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 
 public interface Worker extends AutoCloseable {
 
-    void initializeDriver(File configurationFile) throws IOException;
+    void initializeDriver(File configurationFile, File consumerDriver) throws IOException;
 
     List<String> createTopics(TopicsInfo topicsInfo) throws IOException;
 
@@ -44,6 +44,10 @@ public interface Worker extends AutoCloseable {
     void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException;
 
     void adjustPublishRate(double publishRate) throws IOException;
+
+    void pauseProducers() throws IOException;
+
+    void resumeProducers() throws IOException;
 
     void pauseConsumers() throws IOException;
 

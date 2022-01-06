@@ -101,6 +101,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private boolean consumersArePaused = false;
 
+    private boolean producersArePaused = false;
+
     public LocalWorker() {
         this(NullStatsLogger.INSTANCE);
     }
@@ -120,7 +122,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
-    public void initializeDriver(File driverConfigFile) throws IOException {
+    public void initializeDriver(File driverConfigFile, File consumerDriver) throws IOException {
         Preconditions.checkArgument(benchmarkDriver == null);
         testCompleted = false;
 
@@ -181,6 +183,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) {
+
         int processors = Runtime.getRuntime().availableProcessors();
 
         rateLimiter.setRate(producerWorkAssignment.publishRate);
@@ -214,24 +217,26 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 while (!testCompleted) {
                     producers.forEach(producer -> {
                         rateLimiter.acquire();
-                        byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
-                        final long sendTime = System.nanoTime();
-                        producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
-                                .thenRun(() -> {
-                            messagesSent.increment();
-                            totalMessagesSent.increment();
-                            messagesSentCounter.inc();
-                            bytesSent.add(payloadData.length);
-                            bytesSentCounter.add(payloadData.length);
+			if ( !producersArePaused ) {
+                            byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
+                            final long sendTime = System.nanoTime();
+                            producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
+                                    .thenRun(() -> {
+                                messagesSent.increment();
+                                totalMessagesSent.increment();
+                                messagesSentCounter.inc();
+                                bytesSent.add(payloadData.length);
+                                bytesSentCounter.add(payloadData.length);
 
-                            long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
-                            publishLatencyRecorder.recordValue(latencyMicros);
-                            cumulativePublishLatencyRecorder.recordValue(latencyMicros);
-                            publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
-                        }).exceptionally(ex -> {
-                            log.warn("Write error on message", ex);
-                            return null;
-                        });
+                                long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
+                                publishLatencyRecorder.recordValue(latencyMicros);
+                                cumulativePublishLatencyRecorder.recordValue(latencyMicros);
+                                publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
+                            }).exceptionally(ex -> {
+                                log.warn("Write error on message", ex);
+                                return null;
+                            });
+			}
                     });
                 }
             } catch (Throwable t) {
@@ -306,6 +311,18 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public void pauseProducers() throws IOException {
+        producersArePaused = true;
+        log.info("Pausing producers");
+    }
+
+    @Override
+    public void resumeProducers() throws IOException {
+        producersArePaused = false;
+        log.info("Resuming producers");
     }
 
     @Override

@@ -64,6 +64,10 @@ public class Benchmark {
                 "--workers-file" }, description = "Path to a YAML file containing the list of workers addresses")
         public File workersFile;
 
+        @Parameter(names = { "-cd",
+                "--consumer-driver" }, description = "Path to an alternative driver file for consumption")
+        public File consumerDriver;
+
         @Parameter(names = { "-x", "--extra" }, description = "Allocate extra consumer workers when your backlog builds.")
         boolean extraConsumers;
 
@@ -147,7 +151,8 @@ public class Benchmark {
                     // Stop any left over workload
                     worker.stopAll();
 
-                    worker.initializeDriver(new File(driverConfig));
+		    // consumer driver is only used if the worker is a DistributedWorkersEnsemble
+                    worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
 
                     WorkloadGenerator generator = new WorkloadGenerator(driverConfiguration.name, workload, worker);
 
