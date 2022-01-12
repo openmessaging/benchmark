@@ -1,0 +1,14 @@
+[Unit]
+Description=NATS Server
+After=network.target
+
+[Service]
+ExecStart=/opt/nats/nats-server -c /opt/nats/cluster.conf
+WorkingDirectory=/opt/nats/
+RestartSec=1s
+Restart=on-failure
+Type=simple
+LimitNOFILE=300000
+
+[Install]
+WantedBy=multi-user.target

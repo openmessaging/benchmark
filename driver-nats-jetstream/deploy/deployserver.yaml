@@ -1,0 +1,124 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Install NATS cluster
+  hosts: natsserver
+  connection: ssh
+  vars_files:
+    - natsoptions.yaml
+  tasks:
+    - name: Stop NATS Server if present
+      systemd:
+        name: "nats-server"
+        state: stopped
+      ignore_errors: true
+    - name: Create list of mounted devices
+      set_fact:
+        mounted_devices: "{{ ansible_mounts|json_query('[].device') }}"
+    - name: Create JetStream File System
+      filesystem:
+        fstype: "{{ statefstype }}"
+        dev: "{{ statemountsrc }}"
+      when: statemountsrc not in mounted_devices
+    - name: Mount JetStream File System
+      mount:
+        path: "{{ statemountpath }}"
+        src: "{{ statemountsrc }}"
+        fstype: "{{ statefstype }}"
+        state: mounted
+      when: statemountsrc not in mounted_devices
+    - name: Purge existing JetStream state (if any)
+      file:
+        state: absent
+        path: /state/jetstream
+      when: purgepreviousstate|default(false)|bool == true
+    - name: Install utility packages
+      apt:
+        pkg:
+          - wget
+          - unzip
+        update_cache: yes
+    - name: Remove existing server install (if present)
+      file: path=/opt/nats state=absent
+    - name: Create /opt/nats
+      file: path=/opt/nats state=directory
+    - name: Install NATS server from tarball
+      unarchive:
+        src: "{{ archiveurl }}"
+        remote_src: yes
+        dest: /opt/nats
+        extra_opts:
+          - "-j"
+    - name: Install NATS CLI tool from tarball
+      unarchive:
+        src: "{{ cliarchiveurl }}"
+        remote_src: yes
+        dest: /opt/nats
+        extra_opts:
+          - "-j"
+    - name: Set NATS CLI contexts and default
+      become: false
+      shell:
+        "./nats ctx save --server nats://{{ ansible_facts['default_ipv4']['address'] }}:4222 --user System --password s3cr3t System; ./nats ctx save --server nats://{{ ansible_facts['default_ipv4']['address'] }}:4222 --user UserA --password s3cr3t UserA; ./nats ctx select System"
+      args:
+        chdir: /opt/nats
+        creates: "{{ ansible_env.HOME }}/.config/nats"
+    - name: Provision NATS server configuration
+      template:
+        src: "templates/cluster.conf"
+        dest: "/opt/nats/cluster.conf"
+    - name: Provision systemd service configuration
+      template:
+        src: "templates/nats-server.service"
+        dest: "/etc/systemd/system/nats-server.service"
+    - name: Set seed NATS cluster node
+      replace:
+        dest: /opt/nats/cluster.conf
+        regexp: 'natsClusterIp'
+        replace: "{{ natsClusterIp }}"
+    - name: Set the NATS server listen address
+      replace:
+        dest: /opt/nats/cluster.conf
+        regexp: 'localhost'
+        replace: "{{ ansible_facts['default_ipv4']['address'] }}"
+    - name: Set the NATS server unique name
+      replace:
+        dest: /opt/nats/cluster.conf
+        regexp: 'uniquepart'
+        replace: "{{ ansible_facts['default_ipv4']['address'] | replace('.','-') }}"
+    - name: Set the JS path
+      replace:
+        dest: /opt/nats/cluster.conf
+        regexp: 'jsstoredirplaceholder'
+        replace: "{{ statemountpath }}"
+    - name: Set the JS max memory storage
+      replace:
+        dest: /opt/nats/cluster.conf
+        regexp: 'jsmaxmemorystoreplaceholder'
+        replace: "{{ maxmemorystore }}"
+    - name: Set the JS max file storage
+      replace:
+        dest: /opt/nats/cluster.conf
+        regexp: 'jsmaxfilestoreplaceholder'
+        replace: "{{ maxfilestore }}"
+    - name: Start the NATS server (systemd)
+      systemd:
+        state: started
+        daemon_reload: yes
+        name: "nats-server"

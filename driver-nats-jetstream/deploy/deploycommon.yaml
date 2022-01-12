@@ -1,0 +1,51 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Common Facts
+  hosts: natsserver:natsclient
+  vars:
+    natsurl_list: []
+  tasks:
+    - name: Install NTP
+      apt:
+        pkg:
+          - ntp
+        update_cache: yes
+    - name: Restart NTP
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "ntp"
+    - name: Collect NATS listener URLs
+      set_fact:
+        natsurl_item: "nats://{{ hostvars[item].private_ip }}:4222"
+      with_items: "{{ groups['natsserver'] }}"
+      register: natsurls
+    - name: Build NATS listener URL List
+      set_fact:
+        natsurl_list: "{{ natsurls.results | map(attribute='ansible_facts.natsurl_item') | list }}"
+    - debug: var=natsurl_list
+    - name: Set NATS listener URL Seed List
+      set_fact:
+        natsurls_delimited: "{{ natsurl_list | join(',') }}"
+        cacheable: yes
+    - name: Set the cluster lead NATS server
+      set_fact:
+        natsClusterIp: "{{ hostvars[groups['natsserver'][0]].private_ip }}"
+        cacheable: yes

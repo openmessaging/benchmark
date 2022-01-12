@@ -1,0 +1,104 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name:  benchmarking client setup
+  hosts: natsclient
+  connection: ssh
+  become: true
+  vars_files:
+    - natsoptions.yaml
+  tasks:
+    - name: Install utility packages
+      apt:
+        pkg:
+          - wget
+          - unzip
+        update_cache: yes
+    - name: Install java
+      apt:
+        name: openjdk-11-jre-headless
+        state: latest
+        install_recommends: no
+        update_cache: yes
+    - name: Copy benchmark tarball
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - name: Remove any existing benchmark directory
+      ansible.builtin.file:
+        path: /opt/benchmark
+        state: absent
+    - name: Install benchmark
+      shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - name: Provision worker list
+      template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Install NATS CLI tool from tarball
+      unarchive:
+        src: "{{ cliarchiveurl }}"
+        remote_src: yes
+        dest: /opt/benchmark
+        extra_opts:
+          - "-j"
+    - name: Set NATS CLI contexts and default
+      become: false
+      shell:
+        "./nats ctx save --server={{ansible_facts.natsurls_delimited}} --user System --password s3cr3t System; ./nats ctx save --server={{ansible_facts.natsurls_delimited}} --user UserA --password s3cr3t UserA; ./nats ctx select System"
+      args:
+        chdir: /opt/benchmark
+        creates: "{{ ansible_env.HOME }}/.config/nats"
+    - name: Provision NATS worker configuration
+      template:
+        src: "templates/nats.yaml"
+        dest: "/opt/benchmark/driver-nats-jetstream/nats.yaml"
+    - name: Set NATS seed URL
+      lineinfile:
+        dest: /opt/benchmark/driver-nats-jetstream/nats.yaml
+        regexp: '^natsHostUrl\: '
+        line: "natsHostUrl: nats://{{ natsClusterIp }}:4222"
+    - name: Set JS Replicas
+      lineinfile:
+        dest: /opt/benchmark/driver-nats-jetstream/nats.yaml
+        regexp: '^jsReplicas\: '
+        line: "jsReplicas: {{ jsreplicas }}"
+    - name: Set JS Consumer Mode
+      lineinfile:
+        dest: /opt/benchmark/driver-nats-jetstream/nats.yaml
+        regexp: '^jsConsumerMode\: '
+        line: "jsConsumerMode: {{ jsconsumermode }}"
+    - name: Configure JVM memory Benchmark Worker
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark-worker
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xms4G -Xmx4G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure JVM memory Benchmark
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xmx2G"'
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - name: Start the benchmark worker (systemd)
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
