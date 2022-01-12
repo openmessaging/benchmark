@@ -53,6 +53,10 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     private final AtomicInteger uriIndex = new AtomicInteger();
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
+    protected void initialize (RabbitMqConfig config) {
+        this.config = config;
+    }
+
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, RabbitMqConfig.class);
@@ -137,7 +141,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         return future;
     }
 
-    private String getExchangeName(String uri) {
+    protected String getExchangeName(String uri) {
         QueryStringDecoder decoder = new QueryStringDecoder(uri);
         Map<String, List<String>> parameters = decoder.parameters();
 
