@@ -14,7 +14,8 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 * [Apache RocketMQ](https://rocketmq.apache.org)
 * [RabbitMQ](https://www.rabbitmq.com/)
 * [Apache Pulsar](https://pulsar.apache.org)
-* [NATS Streaming](https://nats.io/)
+* [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream)
+* [NATS Streaming (Deprecated)](https://github.com/nats-io/nats-streaming-server)
 * [Redis](https://redis.com/)
 * [Pravega](https://pravega.io/)
 
