@@ -18,7 +18,12 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class RabbitMqConfig {
-    public String brokerAddress;
+
+    public List<String> amqpUris = new ArrayList<>();
+
     public boolean messagePersistence = false;
 }

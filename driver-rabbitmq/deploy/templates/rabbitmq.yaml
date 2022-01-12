@@ -24,5 +24,7 @@ driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
 # RabbitMq client specific configurations
 
 amqpUris:
-  - amqp://localhost
+{% for pulsar in groups['rabbitmq'] %}
+  - amqp://admin:admin@{{ hostvars[pulsar].private_ip }}:5672
+{% endfor %}
 messagePersistence: false
