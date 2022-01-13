@@ -18,11 +18,19 @@
 #
 
 
-name: RabbitMQ
-driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
-
-# RabbitMq client specific configurations
+name: StarlightRabbitMQ
+driverClass: io.openmessaging.benchmark.driver.starlightrabbitmq.StarlightRabbitMqBenchmarkDriver
 
 amqpUris:
-  - amqp://localhost
-messagePersistence: false
+{% for pulsar in groups['pulsar'] %}
+  - amqp://{{ hostvars[pulsar].private_ip }}:5672
+{% endfor %}
+
+pulsarHttpUrl: {{ httpUrl }}
+clusterName: local
+namespacePrefix: benchmark/ns
+persistence:
+  ensembleSize: 3
+  writeQuorum: 3
+  ackQuorum: 2
+  deduplicationEnabled: false

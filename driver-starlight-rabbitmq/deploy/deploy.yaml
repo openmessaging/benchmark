@@ -1,0 +1,246 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Format and mount disks for Pulsar/BookKeeper hosts
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - name: Format disks
+      filesystem:
+         fstype: xfs
+         dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
+
+- name: Pulsar installation
+  hosts: all
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set performance profile
+      command: tuned-adm profile latency-performance
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - wget
+          - java-11-openjdk
+          - java-11-openjdk-devel
+          - sysstat
+          - vim
+          - screen
+          - chrony
+    - set_fact:
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        pulsarVersion: "2.8.1"
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
+    - name: Download Pulsar binary package
+      unarchive:
+        #src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
+        src: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.10/lunastreaming-2.8.0.1.1.10-bin.tar.gz"
+        remote_src: yes
+        dest: /opt/pulsar
+        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        max_heap_memory: "6g"
+        max_direct_memory: "6g"
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+    - name: Create protocols directory
+      file:
+        path: /opt/pulsar/protocols
+        state: directory
+    - name: Install Starlight-for-RabbitMQ
+      get_url:
+        dest: /opt/pulsar/protocols/starlight-rabbitmq.nar
+        url: "https://github.com/datastax/starlight-for-rabbitmq/releases/download/v1.1.2/starlight-rabbitmq-1.1.2.nar"
+        checksum: "sha256:b9a8b4937746825dfe8ac3e842420171f2056db88638c6a8c4d33151ab8b3f06"
+
+- name: ZooKeeper setup
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
+        max_heap_memory: "512m"
+        max_direct_memory: "512m"
+    - file:
+        path: "/opt/pulsar/{{ item }}"
+        state: directory
+      with_items:
+        - data/zookeeper
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - template:
+        src: "templates/zoo.cfg"
+        dest: "/opt/pulsar/conf/zookeeper.conf"
+    - template:
+        src: templates/myid
+        dest: "/opt/pulsar/data/zookeeper/myid"
+    - template:
+        src: "templates/zookeeper.service"
+        dest: "/etc/systemd/system/zookeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "zookeeper"
+    - command: >
+        bin/pulsar initialize-cluster-metadata --cluster local
+        --zookeeper localhost:2181
+        --configuration-store localhost:2181
+        --web-service-url {{ httpUrl }}
+        --broker-service-url {{ serviceUrl }}
+      args:
+        chdir: /opt/pulsar
+      when: groups['zookeeper'][0] == inventory_hostname
+
+- name: BookKeeper setup
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - template:
+        src: "templates/bookkeeper.conf"
+        dest: "/opt/pulsar/conf/bookkeeper.conf"
+    - name: Install bookkeeper systemd service
+      template:
+        src: "templates/bookkeeper.service"
+        dest: "/etc/systemd/system/bookkeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "bookkeeper"
+
+- name: Pulsar configuration and systemd setup
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up broker
+      template:
+        src: "templates/broker.conf"
+        dest: "/opt/pulsar/conf/broker.conf"
+    - template:
+        src: "templates/pulsar.service"
+        dest: "/etc/systemd/system/pulsar.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "pulsar"
+
+- name: Chrony setup 
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
+- name: Get Maven version
+  hosts: localhost
+  become: false
+  tasks:
+     - shell: >
+          cat ../../pom.xml | xmllint --format - \
+            | sed "s/xmlns=\".*\"//g" | xmllint --stream --pattern /project/version --debug - \
+            | grep -A 2 "matches pattern" | grep text | sed "s/.* [0-9] //g"
+       register: maven_version
+     - set_fact:
+         benchmark_version: "{{ maven_version.stdout }}"
+
+- name: Pulsar benchmarking client setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+
+    - template:
+        src: "templates/starlight-rabbitmq.yaml"
+        dest: "/opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml"
+
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+
+
+- name: List host addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "Zookeeper servers {{ item }}"
+      with_items: "{{ groups['zookeeper'] }}"
+    - debug:
+        msg: "Pulsar/BookKeeper servers {{ item }}"
+      with_items: "{{ groups['pulsar'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['client'] }}"

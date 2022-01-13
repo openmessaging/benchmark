@@ -30,4 +30,11 @@ public class TopicSubscription {
         this.subscription = subscription;
     }
 
+    @Override
+    public String toString() {
+        return "TopicSubscription{" +
+            "topic='" + topic + '\'' +
+            ", subscription='" + subscription + '\'' +
+            '}';
+    }
 }

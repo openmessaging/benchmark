@@ -16,14 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.openmessaging.benchmark.driver.rabbitmq;
+package io.openmessaging.benchmark.driver.starlightrabbitmq;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class RabbitMqConfig {
+public class StarlightRabbitMqConfig {
 
     public List<String> amqpUris = new ArrayList<>();
 
-    public boolean messagePersistence = false;
+    public String pulsarHttpUrl;
+
+    public String namespacePrefix;
+
+    public String clusterName;
+
+    public PersistenceConfiguration persistence = new PersistenceConfiguration();
+
+    public static class PersistenceConfiguration {
+        public int ensembleSize = 3;
+        public int writeQuorum = 3;
+        public int ackQuorum = 2;
+
+        public boolean deduplicationEnabled = false;
+    }
+
 }

@@ -1,0 +1,12 @@
+[Unit]
+Description=Prometheus server
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/prometheus
+ExecStart=/opt/prometheus/prometheus \
+    --storage.tsdb.path=/opt/prometheus/data \
+    --config.file=/opt/prometheus/prometheus.yml
+
+[Install]
+WantedBy=multi-user.target

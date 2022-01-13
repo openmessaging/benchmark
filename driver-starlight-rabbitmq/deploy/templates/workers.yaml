@@ -18,11 +18,7 @@
 #
 
 
-name: RabbitMQ
-driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
-
-# RabbitMq client specific configurations
-
-amqpUris:
-  - amqp://localhost
-messagePersistence: false
+workers:
+{% for worker in groups['client'] %}
+  - http://{{ hostvars[worker].private_ip }}:8080
+{% endfor %}

@@ -1,5 +1,5 @@
 [Unit]
-Description=Benchmark worker
+Description=Pulsar Broker
 After=network.target
 
 [Service]

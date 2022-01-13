@@ -1,10 +1,19 @@
+provider "aws" {
+  region  = "${var.region}"
+  version = "3.50"
+}
+
+provider "random" {
+  version = "3.1"
+}
+
 variable "public_key_path" {
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
 Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 
-Example: ~/.ssh/rabbitmq_aws.pub
+Example: ~/.ssh/pulsar_aws.pub
 DESCRIPTION
 }
 
@@ -13,9 +22,13 @@ resource "random_id" "hash" {
 }
 
 variable "key_name" {
-  default     = "rabbitmq-benchmark-key"
-  description = "Desired name of AWS key pair"
+  default     = "pulsar-benchmark-key"
+  description = "Desired name prefix for the AWS key pair"
 }
+
+variable "region" {}
+
+variable "ami" {}
 
 variable "instance_types" {
   type = map(string)
@@ -25,24 +38,17 @@ variable "num_instances" {
   type = map(string)
 }
 
-variable "region" {}
-variable "ami" {}
-
-provider "aws" {
-  region = "${var.region}"
-}
-
 # Create a VPC to launch our instances into
 resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags = {
-    Name = "Benchmark-VPC"
+    Name = "Pulsar-Benchmark-VPC-${random_id.hash.hex}"
   }
 }
 
 # Create an internet gateway to give our subnet access to the outside world
-resource "aws_internet_gateway" "default" {
+resource "aws_internet_gateway" "pulsar" {
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
 }
 
@@ -50,7 +56,7 @@ resource "aws_internet_gateway" "default" {
 resource "aws_route" "internet_access" {
   route_table_id         = "${aws_vpc.benchmark_vpc.main_route_table_id}"
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.default.id}"
+  gateway_id             = "${aws_internet_gateway.pulsar.id}"
 }
 
 # Create a subnet to launch our instances into
@@ -61,7 +67,7 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name   = "terraform-rabbitmq-${random_id.hash.hex}"
+  name   = "terraform-pulsar-${random_id.hash.hex}"
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
 
   # SSH access from anywhere
@@ -78,6 +84,20 @@ resource "aws_security_group" "benchmark_security_group" {
     to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["10.0.0.0/16"]
+  }
+
+  # Prometheus/Dashboard access
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # outbound internet access
@@ -98,16 +118,29 @@ resource "aws_key_pair" "auth" {
   public_key = "${file(var.public_key_path)}"
 }
 
-resource "aws_instance" "rabbitmq" {
+resource "aws_instance" "zookeeper" {
   ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["rabbitmq"]}"
+  instance_type          = "${var.instance_types["zookeeper"]}"
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["rabbitmq"]}"
+  count                  = "${var.num_instances["zookeeper"]}"
 
   tags = {
-    Name = "rabbitmq-${count.index}"
+    Name = "zk-${count.index}"
+  }
+}
+
+resource "aws_instance" "pulsar" {
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["pulsar"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["pulsar"]}"
+
+  tags = {
+    Name = "pulsar-${count.index}"
   }
 }
 
@@ -120,10 +153,27 @@ resource "aws_instance" "client" {
   count                  = "${var.num_instances["client"]}"
 
   tags = {
-    Name = "rabbitmq-client-${count.index}"
+    Name = "pulsar-client-${count.index}"
+  }
+}
+
+resource "aws_instance" "prometheus" {
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["prometheus"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["prometheus"]}"
+
+  tags = {
+    Name = "prometheus-${count.index}"
   }
 }
 
 output "client_ssh_host" {
   value = "${aws_instance.client.0.public_ip}"
+}
+
+output "prometheus_host" {
+  value = "${aws_instance.prometheus.0.public_ip}"
 }
