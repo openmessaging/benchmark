@@ -61,6 +61,7 @@
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        pulsarServer: "{{ hostvars[groups['pulsar'][0]].private_ip }}"
         bootstrapServers: "{{ groups['pulsar'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
         pulsarVersion: "2.8.1"
     - file: path=/opt/pulsar state=absent
@@ -240,6 +241,11 @@
          regexp: '^  bootstrap.servers='
          line: '  bootstrap.servers={{ bootstrapServers }}'
       with_items: '{{ kafka_drivers_list.stdout_lines }}'
+
+    - name: Configure Starlight for RabbitMQ Driver
+      template:
+        src: "templates/starlight-rabbitmq.yaml"
+        dest: "/opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml"
 
     - name: Get list of jms driver config files
       raw: ls -1 /opt/benchmark/driver-jms/pulsar*.yaml
