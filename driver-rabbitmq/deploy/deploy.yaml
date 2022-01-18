@@ -17,19 +17,31 @@
 # under the License.
 #
 
-- name: Add entries to /etc/hosts
-  hosts: all
+- name: Format and mount disks for RabbitMQ hosts
+  hosts: rabbitmq
   connection: ssh
+  become: true
   tasks:
-    - lineinfile:
-        dest: /etc/hosts
-        line: "{{ item.line }}"
-        state: present
+    - name: Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
       with_items:
-        - { line: "{{ hostvars[groups['rabbitmq'][0]].private_ip }} rabbitmaster" }
-        - { line: "{{ hostvars[groups['rabbitmq'][1]].private_ip }} rabbitslave1" }
-        - { line: "{{ hostvars[groups['rabbitmq'][2]].private_ip }} rabbitslave2" }
-
+        - '/dev/nvme1n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/data", src: "/dev/nvme1n1" }
+    - name: Set permissions
+      file:
+        path: "/mnt/data"
+        state: touch
+        mode: "0777"
 
 - name: Install RabbitMQ Cluster
   hosts: rabbitmq
@@ -42,8 +54,6 @@
     yum: pkg={{ item }} state=latest
     with_items:
       - wget
-      - java-11-openjdk
-      - java-11-openjdk-devel
       - sysstat
       - vim
       - socat
@@ -56,44 +66,23 @@
       name: https://github.com/rabbitmq/rabbitmq-server/releases/download/v{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
       state: present
 
-  - name: Change master hostname to rabbitmaster
-    hostname:
-      name: "rabbitmaster"
-    when: rabbitmq_master is defined
-
-  - name: Change slave1 hostname to rabbitslave1
-    hostname:
-      name: "rabbitslave1"
-    when: rabbitslave1 is defined
-
-  - name: Change slave2 hostname to rabbitslave2
-    hostname:
-      name: "rabbitslave2"
-    when: rabbitslave2 is defined
-
-  # - name: stop rabbitmq
-  #   shell: rabbitmqctl stop_app
-  # - name: kill rabbitmq
-  #   shell: rabbitmqctl stop ; ps aux | grep rabbitmq | grep -v grep | awk '{print $2}'| xargs kill -9
-  # - name: reset rabbitmq
-  #   shell: rabbitmqctl reset
+  - name: Create rabbitmq-env.conf file
+    template:
+      src: "templates/rabbitmq-env.conf"
+      dest: "/etc/rabbitmq/rabbitmq-env.conf"
 
   - systemd:
       state: started
       daemon_reload: yes
       name: "rabbitmq-server"
+
   - name: Install web management
     shell: rabbitmq-plugins enable rabbitmq_management
   - systemd:
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
-  - name: create admin/admin  profile
-    shell:  rabbitmqctl add_user admin  admin
-  - name: set admin tag
-    shell: rabbitmqctl set_user_tags admin administrator
-  - name: set admin permission
-    shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
+
   - name: Clear servers' Erlang cookie
     file:
       path: /var/lib/rabbitmq/.erlang.cookie
@@ -104,43 +93,61 @@
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
+
   - name: RabbitMQ status
     shell: rabbitmqctl cluster_status
     register: result
   - debug:
       msg: '{{ result.stdout }}'
+
   - name: Rabbit cluster stop slaves
     shell: rabbitmqctl stop_app
-    when: rabbitmq_slave is defined
+    when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
+
   - name: Rabbit cluster slaves join master
-    shell: rabbitmqctl join_cluster rabbit@rabbitmaster
-    when: rabbitmq_slave is defined
+    shell: rabbitmqctl join_cluster rabbit@{{ hostvars[groups['rabbitmq'][0]].private_ip }}
+    when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
+
   - name: Start RabbitMQ cluster slaves
     shell: rabbitmqctl start_app
-    when: rabbitmq_slave is defined
+    when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
+
   - name: Show RabbitMQ cluster status
     shell: rabbitmqctl cluster_status
+    register: result
+  - debug:
+      msg: '{{ result.stdout }}'
+
+  - name: create admin/admin profile
+    shell:  rabbitmqctl add_user admin  admin
+    when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
+
+  - name: set admin tag
+    shell: rabbitmqctl set_user_tags admin administrator
+    when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
+
+  - name: set admin permission
+    shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
+    when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
+
   - name: Create high availability policy
     shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
-    when: rabbitmq_master is defined
-  # - name: add queue taxCodeInvoiceQueue
-  #   rabbitmq_queue: name=cmcc_zzs_taxCodeInvoiceQueue
-  #   when: rabbitmq_master is defined
-  # - name: add queue cmcc_zzs_generatorInvoiceQueue
-  #   rabbitmq_queue: name=cmcc_zzs_generatorInvoiceQueue
-  #   when: rabbitmq_master is defined
-  # - name: add queue cmcc_zzs_pushInvoiceQueue
-  #   rabbitmq_queue: name=cmcc_zzs_pushInvoiceQueue
-  #   when: rabbitmq_master is defined
-  # - name: add queue cmcc_zzs_sentToPlatformServerQueue
-  #   rabbitmq_queue: cmcc_zzs_sentToPlatformServerQueue
-  #   when: rabbitmq_master is defined
-  - name: Show queue list
-    shell: rabbitmqctl list_queues
-    register: result_queue
-  - debug: msg='{{result_queue.stdout}}'
-  
-  
+    when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
 - name: Rabbitmq benchmarking client setup
   hosts: client
   connection: ssh
@@ -161,17 +168,34 @@
     - shell: >
         tuned-adm profile latency-performance &&
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+
     - name: Configure service URL
       lineinfile:
         dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
         regexp: '^brokerAddress\: '
-        line: 'brokerAddress: rabbitmaster'
-    - name: Configure benchmark JVM settings
+        line: "brokerAddress: {{ hostvars[groups['rabbitmq'][0]].private_ip }}"
+    - name: Configure benchmark-worker memory
       lineinfile:
-         dest: /opt/benchmark/bin/benchmark
-         regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms24G -Xmx24G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
-
+        dest: /opt/benchmark/bin/benchmark-worker
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
+    - name: Configure benchmark memory
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark-worker systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
 
 - name: List host addresses
   hosts: localhost
