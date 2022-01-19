@@ -27,8 +27,8 @@
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - '/dev/nvme0n1'
         - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -37,8 +37,8 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
-        - { path: "/mnt/storage", src: "/dev/nvme1n1" }
+        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
 
 - name: Pulsar installation
   hosts: all
