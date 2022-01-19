@@ -334,11 +334,13 @@ public class WorkloadGenerator implements AutoCloseable {
 
         this.needToWaitForBacklogDraining = true;
 
-        long requestedBacklogSize = workload.consumerBacklogSizeGB * 1024 * 1024 * 1024 / workload.messageSize;
+	// Calculate the number of messages for the backlog
+        long requestedBacklogSize = (workload.consumerBacklogSizeGB * 1073741824) / workload.messageSize;
 
         while (true) {
+	    // Retrieve stats and calculate the current backlog in messages
             CountersStats stats = worker.getCountersStats();
-            long currentBacklogSize = workload.subscriptionsPerTopic * (stats.messagesSent - stats.messagesReceived);
+            long currentBacklogSize = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
 
             if (currentBacklogSize >= requestedBacklogSize) {
 		break;
