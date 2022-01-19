@@ -18,8 +18,8 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.ConfirmListener;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
@@ -33,16 +33,20 @@ import com.rabbitmq.client.Channel;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
+
+    private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkProducer.class);
 
     private final Channel channel;
     private final String exchange;
     private final ConfirmListener listener;
     /**To record msg and it's future structure.**/
-    volatile SortedSet<Long> ackSet = Collections.synchronizedSortedSet(new TreeSet<Long>());
+    volatile SortedSet<Long> ackSet = Collections.synchronizedSortedSet(new TreeSet<>());
     private final ConcurrentHashMap<Long, CompletableFuture<Void>> futureConcurrentHashMap = new ConcurrentHashMap<>();
-    private boolean messagePersistence = false;
+    private final boolean messagePersistence;
 
     public RabbitMqBenchmarkProducer(Channel channel, String exchange, boolean messagePersistence) {
         this.channel = channel;
@@ -50,16 +54,16 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
         this.messagePersistence = messagePersistence;
         this.listener = new ConfirmListener() {
             @Override
-            public void handleNack(long deliveryTag, boolean multiple) throws IOException {
+            public void handleNack(long deliveryTag, boolean multiple) {
                 if (multiple) {
                     SortedSet<Long> treeHeadSet = ackSet.headSet(deliveryTag + 1);
                     synchronized(ackSet) {
-                        for(Iterator iterator = treeHeadSet.iterator(); iterator.hasNext();) {
-                            long value = (long)iterator.next();
+                        for(Iterator<Long> iterator = treeHeadSet.iterator(); iterator.hasNext();) {
+                            long value = iterator.next();
                             iterator.remove();
                             CompletableFuture<Void> future = futureConcurrentHashMap.get(value);
                             if (future != null) {
-                                future.completeExceptionally(null);
+                                future.completeExceptionally(new RuntimeException("Message was negatively acknowledged"));
                                 futureConcurrentHashMap.remove(value);
                             }
                         }
@@ -69,14 +73,14 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
                 } else {
                     CompletableFuture<Void> future = futureConcurrentHashMap.get(deliveryTag);
                     if (future != null) {
-                        future.completeExceptionally(null);
+                        future.completeExceptionally(new RuntimeException("Message was negatively acknowledged"));
                         futureConcurrentHashMap.remove(deliveryTag);
                     }
                     ackSet.remove(deliveryTag);
                 }
             }
             @Override
-            public void handleAck(long deliveryTag, boolean multiple) throws IOException {
+            public void handleAck(long deliveryTag, boolean multiple) {
                 if (multiple) {
                     SortedSet<Long> treeHeadSet = ackSet.headSet(deliveryTag + 1);
                     synchronized(ackSet) {
@@ -105,9 +109,11 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public void close() throws Exception {
-        if (channel.isOpen()) {
+        try {
             channel.removeConfirmListener(listener);
             channel.close();
+        } catch (AlreadyClosedException e) {
+            log.warn("Channel already closed", e);
         }
     }
 

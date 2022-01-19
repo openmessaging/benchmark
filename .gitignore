@@ -10,6 +10,7 @@ core/*.json
 *.json
 *.retry
 *.pem
+*.hcl
 **/.terraform
 **/terraform.tfstate
 **/terraform.tfstate.backup
