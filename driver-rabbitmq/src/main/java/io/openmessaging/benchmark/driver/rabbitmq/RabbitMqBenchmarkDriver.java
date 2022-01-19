@@ -18,6 +18,7 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import com.rabbitmq.client.AlreadyClosedException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -67,9 +68,9 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         for(Iterator<Map.Entry<String, Connection>> it = connections.entrySet().iterator(); it.hasNext(); ) {
             Connection connection = it.next().getValue();
             try {
-                if (connection.isOpen()) {
-                    connection.close();
-                }
+                connection.close();
+            } catch (AlreadyClosedException e) {
+                log.warn("Connection already closed", e);
             } catch (Exception e) {
                 log.error("Couldn't close connection", e);
             }

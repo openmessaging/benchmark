@@ -18,6 +18,7 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.ConfirmListener;
 import java.util.Collections;
 import java.util.Date;
@@ -32,8 +33,12 @@ import com.rabbitmq.client.Channel;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
+
+    private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkProducer.class);
 
     private final Channel channel;
     private final String exchange;
@@ -104,9 +109,11 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public void close() throws Exception {
-        if (channel.isOpen()) {
+        try {
             channel.removeConfirmListener(listener);
             channel.close();
+        } catch (AlreadyClosedException e) {
+            log.warn("Channel already closed", e);
         }
     }
 
