@@ -384,6 +384,11 @@ public class WorkloadGenerator implements AutoCloseable {
                 needToWaitForBacklogDraining = false;
                 return;
             }
+            else if (acceptableBacklog < 1.) {
+                log.info("--- Drain with no target ---");
+                needToWaitForBacklogDraining = false;
+                return;
+            }
 
             try {
                 Thread.sleep(1000);
