@@ -23,6 +23,8 @@ public class Config {
 
     public boolean reset;
 
+    public boolean sync;
+
     public String topicConfig;
 
     public String commonConfig;

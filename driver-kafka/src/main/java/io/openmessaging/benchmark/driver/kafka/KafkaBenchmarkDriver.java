@@ -155,7 +155,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
             kafkaConsumer.subscribe(Arrays.asList(topic));
 
             // Start polling
-            BenchmarkConsumer benchmarkConsumer = new KafkaBenchmarkConsumer(kafkaConsumer, consumerProperties, consumerCallback);
+            BenchmarkConsumer benchmarkConsumer = new KafkaBenchmarkConsumer(kafkaConsumer, consumerProperties, consumerCallback, config.sync);
 
             // Add to consumer list to close later
             consumers.add(benchmarkConsumer);
