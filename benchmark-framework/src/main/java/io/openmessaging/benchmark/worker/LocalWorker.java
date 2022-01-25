@@ -343,6 +343,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
         cumulativePublishLatencyRecorder.reset();
         endToEndLatencyRecorder.reset();
         endToEndCumulativeLatencyRecorder.reset();
+        totalMessagesSent.reset();
+        totalMessagesReceived.reset();
     }
 
     @Override
