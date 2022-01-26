@@ -33,6 +33,9 @@ In order to create a NATS cluster on AWS, you'll need to have the following inst
 * [The `terraform-inventory` Ansible adapter for Terraform state](https://github.com/adammck/terraform-inventory)
 * [Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
 
+> Ansible note: the project playbook requires the Python library `jmespath` installed on local host (a recommended Ansible dependency, but may not be installed by the Ansible installer). 
+> Verify this dependency with `pip install jmespath` or `pip3 install jmespath` (Python3)
+
 In addition, you will need to:
 
 * [Create an AWS account](https://aws.amazon.com/account/) (or use an existing account)
