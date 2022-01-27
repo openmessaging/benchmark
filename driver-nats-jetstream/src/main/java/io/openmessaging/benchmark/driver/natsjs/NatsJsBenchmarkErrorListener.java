@@ -17,14 +17,15 @@
  * under the License.
  */
 
-package io.openmessaging.benchmark.driver.natsJetStream;
+package io.openmessaging.benchmark.driver.natsjs;
 
-import io.nats.client.*;
-
+import io.nats.client.Connection;
+import io.nats.client.Consumer;
+import io.nats.client.ErrorListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NatsBenchmarkErrorListener implements ErrorListener {
+public class NatsJsBenchmarkErrorListener implements ErrorListener {
     public void errorOccurred(Connection conn, String error)
     {
         log.info("The server notified the client with: " + error);
@@ -40,7 +41,7 @@ public class NatsBenchmarkErrorListener implements ErrorListener {
         log.info("A slow consumer dropped messages: "+ consumer.getDroppedCount());
     }
 
-    private static final Logger log = LoggerFactory.getLogger(NatsBenchmarkErrorListener.class);
+    private static final Logger log = LoggerFactory.getLogger(NatsJsBenchmarkErrorListener.class);
 }
 
 
