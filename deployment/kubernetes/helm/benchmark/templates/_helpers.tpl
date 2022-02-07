@@ -35,6 +35,6 @@ Create chart name and version as used by the chart label.
 {{- $nodeCount := .numWorkers | int }}
   {{- range $index0 := until $nodeCount -}}
     {{- $index1 := $index0 | add1 -}}
-http://benchmark-worker-{{ $index0 }}.benchmark-worker:8080{{ if ne $index1 $nodeCount }},{{ end }}
+http://omb-worker-{{ $index0 }}.omb-worker:8080{{ if ne $index1 $nodeCount }},{{ end }}
   {{- end -}}
 {{- end -}}
