@@ -90,8 +90,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final LongAdder totalMessagesSent = new LongAdder();
     private final LongAdder totalMessagesReceived = new LongAdder();
 
-    private final Recorder publishLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
-    private final Recorder cumulativePublishLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
+    private static final long MAX_LATENCY = TimeUnit.SECONDS.toMicros(60);
+    private final Recorder publishLatencyRecorder = new Recorder(MAX_LATENCY, 5);
+    private final Recorder cumulativePublishLatencyRecorder = new Recorder(MAX_LATENCY, 5);
     private final OpStatsLogger publishLatencyStats;
 
     private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
@@ -230,9 +231,13 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                 bytesSentCounter.add(payloadData.length);
 
                                 long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
+                                publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
+                                if (latencyMicros > MAX_LATENCY) {
+                                    // prevent errors
+                                    latencyMicros = MAX_LATENCY;
+                                }
                                 publishLatencyRecorder.recordValue(latencyMicros);
                                 cumulativePublishLatencyRecorder.recordValue(latencyMicros);
-                                publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
                             }).exceptionally(ex -> {
                                 log.warn("Write error on message", ex);
                                 return null;
