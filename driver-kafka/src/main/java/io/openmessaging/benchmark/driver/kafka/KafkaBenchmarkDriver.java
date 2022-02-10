@@ -25,11 +25,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -42,6 +42,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -96,14 +97,20 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         if (config.reset) {
             // List existing topics
             ListTopicsResult result = admin.listTopics();
+            Set<String> topics = new HashSet<>();
             try {
-                Set<String> topics = result.names().get();
+                topics = result.names().get();
                 // Delete all existing topics
                 DeleteTopicsResult deletes = admin.deleteTopics(topics);
                 deletes.all().get();
             } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-                throw new IOException(e);
+                if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+                    // this is okay, because we are issuing this command
+                    // in parallel from multiple workers
+                } else {
+                    e.printStackTrace();
+                    throw new IOException("Cannot delete topics " + topics + ": " + e, e);
+                }
             }
         }
     }
