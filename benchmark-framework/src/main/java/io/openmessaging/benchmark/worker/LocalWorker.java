@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -65,8 +66,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private BenchmarkDriver benchmarkDriver = null;
 
-    private List<BenchmarkProducer> producers = new ArrayList<>();
-    private List<BenchmarkConsumer> consumers = new ArrayList<>();
+    private List<BenchmarkProducer> producers = new CopyOnWriteArrayList<>();
+    private List<BenchmarkConsumer> consumers = new CopyOnWriteArrayList<>();
 
     private final RateLimiter rateLimiter = RateLimiter.create(1.0);
 
