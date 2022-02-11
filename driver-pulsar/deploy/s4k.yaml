@@ -23,21 +23,21 @@ java_jdk: java-11-openjdk
 # required
 benchmark_package:
   title: "Open Messaging Benchmark Client"
-  path: "../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
+  path: "/Users/dave.fischer/Documents/GitHub/openmessaging-benchmark/package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
   name: "openmessaging-benchmark-0.0.1-SNAPSHOT"
 
 # required
 pulsar_package:
   title: "Luna Streaming"
-  version: "ls280_1.1.9"
-  url: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.9/lunastreaming-2.8.0.1.1.9-bin.tar.gz"
+  version: "ls280_1.1.22"
+  url: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.22/lunastreaming-2.8.0.1.1.22-bin.tar.gz"
   broker: "broker-kafka.conf"
 
 # optional
 protocol_handlers:
   title: "Starlight for Kafka"
-  version: "2.8.0.1.0.5"
-  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.5/pulsar-protocol-handler-kafka-2.8.0.1.0.5.nar"
+  version: "2.8.0.1.0.10"
+  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.10/pulsar-protocol-handler-kafka-2.8.0.1.0.10.nar"
 
 # optional
 prometheus_package:

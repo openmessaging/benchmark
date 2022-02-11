@@ -29,15 +29,15 @@ benchmark_package:
 # required
 pulsar_package:
   title: "Luna Streaming"
-  version: "ls280_1.1.14"
-  url: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.14/lunastreaming-2.8.0.1.1.14-bin.tar.gz"
+  version: "ls280_1.1.21"
+  url: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.21/lunastreaming-2.8.0.1.1.21-bin.tar.gz"
   broker: "broker-rabbitmq.conf"
 
 # optional
 protocol_handlers:
   title: "Starlight for RabbitMQ"
-  version: "v1.1.2"
-  url: "https://github.com/datastax/starlight-for-rabbitmq/releases/download/v1.1.2/starlight-rabbitmq-1.1.2.nar"
+  version: "ls280_1.1.19-2"
+  url: "https://github.com/datastax/starlight-for-rabbitmq/releases/download/ls280_1.1.19-2/starlight-rabbitmq-2.8.0.1.1.19-ls-2.nar"
 
 # optional
 prometheus_package:
