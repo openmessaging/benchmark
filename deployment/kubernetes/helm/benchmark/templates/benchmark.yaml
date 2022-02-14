@@ -40,7 +40,7 @@ spec:
         - name: WORKERS
           value: '{{ template "workers" .Values }}'
         - name: HEAP_OPTS
-          value: 'Xms4G -Xmx4G'
+          value: '-Xms4G -Xmx4G'
       command: ["sh", "-c"]
       args:
         - >
