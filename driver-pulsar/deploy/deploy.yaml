@@ -79,6 +79,13 @@
       get_url:
         url: "{{ protocol_handlers['url'] }}"
         dest: /opt/pulsar/protocols
+    - file: path=/opt/pulsar/offloaders state=absent
+    - file: path=/opt/pulsar/offloaders state=directory
+    - name: "Download {{ tiered_storage['title'] }} {{ tiered_storage['version'] }} binary package"
+      when: tiered_storage is defined
+      file:
+        path: "{{ tiered_storage['path'] }}"
+        dest: /opt/pulsar/offloaders
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"

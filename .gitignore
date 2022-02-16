@@ -18,6 +18,8 @@ core/*.json
 **/*.lock.info
 .DS_Store
 .factorypath
+**/testbed/
+**/results/
 
 # IntelliJ artifacts
 .idea/
