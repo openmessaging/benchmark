@@ -27,6 +27,12 @@ brokers:
     version: {{ protocol_handlers['version'] }}
     url: {{ protocol_handlers['url'] }}
 {% endif %}
+{% if protocol_handlers is defined %}
+  offloaders:
+    bucket: {{ s3_bucket }}
+    region: {{ s3_region }}
+    url: {{ s3_url }}
+{% endif %}
   size: {{ groups['pulsar'] | count }}
   jdk: {{ java_jdk }}
   instance_type: {{ hostvars[groups['pulsar'][0]].instance_type }}

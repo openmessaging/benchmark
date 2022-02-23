@@ -30,8 +30,6 @@ variable "region" {}
 
 variable "ami" {}
 
-variable "s3_bucket" {}
-
 variable "instance_types" {
   type = map(string)
 }
@@ -120,57 +118,6 @@ resource "aws_key_pair" "auth" {
   public_key = "${file(var.public_key_path)}"
 }
 
-# Create an IAM role for the Brokers.
-resource "aws_iam_role" "broker_iam_role" {
-    name = "broker_iam_role"
-    assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_instance_profile" "broker_instance_profile" {
-    name = "broker_instance_profile"
-    role = "${aws_iam_role.broker_iam_role.id}"
-}
-
-resource "aws_iam_role_policy" "broker_iam_role_policy" {
-  name = "broker_iam_role_policy"
-  role = "${aws_iam_role.broker_iam_role.id}"
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::${var.s3_bucket}"]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": ["arn:aws:s3:::${var.s3_bucket}/*"]
-    }
-  ]
-}
-EOF
-}
-
 resource "aws_instance" "zookeeper" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["zookeeper"]}"
@@ -190,7 +137,6 @@ resource "aws_instance" "pulsar" {
   key_name               = "${aws_key_pair.auth.id}"
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  iam_instance_profile 	 = "${aws_iam_instance_profile.broker_instance_profile.id}"
   count                  = "${var.num_instances["pulsar"]}"
 
   tags = {
@@ -222,15 +168,6 @@ resource "aws_instance" "prometheus" {
   tags = {
     Name = "prometheus-${count.index}"
   }
-}
-
-# Export Terraform variable values to an Ansible var_file
-resource "local_file" "tf_ansible_vars" {
-  content = <<-DOC
-    tf_s3_bucket: ${var.s3_bucket}
-    tf_s3_region: ${var.region}
-    DOC
-  filename = "./tf_ansible_vars.yaml"
 }
 
 output "client_ssh_host" {

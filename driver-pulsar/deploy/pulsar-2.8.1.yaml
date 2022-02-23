@@ -23,7 +23,7 @@ java_jdk: java-11-openjdk
 # required
 benchmark_package:
   title: "Open Messaging Benchmark Client"
-  path: "../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
+  path: "/opt/openmessaging-benchmark/package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
   name: "openmessaging-benchmark-0.0.1-SNAPSHOT"
 
 # required

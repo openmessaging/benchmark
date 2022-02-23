@@ -45,6 +45,8 @@
   connection: ssh
   become: true
   tasks:
+    - name: Get variables from terraform
+      include_vars: ./tf_ansible_vars.yaml
     - name: Set performance profile
       command: tuned-adm profile latency-performance
     - name: Install RPM packages
@@ -83,9 +85,14 @@
     - file: path=/opt/pulsar/offloaders state=directory
     - name: "Download {{ tiered_storage['title'] }} {{ tiered_storage['version'] }} binary package"
       when: tiered_storage is defined
-      file:
-        path: "{{ tiered_storage['path'] }}"
+      copy:
+        src: "{{ tiered_storage['path'] }}"
         dest: /opt/pulsar/offloaders
+    - when: tiered_storage is defined
+      set_fact:
+        s3_bucket: "{{ tf_s3_bucket }}"
+        s3_region: "{{ tf_s3_region }}"
+        s3_url: "https://{{ tf_s3_bucket }}.s3.{{ tf_s3_region }}.amazonaws.com"
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
