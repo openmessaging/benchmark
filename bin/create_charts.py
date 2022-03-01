@@ -43,6 +43,10 @@ def create_charts(test_results):
                      y_label='Latency (ms)',
                      time_series=[(x['driver'], x['publishLatency99pct']) for x in results])
 
+        create_chart(workload, 'Publish Delay latency 99pct',
+                     y_label='Latency (us)',
+                     time_series=[(x['driver'], x['publishDelayLatency99pct']) for x in results])
+
         create_chart(workload, 'Publish rate',
                      y_label='Rate (msg/s)',
                      time_series=[(x['driver'], x['publishRate']) for x in results])
@@ -62,6 +66,10 @@ def create_charts(test_results):
         create_quantile_chart(workload, 'Publish Latency Quantiles',
                               y_label='Latency (ms)',
                               time_series=[(x['driver'], x['aggregatedPublishLatencyQuantiles']) for x in results])
+
+        create_quantile_chart(workload, 'Publish Delay Latency Quantiles',
+                              y_label='Latency (us)',
+                              time_series=[(x['driver'], x['aggregatedPublishDelayLatencyQuantiles']) for x in results])
 
         create_quantile_chart(workload, 'End To End Latency Quantiles',
                               y_label='Latency (ms)',
