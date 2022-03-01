@@ -17,6 +17,32 @@
 # under the License.
 #
 
+- name: Initialize some default values
+  hosts: all
+  connection: ssh
+  tasks:
+    - set_fact:
+        linux_distro: "{{ linux_distro | default('rhel-7') }}"
+        pulsar_version: "{{ pulsar_version | default('2.9.1') }}"
+        node_exporter_version: "{{ node_exporter_version | default('1.2.2') }}"
+        prometheus_version: "{{ prometheus_version | default('2.31.1') }}"
+        disk_dev: "{{ disk_dev | default(['/dev/nvme1n1', '/dev/nvme2n1']) }}"
+    - set_fact:
+        pulsar_binary:
+          src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsar_version }}/apache-pulsar-{{ pulsar_version }}-bin.tar.gz"
+          remote: yes
+      when: pulsar_binary is not defined
+    - set_fact:
+        node_exporter_binary:
+          src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+          remote: yes
+      when: node_exporter_binary is not defined
+    - set_fact:
+        prometheus_binary:
+          src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+          remote: yes
+      when: prometheus_binary is not defined
+
 - name: Format and mount disks for Pulsar/BookKeeper hosts
   hosts: pulsar
   connection: ssh
@@ -27,8 +53,8 @@
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - '/dev/nvme1n1'
-        - '/dev/nvme2n1'
+        - "{{ disk_dev[0] }}"
+        - "{{ disk_dev[1] }}"
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -37,31 +63,28 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
-        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
+        - { path: "/mnt/journal", src: "{{ disk_dev[0] }}" }
+        - { path: "/mnt/storage", src: "{{ disk_dev[1] }}" }
 
 - name: Install Node exporter on Brokers to collect system metrics
   hosts: pulsar
   become: true
   tasks:
-    - set_fact:
-        nodeExporterVersion: "1.2.2"
     - name: Add user node_exporter
       user:
         name: node_exporter
         shell: /bin/false
         system: true
         create_home: no
-
     - name: Download and extract
       unarchive:
-        src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+        src: "{{ node_exporter_binary.src }}"
         dest: /tmp
-        remote_src: yes
+        remote_src: "{{ node_exporter_binary.remote }}"
 
     - name: Copy bin node_exporter to /usr/local/bin
       copy:
-        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
         remote_src: yes
         dest: /usr/local/bin/
         owner: node_exporter
@@ -102,7 +125,7 @@
         timeout: 5
 
 - name: Pulsar installation
-  hosts: all
+  hosts: pulsar:client:zookeeper
   connection: ssh
   become: true
   tasks:
@@ -117,17 +140,17 @@
           - sysstat
           - vim
           - chrony
+      when: linux_distro is match('rhel-.*')
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
-        pulsarVersion: "2.9.1"
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
-        src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
-        remote_src: yes
+        src: "{{ pulsar_binary.src }}"
+        remote_src: "{{ pulsar_binary.remote }}"
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
     - set_fact:
@@ -141,6 +164,24 @@
       shell: |
         echo 'LANG=en_US.utf-8
               LC_ALL=en_US.utf-8' > /etc/environment
+
+- name: Protocol Handlers installation
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/pulsar/protocols state=absent
+    - file: path=/opt/pulsar/protocols state=directory
+    - name: Download protocol handlers
+      get_url:
+        url: "{{ item.url }}"
+        dest: /opt/pulsar/protocols
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
+    - set_fact:
+        protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
 
 - name: ZooKeeper setup
   hosts: zookeeper
@@ -220,6 +261,17 @@
     - template:
         src: "templates/pulsar.service"
         dest: "/etc/systemd/system/pulsar.service"
+    - template:
+        src: "templates/{{ item.conf }}"
+        dest: "/opt/pulsar/conf/{{ item.conf }}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
+    - name: Add configurations of all protocol handlers to broker.conf
+      lineinfile:
+        path: /opt/pulsar/conf/broker.conf
+        line: "{{ lookup('file', 'conf/' + item.conf) }}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
     - systemd:
         state: restarted
         daemon_reload: yes
@@ -341,20 +393,22 @@
   connection: ssh
   become: true
   tasks:
+    - set_fact:
+        linux_distro: "{{ linux_distro | default('rhel-7') }}"
     - name: Add Extras Repo
       shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+      when: linux_distro == 'rhel-7'
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
         - docker
-    - set_fact:
-        prometheusVersion: "2.31.1"
+      when: linux_distro is match('rhel-.*')
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package
       unarchive:
-        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
-        remote_src: yes
+        src: "{{ prometheus_binary.src }}"
+        remote_src: "{{ prometheus_binary.remote }}"
         dest: /opt/prometheus
         extra_opts: ["--strip-components=1"]
     - set_fact:
