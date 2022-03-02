@@ -189,10 +189,6 @@
       when:
         - protocol_handlers is defined
         - item.local_path is not defined
-    - set_fact:
-        protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
-      loop: "{{ protocol_handlers }}"
-      when: protocol_handlers is defined
 
 - name: ZooKeeper setup
   hosts: zookeeper
@@ -277,6 +273,15 @@
         dest: "/opt/pulsar/conf/{{ item.conf }}"
       loop: "{{ protocol_handlers }}"
       when: protocol_handlers is defined
+    - set_fact:
+        protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
+    - name: Enable protocol handlers
+      lineinfile:
+        path: /opt/pulsar/conf/broker.conf
+        line: "messagingProtocols={{ protocols | join(',') }}"
+      when: protocols is defined
     - name: Read configurations of all protocol handlers
       shell: |
         grep -v "^#" "{{ '/opt/pulsar/conf/' + item.conf }}"
@@ -431,9 +436,6 @@
         name: docker
         state: started
         enabled: yes
-    - name: Install RPM packages
-      yum: pkg=['docker'] state=latest
-      when: ansible_facts['distribution'] == 'RedHat'
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package
@@ -448,6 +450,8 @@
   connection: ssh
   become: true
   tasks:
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
     - file:
         path: "/opt/prometheus/{{ item }}"
         state: directory
