@@ -21,25 +21,9 @@ pulsar_version: 2.9.1
 node_exporter_version: 1.2.2
 prometheus_version: 2.31.1
 
-# The two disk device paths as BookKeeper journal and storage disks
-disk_dev:
-  - /dev/nvme1n1
-  - /dev/nvme2n1
-
-# Each item represents a protocol handler. If `local_path` is defined, the NAR
-# file will be uploaded from local path instead of downloading from `url`.
-protocol_handlers:
-  - protocol: kafka
-    conf: kop.conf
-    url: https://github.com/streamnative/kop/releases/download/v2.9.2.5/pulsar-protocol-handler-kafka-2.9.2.5.nar
-    #local_path: ./pulsar-protocol-handler-kafka-2.9.2.5.nar
-  - protocol: mqtt
-    conf: mop.conf
-    url: https://github.com/streamnative/mop/releases/download/v2.9.2.5/pulsar-protocol-handler-mqtt-2.9.2.5.nar
-    #local_path: ./pulsar-protocol-handler-mqtt-2.9.2.5.nar
-
-# You can download these binaries to current directory and uncomment following
-# lines to upload these binaries to servers instead of downloading.
+# By default, ansible downloads binaries from network. The download URL is determined automatically by the version.
+# To specific another URL to download, you should configure `remote` with `yes` and `src` with the new URL.
+# To upload local binaries, you should configure `remote` with `no` and `src` with the local path.
 #pulsar_binary:
 #  src: ./apache-pulsar-2.9.1-bin.tar.gz
 #  remote: no
@@ -51,3 +35,19 @@ protocol_handlers:
 #prometheus_binary:
 #  src: ./prometheus-2.31.1.linux-amd64.tar.gz
 #  remote: no
+
+# The two disk device paths as BookKeeper journal and storage disks
+disk_dev:
+  - /dev/nvme1n1
+  - /dev/nvme2n1
+
+# Each item represents a protocol handler. If `local_path` is defined, the NAR file will be uploaded from local path instead of downloading from `url`.
+protocol_handlers:
+  - protocol: kafka
+    conf: kop.conf
+    url: https://github.com/streamnative/kop/releases/download/v2.9.2.5/pulsar-protocol-handler-kafka-2.9.2.5.nar
+    #local_path: ./pulsar-protocol-handler-kafka-2.9.2.5.nar
+  - protocol: mqtt
+    conf: mop.conf
+    url: https://github.com/streamnative/mop/releases/download/v2.9.2.5/pulsar-protocol-handler-mqtt-2.9.2.5.nar
+    #local_path: ./pulsar-protocol-handler-mqtt-2.9.2.5.nar
