@@ -21,24 +21,22 @@ pulsar_version: 2.9.1
 node_exporter_version: 1.2.2
 prometheus_version: 2.31.1
 
-# Currently it only supports name with "rhel-" prefix so that `yum` command
-# will be used to install softwares.
-# In addition, for "rhel-7", a specific repo will be enabled for docker
-# installation.
-linux_distro: rhel-7
-
 # The two disk device paths as BookKeeper journal and storage disks
 disk_dev:
   - /dev/nvme1n1
   - /dev/nvme2n1
 
+# Each item represents a protocol handler. If `local_path` is defined, the NAR
+# file will be uploaded from local path instead of downloading from `url`.
 protocol_handlers:
   - protocol: kafka
     conf: kop.conf
     url: https://github.com/streamnative/kop/releases/download/v2.9.2.5/pulsar-protocol-handler-kafka-2.9.2.5.nar
+    #local_path: ./pulsar-protocol-handler-kafka-2.9.2.5.nar
   - protocol: mqtt
     conf: mop.conf
     url: https://github.com/streamnative/mop/releases/download/v2.9.2.5/pulsar-protocol-handler-mqtt-2.9.2.5.nar
+    #local_path: ./pulsar-protocol-handler-mqtt-2.9.2.5.nar
 
 # You can download these binaries to current directory and uncomment following
 # lines to upload these binaries to servers instead of downloading.

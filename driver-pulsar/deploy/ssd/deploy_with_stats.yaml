@@ -22,7 +22,12 @@
   connection: ssh
   tasks:
     - set_fact:
-        linux_distro: "{{ linux_distro | default('rhel-7') }}"
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - set_fact:
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+    - set_fact:
         pulsar_version: "{{ pulsar_version | default('2.9.1') }}"
         node_exporter_version: "{{ node_exporter_version | default('1.2.2') }}"
         prometheus_version: "{{ prometheus_version | default('2.31.1') }}"
@@ -132,19 +137,16 @@
     - name: Set performance profile
       command: tuned-adm profile latency-performance
     - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
+      yum:
+        state: latest
+        pkg:
           - wget
           - java-11-openjdk
           - java-11-openjdk-devel
           - sysstat
           - vim
           - chrony
-      when: linux_distro is match('rhel-.*')
-    - set_fact:
-        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
-        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
-        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+      when: ansible_facts['distribution'] == 'RedHat'
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
@@ -154,7 +156,6 @@
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
     - set_fact:
-        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "16g"
         max_direct_memory: "48g"
     - template:
@@ -172,12 +173,22 @@
   tasks:
     - file: path=/opt/pulsar/protocols state=absent
     - file: path=/opt/pulsar/protocols state=directory
+    - name: Upload local protocol handlers
+      copy:
+        src: "{{ item.local_path }}"
+        dest: /opt/pulsar/protocols
+      loop: "{{ protocol_handlers }}"
+      when:
+        - protocol_handlers is defined
+        - item.local_path is defined
     - name: Download protocol handlers
       get_url:
         url: "{{ item.url }}"
         dest: /opt/pulsar/protocols
       loop: "{{ protocol_handlers }}"
-      when: protocol_handlers is defined
+      when:
+        - protocol_handlers is defined
+        - item.local_path is not defined
     - set_fact:
         protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
       loop: "{{ protocol_handlers }}"
@@ -266,12 +277,18 @@
         dest: "/opt/pulsar/conf/{{ item.conf }}"
       loop: "{{ protocol_handlers }}"
       when: protocol_handlers is defined
-    - name: Add configurations of all protocol handlers to broker.conf
-      lineinfile:
-        path: /opt/pulsar/conf/broker.conf
-        line: "{{ lookup('file', 'conf/' + item.conf) }}"
+    - name: Read configurations of all protocol handlers
+      shell: |
+        grep -v "^#" "{{ '/opt/pulsar/conf/' + item.conf }}"
       loop: "{{ protocol_handlers }}"
       when: protocol_handlers is defined
+      register: conf_files
+    - name: Update broker.conf for protocol handlers
+      lineinfile:
+        path: /opt/pulsar/conf/broker.conf
+        line: "{{ item.stdout_lines | join('\n') }}"
+      loop: "{{ conf_files.results }}"
+      when: conf_files is defined
     - systemd:
         state: restarted
         daemon_reload: yes
@@ -393,16 +410,30 @@
   connection: ssh
   become: true
   tasks:
-    - set_fact:
-        linux_distro: "{{ linux_distro | default('rhel-7') }}"
     - name: Add Extras Repo
       shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
-      when: linux_distro == 'rhel-7'
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+    - name: Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Installing docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
     - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
-        - docker
-      when: linux_distro is match('rhel-.*')
+      yum: pkg=['docker'] state=latest
+      when: ansible_facts['distribution'] == 'RedHat'
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package
@@ -411,8 +442,6 @@
         remote_src: "{{ prometheus_binary.remote }}"
         dest: /opt/prometheus
         extra_opts: ["--strip-components=1"]
-    - set_fact:
-        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
 - name: Prometheus setup
   hosts: prometheus
