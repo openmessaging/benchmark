@@ -21,6 +21,9 @@ pulsar_version: 2.9.1
 node_exporter_version: 1.2.2
 prometheus_version: 2.31.1
 
+# Set it with true if you want BookKeeper to skip the journal writes.
+skip_journal: false
+
 # By default, ansible downloads binaries from network. The download URL is determined automatically by the version.
 # To specific another URL to download, you should configure `remote` with `yes` and `src` with the new URL.
 # To upload local binaries, you should configure `remote` with `no` and `src` with the local path.

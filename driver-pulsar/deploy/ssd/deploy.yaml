@@ -234,9 +234,9 @@
   hosts: pulsar
   connection: ssh
   become: true
-  vars:
-    skip_journal: false
   tasks:
+    - set_fact:
+        skip_journal: "{{ skip_journal | default(false) }}"
     - name: Apply BookKeeper configuration file [Bypass Journal]
       template:
         src: "templates/bookkeeper-skip-journal.conf"
