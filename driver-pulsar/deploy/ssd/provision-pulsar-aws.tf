@@ -179,7 +179,7 @@ resource "aws_instance" "prometheus" {
 
 output "zookeeper" {
   value = {
-    for instance in aws_instance.client :
+    for instance in aws_instance.zookeeper :
     instance.public_ip => instance.private_ip
   }
 }
