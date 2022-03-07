@@ -8,7 +8,7 @@ Requires=prometheus.service
 [Service]
 WorkingDirectory=/opt/pulsar
 ExecStartPre=/usr/bin/docker pull streamnative/apache-pulsar-grafana-dashboard:latest
-ExecStart=/usr/bin/docker run --restart=always --name=systemd_pulsar_dashboard -p3000:3000 -e PULSAR_PROMETHEUS_URL=http://{{ hostvars[groups['prometheus'][0]].private_ip }}:9090/ -e PULSAR_CLUSTER=local streamnative/apache-pulsar-grafana-dashboard:0.0.8
+ExecStart=/usr/bin/docker run --restart=always --name=systemd_pulsar_dashboard -p3000:3000 -e PULSAR_PROMETHEUS_URL=http://{{ hostvars[groups['prometheus'][0]].private_ip }}:9090/ -e PULSAR_CLUSTER=local streamnative/apache-pulsar-grafana-dashboard:latest
 ExecStop=/usr/bin/docker stop systemd_pulsar_dashboard
 ExecStopPost=/usr/bin/docker rm -f systemd_pulsar_dashboard
 ExecReload=/usr/bin/docker restart systemd_pulsar_dashboard
