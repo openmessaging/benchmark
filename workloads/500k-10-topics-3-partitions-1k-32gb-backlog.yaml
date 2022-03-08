@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: 1m-10-topics-3-partitions-1k-64gb-backlog
+name: 500k-10-topics-3-partitions-1k-32gb-backlog
 
 topics: 10
 partitionsPerTopic: 3
@@ -32,8 +32,8 @@ consumerPerSubscription: 1
 producersPerTopic: 1
 
 # Discover max-sustainable rate
-producerRate: 1000000
-acceptableBacklog: 50000
+producerRate: 500000
+acceptableBacklog: 100000
 producerPauseDuringDrain: 1
-consumerBacklogSizeGB: 64
+consumerBacklogSizeGB: 32
 testDurationMinutes: 15

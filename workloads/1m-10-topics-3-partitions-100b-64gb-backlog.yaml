@@ -34,5 +34,6 @@ producersPerTopic: 1
 # Discover max-sustainable rate
 producerRate: 1000000
 acceptableBacklog: 50000
+producerPauseDuringDrain: 1
 consumerBacklogSizeGB: 64
 testDurationMinutes: 15
