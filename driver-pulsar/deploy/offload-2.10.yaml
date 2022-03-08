@@ -18,7 +18,7 @@
 #
 
 # required
-java_jdk: java-11-openjdk
+java_jdk: java-17-openjdk
 
 # required
 benchmark_package:
@@ -29,26 +29,27 @@ benchmark_package:
 
 # required
 pulsar_package:
-  title: "Luna Streaming"
-  version: "ls283_1.0.1"
-  url: "https://github.com/datastax/pulsar/releases/download/ls283_1.0.1/lunastreaming-2.8.3.1.0.1-bin.tar.gz"
-  remote: "yes"
+  title: "Pulsar 2.10 Master"
+  version: "2.10.0-SNAPSHOT"
+#  url: "https://github.com/datastax/pulsar/releases/download/ls283_1.0.1/lunastreaming-2.8.3.1.0.1-bin.tar.gz"
+  url: "/opt/packages/apache-pulsar-2.10.0-SNAPSHOT-bin.tar.gz"
+  remote: "no"
   broker: "broker-offload.conf"
   gc: "-XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC"
 
 # optional
-protocol_handlers:
-  title: "Starlight for Kafka"
-  version: "2.8.0.1.0.12"
-  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.12/pulsar-protocol-handler-kafka-2.8.0.1.0.12.nar"
-  remote: "yes"
+# protocol_handlers:
+#  title: "Starlight for Kafka"
+#  version: "2.8.0.1.0.12"
+#  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.12/pulsar-protocol-handler-kafka-2.8.0.1.0.12.nar"
+#  remote: "yes"
 
 # optional
 tiered_storage:
   title: "AWS S3 offloader"
-  version: "2.8.0.1.1.22"
-  path: "/opt/packages/tiered-storage-jcloud-2.8.3.1.0.1.nar"
-  path2: "/opt/packages/tiered-storage-file-system-2.8.3.1.0.1.nar"
+  version: "2.10.0-SNAPSHOT"
+  path: "/opt/packages/tiered-storage-jcloud-2.10.0-SNAPSHOT.nar"
+  path2: "/opt/packages/tiered-storage-file-system-2.10.0-SNAPSHOT.nar"
   remote: "no"
 
 # optional

@@ -18,28 +18,34 @@
 #
 
 # required
-java_jdk: java-11-openjdk
+java_jdk: java-17-openjdk
 
 # required
 benchmark_package:
   title: "Open Messaging Benchmark Client"
   path: "/opt/openmessaging-benchmark/package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
+  remote: "no"
   name: "openmessaging-benchmark-0.0.1-SNAPSHOT"
 
 # required
 pulsar_package:
   title: "Luna Streaming"
-  version: "ls280_1.1.22"
-  url: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.22/lunastreaming-2.8.0.1.1.22-bin.tar.gz"
+  version: "ls283_1.0.1"
+  url: "https://github.com/datastax/pulsar/releases/download/ls283_1.0.1/lunastreaming-2.8.3.1.0.1-bin.tar.gz"
+  remote: "yes"
   broker: "broker-kafka.conf"
+  gc: "-XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC"
 
 # optional
 protocol_handlers:
   title: "Starlight for Kafka"
-  version: "2.8.0.1.0.10"
-  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.10/pulsar-protocol-handler-kafka-2.8.0.1.0.10.nar"
+  version: "2.8.0.1.0.12"
+  url: "/opt/packages/pulsar-protocol-handler-kafka-2.8.0.1.0.13-SNAPSHOT.nar"
+#  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.12/pulsar-protocol-handler-kafka-2.8.0.1.0.12.nar"
+  remote: "no"
 
 # optional
-prometheus_package:
-  version: "2.2.1"
-  url: "https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz"
+# prometheus_package:
+#  version: "2.2.1"
+#  url: "https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz"
+#  remote: "no"

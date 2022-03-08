@@ -57,7 +57,6 @@
           - "{{ java_jdk }}-devel"
           - sysstat
           - vim
-          - screen
           - chrony
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
@@ -71,15 +70,18 @@
     - name: "Download {{ pulsar_package['title'] }} {{ pulsar_package['version'] }} binary package"
       unarchive:
         src: "{{ pulsar_package['url'] }}"
-        remote_src: yes
+        remote_src: "{{ pulsar_package['remote'] }}"
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
     - file: path=/opt/pulsar/protocols state=absent
     - file: path=/opt/pulsar/protocols state=directory
     - name: "Download {{ protocol_handlers['title'] }} {{ protocol_handlers['version'] }} binary package"
       when: protocol_handlers is defined
-      get_url:
-        url: "{{ protocol_handlers['url'] }}"
+#      get_url:
+#        url: "{{ protocol_handlers['url'] }}"
+      copy:
+        src: "{{ protocol_handlers['url'] }}"
+        remote_src: "{{ protocol_handlers['remote'] }}"
         dest: /opt/pulsar/protocols
     - file: path=/opt/pulsar/offloaders state=absent
     - file: path=/opt/pulsar/offloaders state=directory
@@ -87,6 +89,12 @@
       when: tiered_storage is defined
       copy:
         src: "{{ tiered_storage['path'] }}"
+        remote_src: "{{ tiered_storage['remote'] }}"
+        dest: /opt/pulsar/offloaders
+    - when: tiered_storage is defined
+      copy:
+        src: "{{ tiered_storage['path2'] }}"
+        remote_src: "{{ tiered_storage['remote'] }}"
         dest: /opt/pulsar/offloaders
     - when: tiered_storage is defined
       set_fact:
@@ -97,6 +105,10 @@
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
         max_direct_memory: "24g"
+        gc_options: "{{ pulsar_package['gc'] }}"
+    - template:
+        src: "templates/bkenv.sh"
+        dest: "/opt/pulsar/conf/bkenv.sh"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
@@ -294,7 +306,8 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+#         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
@@ -315,9 +328,9 @@
   connection: ssh
   become: true
   tasks:
-    - name: Add Extras Repo
-      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
-      when: prometheus_package is defined
+#    - name: Add Extras Repo
+#      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+#      when: prometheus_package is defined
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:

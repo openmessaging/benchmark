@@ -30,29 +30,20 @@ benchmark_package:
 # required
 pulsar_package:
   title: "Luna Streaming"
-  version: "ls283_1.0.1"
-  url: "https://github.com/datastax/pulsar/releases/download/ls283_1.0.1/lunastreaming-2.8.3.1.0.1-bin.tar.gz"
+  version: "ls280_1.1.14"
+  url: "https://github.com/datastax/pulsar/releases/download/ls280_1.1.14/lunastreaming-2.8.0.1.1.14-bin.tar.gz"
   remote: "yes"
-  broker: "broker-offload.conf"
-  gc: "-XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC"
+  broker: "broker-rabbitmq.conf"
+  gc: " -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC"                                      
 
 # optional
 protocol_handlers:
-  title: "Starlight for Kafka"
-  version: "2.8.0.1.0.12"
-  url: "https://github.com/datastax/starlight-for-kafka/releases/download/v2.8.0.1.0.12/pulsar-protocol-handler-kafka-2.8.0.1.0.12.nar"
+  title: "Starlight for RabbitMQ"
+  version: "v1.1.2"
+  url: "https://github.com/datastax/starlight-for-rabbitmq/releases/download/v1.1.2/starlight-rabbitmq-1.1.2.nar"
   remote: "yes"
 
 # optional
-tiered_storage:
-  title: "AWS S3 offloader"
-  version: "2.8.0.1.1.22"
-  path: "/opt/packages/tiered-storage-jcloud-2.8.3.1.0.1.nar"
-  path2: "/opt/packages/tiered-storage-file-system-2.8.3.1.0.1.nar"
-  remote: "no"
-
-# optional
 # prometheus_package:
-#  version: "2.2.1"
+#   version: "2.2.1"
 #  url: "https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz"
-#  remote: "yes"

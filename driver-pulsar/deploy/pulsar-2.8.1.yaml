@@ -25,15 +25,19 @@ benchmark_package:
   title: "Open Messaging Benchmark Client"
   path: "/opt/openmessaging-benchmark/package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz"
   name: "openmessaging-benchmark-0.0.1-SNAPSHOT"
+  remote: "no"
 
 # required
 pulsar_package:
   title: "Apache Pulsar"
   version: "2.8.1"
   url: "https://downloads.apache.org/pulsar/pulsar-2.8.1/apache-pulsar-2.8.1-bin.tar.gz"
+  remote: "yes"
   broker: "broker.conf"
+  gc: " -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC"                                      
 
 # optional
 prometheus_package:
   version: "2.2.1"
   url: "https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz"
+  remote: "yes"
