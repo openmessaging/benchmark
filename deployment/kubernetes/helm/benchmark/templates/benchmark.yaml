@@ -34,6 +34,8 @@ spec:
           value: "{{ .Values.numWorkers }}"
         - name: WORKERS
           value: '{{ template "workers" .Values }}'
+        - name: JVM_MEM
+          value: '{{ .Values.driverJvmMem }}'
       command: ["sh", "-c"]
       args:
         - >
@@ -41,8 +43,8 @@ spec:
           tail -f /dev/null
       resources:
         requests:
-          memory: 6Gi
-          cpu: 4
+          memory: 4Gi
+          cpu: 2
         limits:
-          memory: 6Gi
-          cpu: 4
+          memory: 4Gi
+          cpu: 2
