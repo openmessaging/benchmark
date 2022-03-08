@@ -27,7 +27,7 @@ brokers:
     version: {{ protocol_handlers['version'] }}
     url: {{ protocol_handlers['url'] }}
 {% endif %}
-{% if protocol_handlers is defined %}
+{% if tiered_storage is defined %}
   offloaders:
     bucket: {{ s3_bucket }}
     region: {{ s3_region }}
@@ -35,6 +35,7 @@ brokers:
 {% endif %}
   size: {{ groups['pulsar'] | count }}
   jdk: {{ java_jdk }}
+  gc: {{ gc_options }}
   instance_type: {{ hostvars[groups['pulsar'][0]].instance_type }}
   ami: {{ hostvars[groups['pulsar'][0]].ami }}
 
