@@ -67,5 +67,7 @@ public class Workload {
 
     public long producerPauseBeforeDrain = 0;
     
+    public long producerPauseDuringDrain = 0;
+    
     public int testDurationMinutes;
 }

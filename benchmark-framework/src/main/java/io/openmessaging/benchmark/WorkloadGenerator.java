@@ -73,79 +73,84 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     public TestResult run() throws Exception {
-        Timer timer = new Timer();
-        List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
-        log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
+	TestResult result = null;
+	try {
+	    Timer timer = new Timer();
+	    List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
+	    log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
 
-        createConsumers(topics);
-        createProducers(topics);
+	    createConsumers(topics);
+	    createProducers(topics);
 
-        ensureTopicsAreReady();
+	    ensureTopicsAreReady();
 
-	acceptableBacklog = workload.acceptableBacklog;
-        if (workload.producerRate > 0) {
-            targetPublishRate = workload.producerRate;
-        } else {
-            // Producer rate is 0 and we need to discover the sustainable rate
-            targetPublishRate = workload.producerStartRate;
+	    acceptableBacklog = workload.acceptableBacklog;
+	    if (workload.producerRate > 0) {
+		targetPublishRate = workload.producerRate;
+	    } else {
+		// Producer rate is 0 and we need to discover the sustainable rate
+		targetPublishRate = workload.producerStartRate;
 
-            executor.execute(() -> {
-                // Run background controller to adjust rate
-                try {
-                    findMaximumSustainableRate(topics, targetPublishRate, acceptableBacklog);
-                } catch (IOException e) {
-                    log.warn("Failure in finding max sustainable rate", e);
-                }
-            });
-        }
+		executor.execute(() -> {
+			// Run background controller to adjust rate
+			try {
+			    findMaximumSustainableRate(topics, targetPublishRate, acceptableBacklog);
+			} catch (IOException e) {
+			    log.warn("Failure in finding max sustainable rate", e);
+			}
+		    });
+	    }
 
-        final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
+	    final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
 
-        ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
-        producerWorkAssignment.keyDistributorType = workload.keyDistributor;
-        producerWorkAssignment.publishRate = targetPublishRate;
-        producerWorkAssignment.payloadData = new ArrayList<>();
+	    ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
+	    producerWorkAssignment.keyDistributorType = workload.keyDistributor;
+	    producerWorkAssignment.publishRate = targetPublishRate;
+	    producerWorkAssignment.payloadData = new ArrayList<>();
 
-        if(workload.useRandomizedPayloads) {
-            // create messages that are part random and part zeros
-            // better for testing effects of compression
-            Random r = new Random();
-            int randomBytes = (int)(workload.messageSize * workload.randomBytesRatio);
-            int zerodBytes = workload.messageSize - randomBytes;
-            for(int i = 0; i<workload.randomizedPayloadPoolSize; i++) {
-                byte[] randArray = new byte[randomBytes];
-                r.nextBytes(randArray);
-                byte[] zerodArray = new byte[zerodBytes];
-                byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
-                producerWorkAssignment.payloadData.add(combined);
-            }
-        }
-        else {
-            producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
-        }
+	    if(workload.useRandomizedPayloads) {
+		// create messages that are part random and part zeros
+		// better for testing effects of compression
+		Random r = new Random();
+		int randomBytes = (int)(workload.messageSize * workload.randomBytesRatio);
+		int zerodBytes = workload.messageSize - randomBytes;
+		for(int i = 0; i<workload.randomizedPayloadPoolSize; i++) {
+		    byte[] randArray = new byte[randomBytes];
+		    r.nextBytes(randArray);
+		    byte[] zerodArray = new byte[zerodBytes];
+		    byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
+		    producerWorkAssignment.payloadData.add(combined);
+		}
+	    }
+	    else {
+		producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
+	    }
 
 
-        log.info("----- Starting warm-up traffic ------");
+	    log.info("----- Starting warm-up traffic ------");
 
-        worker.startLoad(producerWorkAssignment);
+	    worker.startLoad(producerWorkAssignment);
 
-        printAndCollectStats(1, TimeUnit.MINUTES);
+	    printAndCollectStats(1, TimeUnit.MINUTES);
 
-        if (workload.consumerBacklogSizeGB > 0) {
-            executor.execute(() -> {
-                try {
-                    buildAndDrainBacklog(topics, acceptableBacklog);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
+	    if (workload.consumerBacklogSizeGB > 0) {
+		executor.execute(() -> {
+			try {
+			    buildAndDrainBacklog(topics, acceptableBacklog);
+			} catch (IOException e) {
+			    e.printStackTrace();
+			}
+		    });
+	    }
 
-        worker.resetStats();
-        log.info("----- Starting benchmark traffic ------");
+	    worker.resetStats();
+	    log.info("----- Starting benchmark traffic ------");
 
-        TestResult result = printAndCollectStats(workload.testDurationMinutes, TimeUnit.MINUTES);
-        runCompleted = true;
+	    result = printAndCollectStats(workload.testDurationMinutes, TimeUnit.MINUTES);
+	    runCompleted = true;
+	} catch (Exception e) {
+	    log.info("----- Exception ------");
+	}
 
         worker.stopAll();
         return result;
@@ -332,7 +337,7 @@ public class WorkloadGenerator implements AutoCloseable {
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
 
-        this.needToWaitForBacklogDraining = true;
+	this.needToWaitForBacklogDraining = true;
 
 	// Calculate the number of messages for the backlog
         long requestedBacklogSize = (workload.consumerBacklogSizeGB * 1073741824) / workload.messageSize;
@@ -368,6 +373,10 @@ public class WorkloadGenerator implements AutoCloseable {
 	
         log.info("--- Start draining backlog ---");
 
+	if ( workload.producerPauseDuringDrain > 0 ) {
+	    worker.pauseProducers();
+	}
+	
         worker.resumeConsumers();
 
 	drainBacklog(topics, acceptableBacklog);
