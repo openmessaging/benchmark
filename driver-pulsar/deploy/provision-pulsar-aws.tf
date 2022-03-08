@@ -122,7 +122,7 @@ resource "aws_key_pair" "auth" {
 
 # Create an IAM role for the Brokers.
 resource "aws_iam_role" "broker_iam_role" {
-    name = "broker_iam_role"
+    name = "broker_iam_role-${random_id.hash.hex}"
     assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -141,12 +141,12 @@ EOF
 }
 
 resource "aws_iam_instance_profile" "broker_instance_profile" {
-    name = "broker_instance_profile"
+    name = "broker_instance_profile-${random_id.hash.hex}"
     role = "${aws_iam_role.broker_iam_role.id}"
 }
 
 resource "aws_iam_role_policy" "broker_iam_role_policy" {
-  name = "broker_iam_role_policy"
+  name = "broker_iam_role_policy-${random_id.hash.hex}"
   role = "${aws_iam_role.broker_iam_role.id}"
   policy = <<EOF
 {
