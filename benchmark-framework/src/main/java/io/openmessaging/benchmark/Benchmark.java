@@ -151,8 +151,13 @@ public class Benchmark {
                     // Stop any left over workload
                     worker.stopAll();
 
-		    // consumer driver is only used if the worker is a DistributedWorkersEnsemble
-                    worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
+		    try {
+			// consumer driver is only used if the worker is a DistributedWorkersEnsemble
+			worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
+		    } catch (Exception e) {
+			log.error("Failed to initialize driver '{}' - Retry once", driverConfig);
+			worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
+		    }
 
                     WorkloadGenerator generator = new WorkloadGenerator(driverConfiguration.name, workload, worker);
 

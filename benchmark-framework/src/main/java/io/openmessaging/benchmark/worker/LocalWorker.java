@@ -125,8 +125,18 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public void initializeDriver(File driverConfigFile, File consumerDriver) throws IOException {
-        Preconditions.checkArgument(benchmarkDriver == null);
         testCompleted = false;
+        producersArePaused = false;
+        consumersArePaused = false;
+	if (benchmarkDriver != null) {
+	    try {
+		benchmarkDriver.close();
+	    } catch (Exception ee) {
+		/* eat it */
+	    }
+	    benchmarkDriver = null;
+	}
+        Preconditions.checkArgument(benchmarkDriver == null);
 
         DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile, DriverConfiguration.class);
 
@@ -136,6 +146,14 @@ public class LocalWorker implements Worker, ConsumerCallback {
             benchmarkDriver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
             benchmarkDriver.initialize(driverConfigFile, statsLogger);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+            if (benchmarkDriver != null) {
+		try {
+		    benchmarkDriver.close();
+		} catch (Exception ee) {
+		    /* eat it */
+		}
+                benchmarkDriver = null;
+            }
             throw new RuntimeException(e);
         }
     }
@@ -164,6 +182,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     @Override
     public void createProducers(List<String> topics) {
         Timer timer = new Timer();
+        producersArePaused = false;
 
         List<CompletableFuture<BenchmarkProducer>> futures = topics.stream()
                 .map(topic -> benchmarkDriver.createProducer(topic)).collect(toList());
@@ -185,6 +204,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) {
+
+        producersArePaused = false;
+        consumersArePaused = false;
 
         int processors = Runtime.getRuntime().availableProcessors();
 
