@@ -39,3 +39,10 @@ spec:
         - >
           echo "bin/benchmark --drivers {{ .Values.driver }} --workers $WORKERS {{ .Values.workload }}" > example-run.sh &&
           tail -f /dev/null
+      resources:
+        requests:
+          memory: 6Gi
+          cpu: 4
+        limits:
+          memory: 6Gi
+          cpu: 4
