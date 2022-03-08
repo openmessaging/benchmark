@@ -1,6 +1,7 @@
 public_key_path = "~/.ssh/pulsar_aws.pub"
 region          = "us-west-2"
-ami             = "ami-9fa343e7" // RHEL-7.4
+# ami             = "ami-9fa343e7" // RHEL-7.4
+ami             = "ami-04e900eb50a68a74b" // RHEL-8.5
 s3_bucket	= "lunastreaming-omb-testing-1"
 
 instance_types = {
