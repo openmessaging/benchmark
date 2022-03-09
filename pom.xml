@@ -46,7 +46,7 @@
 		<module>driver-jms</module>
 		<!--<module>driver-redis</module>-->
 		<module>package</module>
-		<!--<module>docker</module>-->
+		<module>docker</module>
 	</modules>
 
 

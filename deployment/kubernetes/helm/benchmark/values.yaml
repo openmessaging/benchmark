@@ -17,9 +17,14 @@
 # under the License.
 #
 
-numWorkers: 8
-image: openmessaging/openmessaging-benchmark:latest
+numWorkers: 4
+image: eolivelli/openmessaging-benchmark:0.0.1-SNAPSHOT-5
 imagePullPolicy: Always
 workload: workloads/1-topic-16-partitions-1kb.yaml
 driver: driver-pulsar/pulsar.yaml
-driverJvmMem: "-Xms2G -Xmx2G -XX:+UseG1GC"
+driverJvmMem: "-Xms1G -Xmx1G -XX:+UseG1GC"
+driverPodMem: "2Gi"
+driverPodCpu: "2"
+workerJvmMem: "-Xms1G -Xmx1G -XX:+UseG1GC"
+workerPodMem: "2Gi"
+workerPodCpu: "2"

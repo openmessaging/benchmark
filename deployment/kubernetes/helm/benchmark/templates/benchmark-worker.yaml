@@ -42,6 +42,9 @@ spec:
         - name: {{ .Release.Name }}-worker
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           image: {{ .Values.image }}
+          env:
+            - name: JVM_MEM
+              value: '{{ .Values.workerJvmMem }}'
           command: ["sh", "-c"]
           args:
             - >
@@ -49,6 +52,13 @@ spec:
           ports:
             - containerPort: 8080
             - containerPort: 8081
+          resources:
+            requests:
+              memory: '{{ .Values.workerPodMem }}'
+              cpu: '{{ .Values.workerPodCpu }}'
+            limits:
+              memory: '{{ .Values.workerPodMem }}'
+              cpu: '{{ .Values.workerPodCpu }}'
 ---
 
 apiVersion: v1

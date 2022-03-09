@@ -43,8 +43,8 @@ spec:
           tail -f /dev/null
       resources:
         requests:
-          memory: 4Gi
-          cpu: 2
+          memory: '{{ .Values.driverPodMem }}'
+          cpu: '{{ .Values.driverPodCpu }}'
         limits:
-          memory: 4Gi
-          cpu: 2
+          memory: '{{ .Values.driverPodMem }}'
+          cpu: '{{ .Values.driverPodCpu }}'
