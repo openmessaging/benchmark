@@ -18,6 +18,7 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import com.rabbitmq.client.AlreadyClosedException;
 import java.io.IOException;
 
 import com.rabbitmq.client.AMQP.BasicProperties;
@@ -27,8 +28,12 @@ import com.rabbitmq.client.Envelope;
 
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements BenchmarkConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkConsumer.class);
 
     private final Channel channel;
     private final ConsumerCallback callback;
@@ -42,15 +47,16 @@ public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements Benchm
     }
 
     @Override
-    public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties, byte[] body)
-            throws IOException {
+    public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties, byte[] body) {
         callback.messageReceived(body, properties.getTimestamp().getTime());
     }
 
     @Override
     public void close() throws Exception {
-        if (this.channel.isOpen()) {
-            this.channel.close();
+        try {
+            channel.close();
+        } catch (AlreadyClosedException e) {
+            log.warn("Channel already closed", e);
         }
     }
 
