@@ -1,10 +1,14 @@
-provider "aws" {
-  region  = "${var.region}"
-  version = "3.50"
-}
-
-provider "random" {
-  version = "3.1"
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.1"
+    }
+  }
 }
 
 variable "public_key_path" {
@@ -27,15 +31,13 @@ variable "key_name" {
 }
 
 variable "region" {}
-
+variable "az" {}
 variable "ami" {}
+variable "instance_types" {}
+variable "num_instances" {}
 
-variable "instance_types" {
-  type = map(string)
-}
-
-variable "num_instances" {
-  type = map(string)
+provider "aws" {
+  region = var.region
 }
 
 # Create a VPC to launch our instances into
@@ -49,26 +51,27 @@ resource "aws_vpc" "benchmark_vpc" {
 
 # Create an internet gateway to give our subnet access to the outside world
 resource "aws_internet_gateway" "pulsar" {
-  vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id = aws_vpc.benchmark_vpc.id
 }
 
 # Grant the VPC internet access on its main route table
 resource "aws_route" "internet_access" {
-  route_table_id         = "${aws_vpc.benchmark_vpc.main_route_table_id}"
+  route_table_id         = aws_vpc.benchmark_vpc.main_route_table_id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.pulsar.id}"
+  gateway_id             = aws_internet_gateway.pulsar.id
 }
 
 # Create a subnet to launch our instances into
 resource "aws_subnet" "benchmark_subnet" {
-  vpc_id                  = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id                  = aws_vpc.benchmark_vpc.id
   cidr_block              = "10.0.0.0/24"
   map_public_ip_on_launch = true
+  availability_zone       = var.az
 }
 
 resource "aws_security_group" "benchmark_security_group" {
   name   = "terraform-pulsar-${random_id.hash.hex}"
-  vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id = aws_vpc.benchmark_vpc.id
 
   # SSH access from anywhere
   ingress {
@@ -115,16 +118,17 @@ resource "aws_security_group" "benchmark_security_group" {
 
 resource "aws_key_pair" "auth" {
   key_name   = "${var.key_name}-${random_id.hash.hex}"
-  public_key = "${file(var.public_key_path)}"
+  public_key = file(var.public_key_path)
 }
 
 resource "aws_instance" "zookeeper" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["zookeeper"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["zookeeper"]}"
+  ami           = var.ami
+  instance_type = var.instance_types["zookeeper"]
+  key_name      = aws_key_pair.auth.id
+  subnet_id     = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [
+  aws_security_group.benchmark_security_group.id]
+  count = var.num_instances["zookeeper"]
 
   tags = {
     Name = "zk-${count.index}"
@@ -132,12 +136,13 @@ resource "aws_instance" "zookeeper" {
 }
 
 resource "aws_instance" "pulsar" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["pulsar"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["pulsar"]}"
+  ami           = var.ami
+  instance_type = var.instance_types["pulsar"]
+  key_name      = aws_key_pair.auth.id
+  subnet_id     = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [
+  aws_security_group.benchmark_security_group.id]
+  count = var.num_instances["pulsar"]
 
   tags = {
     Name = "pulsar-${count.index}"
@@ -145,12 +150,13 @@ resource "aws_instance" "pulsar" {
 }
 
 resource "aws_instance" "client" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["client"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["client"]}"
+  ami           = var.ami
+  instance_type = var.instance_types["client"]
+  key_name      = aws_key_pair.auth.id
+  subnet_id     = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [
+  aws_security_group.benchmark_security_group.id]
+  count = var.num_instances["client"]
 
   tags = {
     Name = "pulsar-client-${count.index}"
@@ -158,22 +164,51 @@ resource "aws_instance" "client" {
 }
 
 resource "aws_instance" "prometheus" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["prometheus"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["prometheus"]}"
+  ami           = var.ami
+  instance_type = var.instance_types["prometheus"]
+  key_name      = aws_key_pair.auth.id
+  subnet_id     = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [
+  aws_security_group.benchmark_security_group.id]
+  count = var.num_instances["prometheus"]
 
   tags = {
     Name = "prometheus-${count.index}"
   }
 }
 
+output "zookeeper" {
+  value = {
+    for instance in aws_instance.zookeeper :
+    instance.public_ip => instance.private_ip
+  }
+}
+
+output "pulsar" {
+  value = {
+    for instance in aws_instance.pulsar :
+    instance.public_ip => instance.private_ip
+  }
+}
+
+output "client" {
+  value = {
+    for instance in aws_instance.client :
+    instance.public_ip => instance.private_ip
+  }
+}
+
+output "prometheus" {
+  value = {
+    for instance in aws_instance.prometheus :
+    instance.public_ip => instance.private_ip
+  }
+}
+
 output "client_ssh_host" {
-  value = "${aws_instance.client.0.public_ip}"
+  value = aws_instance.client.0.public_ip
 }
 
 output "prometheus_host" {
-  value = "${aws_instance.prometheus.0.public_ip}"
+  value = aws_instance.prometheus.0.public_ip
 }
