@@ -1,0 +1,62 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+pulsar_version: 2.9.1
+node_exporter_version: 1.2.2
+prometheus_version: 2.31.1
+
+pulsar_max_heap_memory: 16g
+pulsar_max_direct_memory: 48g
+
+zookeeper_max_heap_memory: 512m
+zookeeper_max_direct_memory: 512m
+
+# Set it with true if you want BookKeeper to skip the journal writes.
+skip_journal: false
+
+# By default, ansible downloads binaries from network. The download URL is determined automatically by the version.
+# To specific another URL to download, you should configure `remote` with `yes` and `src` with the new URL.
+# To upload local binaries, you should configure `remote` with `no` and `src` with the local path.
+#pulsar_binary:
+#  src: ./apache-pulsar-2.9.1-bin.tar.gz
+#  remote: no
+#
+#node_exporter_binary:
+#  src: ./node_exporter-1.2.2.linux-amd64.tar.gz
+#  remote: no
+#
+#prometheus_binary:
+#  src: ./prometheus-2.31.1.linux-amd64.tar.gz
+#  remote: no
+
+# The two disk device paths as BookKeeper journal and storage disks
+disk_dev:
+  - /dev/nvme1n1
+  - /dev/nvme2n1
+
+# Each item represents a protocol handler. If `local_path` is defined, the NAR file will be uploaded from local path instead of downloading from `url`.
+protocol_handlers:
+  - protocol: kafka
+    conf: kop.conf
+    url: https://github.com/streamnative/kop/releases/download/v2.9.2.5/pulsar-protocol-handler-kafka-2.9.2.5.nar
+    #local_path: ./pulsar-protocol-handler-kafka-2.9.2.5.nar
+  - protocol: mqtt
+    conf: mop.conf
+    url: https://github.com/streamnative/mop/releases/download/v2.9.2.5/pulsar-protocol-handler-mqtt-2.9.2.5.nar
+    #local_path: ./pulsar-protocol-handler-mqtt-2.9.2.5.nar

@@ -17,6 +17,37 @@
 # under the License.
 #
 
+- name: Initialize some default values
+  hosts: all
+  connection: ssh
+  tasks:
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+    - set_fact:
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+    - set_fact:
+        pulsar_version: "{{ pulsar_version | default('2.9.1') }}"
+        node_exporter_version: "{{ node_exporter_version | default('1.2.2') }}"
+        prometheus_version: "{{ prometheus_version | default('2.31.1') }}"
+        disk_dev: "{{ disk_dev | default(['/dev/nvme1n1', '/dev/nvme2n1']) }}"
+    - set_fact:
+        pulsar_binary:
+          src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsar_version }}/apache-pulsar-{{ pulsar_version }}-bin.tar.gz"
+          remote: yes
+      when: pulsar_binary is not defined
+    - set_fact:
+        node_exporter_binary:
+          src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+          remote: yes
+      when: node_exporter_binary is not defined
+    - set_fact:
+        prometheus_binary:
+          src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+          remote: yes
+      when: prometheus_binary is not defined
+
 - name: Format and mount disks for Pulsar/BookKeeper hosts
   hosts: pulsar
   connection: ssh
@@ -27,8 +58,8 @@
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - '/dev/nvme1n1'
-        - '/dev/nvme2n1'
+        - "{{ disk_dev[0] }}"
+        - "{{ disk_dev[1] }}"
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -37,31 +68,28 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
-        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
+        - { path: "/mnt/journal", src: "{{ disk_dev[0] }}" }
+        - { path: "/mnt/storage", src: "{{ disk_dev[1] }}" }
 
 - name: Install Node exporter on Brokers to collect system metrics
   hosts: pulsar
   become: true
   tasks:
-    - set_fact:
-        nodeExporterVersion: "1.2.2"
     - name: Add user node_exporter
       user:
         name: node_exporter
         shell: /bin/false
         system: true
         create_home: no
-
     - name: Download and extract
       unarchive:
-        src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+        src: "{{ node_exporter_binary.src }}"
         dest: /tmp
-        remote_src: yes
+        remote_src: "{{ node_exporter_binary.remote }}"
 
     - name: Copy bin node_exporter to /usr/local/bin
       copy:
-        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
         remote_src: yes
         dest: /usr/local/bin/
         owner: node_exporter
@@ -102,38 +130,34 @@
         timeout: 5
 
 - name: Pulsar installation
-  hosts: all
+  hosts: pulsar:client:zookeeper
   connection: ssh
   become: true
   tasks:
     - name: Set performance profile
       command: tuned-adm profile latency-performance
     - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
+      yum:
+        state: latest
+        pkg:
           - wget
           - java-11-openjdk
           - java-11-openjdk-devel
           - sysstat
           - vim
           - chrony
-    - set_fact:
-        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
-        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
-        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
-        pulsarVersion: "2.9.1"
+      when: ansible_facts['distribution'] == 'RedHat'
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
       unarchive:
-        src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsarVersion }}/apache-pulsar-{{ pulsarVersion }}-bin.tar.gz"
-        remote_src: yes
+        src: "{{ pulsar_binary.src }}"
+        remote_src: "{{ pulsar_binary.remote }}"
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
     - set_fact:
-        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-        max_heap_memory: "16g"
-        max_direct_memory: "48g"
+        max_heap_memory: "{{ pulsar_max_heap_memory | default('16g') }}"
+        max_direct_memory: "{{ pulsar_max_direct_memory | default('48g') }}"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
@@ -142,6 +166,30 @@
         echo 'LANG=en_US.utf-8
               LC_ALL=en_US.utf-8' > /etc/environment
 
+- name: Protocol Handlers installation
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/pulsar/protocols state=absent
+    - file: path=/opt/pulsar/protocols state=directory
+    - name: Upload local protocol handlers
+      copy:
+        src: "{{ item.local_path }}"
+        dest: /opt/pulsar/protocols
+      loop: "{{ protocol_handlers }}"
+      when:
+        - protocol_handlers is defined
+        - item.local_path is defined
+    - name: Download protocol handlers
+      get_url:
+        url: "{{ item.url }}"
+        dest: /opt/pulsar/protocols
+      loop: "{{ protocol_handlers }}"
+      when:
+        - protocol_handlers is defined
+        - item.local_path is not defined
+
 - name: ZooKeeper setup
   hosts: zookeeper
   connection: ssh
@@ -149,8 +197,8 @@
   tasks:
     - set_fact:
         zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
-        max_heap_memory: "512m"
-        max_direct_memory: "512m"
+        max_heap_memory: "{{ zookeeper_max_heap_memory | default('512m') }}"
+        max_direct_memory: "{{ zookeeper_max_direct_memory | default('512m') }}"
     - file:
         path: "/opt/pulsar/{{ item }}"
         state: directory
@@ -186,9 +234,9 @@
   hosts: pulsar
   connection: ssh
   become: true
-  vars:
-    skip_journal: false
   tasks:
+    - set_fact:
+        skip_journal: "{{ skip_journal | default(false) }}"
     - name: Apply BookKeeper configuration file [Bypass Journal]
       template:
         src: "templates/bookkeeper-skip-journal.conf"
@@ -220,6 +268,32 @@
     - template:
         src: "templates/pulsar.service"
         dest: "/etc/systemd/system/pulsar.service"
+    - template:
+        src: "templates/{{ item.conf }}"
+        dest: "/opt/pulsar/conf/{{ item.conf }}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
+    - set_fact:
+        protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
+    - name: Enable protocol handlers
+      lineinfile:
+        path: /opt/pulsar/conf/broker.conf
+        line: "messagingProtocols={{ protocols | join(',') }}"
+      when: protocols is defined
+    - name: Read configurations of all protocol handlers
+      shell: |
+        grep -v "^#" "{{ '/opt/pulsar/conf/' + item.conf }}"
+      loop: "{{ protocol_handlers }}"
+      when: protocol_handlers is defined
+      register: conf_files
+    - name: Update broker.conf for protocol handlers
+      lineinfile:
+        path: /opt/pulsar/conf/broker.conf
+        line: "{{ item.stdout_lines | join('\n') }}"
+      loop: "{{ conf_files.results }}"
+      when: conf_files is defined
     - systemd:
         state: restarted
         daemon_reload: yes
@@ -343,28 +417,41 @@
   tasks:
     - name: Add Extras Repo
       shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
-    - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
-        - docker
-    - set_fact:
-        prometheusVersion: "2.31.1"
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+    - name: Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Installing docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package
       unarchive:
-        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
-        remote_src: yes
+        src: "{{ prometheus_binary.src }}"
+        remote_src: "{{ prometheus_binary.remote }}"
         dest: /opt/prometheus
         extra_opts: ["--strip-components=1"]
-    - set_fact:
-        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
 - name: Prometheus setup
   hosts: prometheus
   connection: ssh
   become: true
   tasks:
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
     - file:
         path: "/opt/prometheus/{{ item }}"
         state: directory
