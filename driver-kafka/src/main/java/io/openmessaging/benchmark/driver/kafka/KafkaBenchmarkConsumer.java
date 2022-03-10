@@ -48,14 +48,24 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
     private boolean autoCommit;
-    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, Properties consumerConfig, ConsumerCallback callback) {
+
+    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer,
+                                  Properties consumerConfig,
+                                  ConsumerCallback callback) {
+        this(consumer, consumerConfig, callback, 100L);
+    }
+
+    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer,
+                                  Properties consumerConfig,
+                                  ConsumerCallback callback,
+                                  long pollTimeoutMs) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
         this.autoCommit= Boolean.valueOf((String)consumerConfig.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,"false"));
         this.consumerTask = this.executor.submit(() -> {
             while (!closing) {
                 try {
-                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(100));
+                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(pollTimeoutMs));
 
                     Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                     for (ConsumerRecord<String, byte[]> record : records) {
