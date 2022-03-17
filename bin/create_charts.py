@@ -39,9 +39,13 @@ def create_charts(test_results):
         print('Generating charts for', workload)
         workload = workload.replace('/', '-')
 
-        create_chart(workload, 'Publish latency 99pct',
+        create_chart(workload, 'Publish Latency 99pct',
                      y_label='Latency (ms)',
                      time_series=[(x['driver'], x['publishLatency99pct']) for x in results])
+
+        create_chart(workload, 'Publish Latency Avg',
+                     y_label='Latency Avg (msec)',
+                     time_series=[(x['driver'], x['publishLatencyAvg']) for x in results])
 
         create_chart(workload, 'Publish rate',
                      y_label='Rate (msg/s)',
