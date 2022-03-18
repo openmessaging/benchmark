@@ -17,22 +17,22 @@
 # under the License.
 #
 
-name: 500k-10-topics-3-partitions-1k-32gb-backlog
+name: 250k-1-topic-1000-partitions-100p-100c-1k
 
-topics: 10
-partitionsPerTopic: 3
+topics: 1
+partitionsPerTopic: 1000
 messageSize: 1024
-#payloadFile: "payload/payload-100b.data"
+# payloadFile: "payload/payload-100b.data"
 useRandomizedPayloads: true
 randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
 
 subscriptionsPerTopic: 1
-consumerPerSubscription: 1
-producersPerTopic: 1
+consumerPerSubscription: 100
+producersPerTopic: 100
 
 # Discover max-sustainable rate
-producerRate: 500000
-acceptableBacklog: 100000
-consumerBacklogSizeGB: 32
-testDurationMinutes: 15
+producerRate: 250000
+
+consumerBacklogSizeGB: 0
+testDurationMinutes: 10
