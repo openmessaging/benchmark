@@ -9,5 +9,5 @@ instance_types = {
 
 num_instances = {
   "rabbitmq"    = 3
-  "client"      = 4
+  "client"      = 12
 }
