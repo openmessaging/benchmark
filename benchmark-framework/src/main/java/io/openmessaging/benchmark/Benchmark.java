@@ -145,6 +145,12 @@ public class Benchmark {
                     File driverConfigFile = new File(driverConfig);
                     DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile,
                             DriverConfiguration.class);
+		    if (arguments.consumerDriver != null) {
+			DriverConfiguration consumerDriverConfiguration = mapper.readValue(arguments.consumerDriver,
+			        DriverConfiguration.class);
+			driverConfiguration.name += ":";
+			driverConfiguration.name += consumerDriverConfiguration.name;
+		    }
                     log.info("--------------- WORKLOAD : {} --- DRIVER : {}---------------", workload.name,
                             driverConfiguration.name);
 

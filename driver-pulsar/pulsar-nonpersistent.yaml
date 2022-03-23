@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Pulsar
+name: Pulsar-nonpersistent
 driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
 
 # Pulsar client-specific configuration

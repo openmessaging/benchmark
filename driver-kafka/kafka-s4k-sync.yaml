@@ -18,7 +18,7 @@
 #
 
 
-name: Kafka
+name: Kafka-sync
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
