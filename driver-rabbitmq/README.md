@@ -12,7 +12,7 @@ This folder houses all of the assets necessary to run benchmarks for [RabbitMQ](
 In order to create the local artifacts necessary to run the RabbitMQ benchmarks in AWS, you'll need to have [Maven](https://maven.apache.org/install.html) installed. Once Maven's installed, you can create the necessary artifacts with a single Maven command:
 
 ```bash
-$ git clone https://github.com/streamlio/messaging-benchmark
+$ git clone https://github.com/openmessaging/benchmark.git
 % cd messaging-benchmark
 $ mvn install
 ```
@@ -108,5 +108,5 @@ $ sudo bin/benchmark --drivers driver-rabbitmq/rabbitmq.yaml workloads/*.yaml
 You can also run specific workloads in the `workloads` folder. Here's an example:
 
 ```bash
-$ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-16-partitions-1kb.yaml
+$ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-1-partitions-1kb.yaml
 ```
