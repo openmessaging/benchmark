@@ -35,18 +35,23 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>driver-api</artifactId>
-			<version>${project.version}</version>
+		  <groupId>${project.groupId}</groupId>
+		  <artifactId>driver-api</artifactId>
+		  <version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>jakarta.jms</groupId>
-			<artifactId>jakarta.jms-api</artifactId>
-			<version>${jms.version}</version>
+		  <groupId>jakarta.jms</groupId>
+		  <artifactId>jakarta.jms-api</artifactId>
+		  <version>${jms.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
+		  <groupId>com.datastax.oss</groupId>
+		  <artifactId>pulsar-jms</artifactId>
+		  <version>1.4.0</version>
+		</dependency>
+		<dependency>
+		  <groupId>com.google.guava</groupId>
+		  <artifactId>guava</artifactId>
 		</dependency>
 	</dependencies>
 </project>
