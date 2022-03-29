@@ -50,3 +50,15 @@ protocol_handlers:
 ```
 
 It will download KoP and MoP from the given URLs. Then, the configuration templates will be formatted and appended to the `broker.conf`. The `conf` field is the name of the configuration template, which must be put under `templates` directory.
+
+### Restart the brokers with new configurations
+
+You can change the configuration files and then restart the cluster by executing the following command.
+
+```bash
+TF_STATE=. ansible-playbook \
+  --user ec2-user \
+  --inventory `which terraform-inventory` \
+  -e @extra_vars.yaml \
+  restart_broker.yaml
+```
