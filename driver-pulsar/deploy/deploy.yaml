@@ -100,7 +100,7 @@
       set_fact:
         s3_bucket: "{{ tf_s3_bucket }}"
         s3_region: "{{ tf_s3_region }}"
-        s3_url: "https://{{ tf_s3_bucket }}.s3.{{ tf_s3_region }}.amazonaws.com"
+        s3_url: "https://s3.{{ tf_s3_region }}.amazonaws.com"
     - set_fact:
         private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         max_heap_memory: "24g"
