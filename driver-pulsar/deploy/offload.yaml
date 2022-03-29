@@ -31,7 +31,7 @@ benchmark_package:
 pulsar_package:
   title: "Luna Streaming"
   version: "ls280_1.0.1"
-  url: "/opt/packages/apache-pulsar-2.8.0.1.1.27-SNAPSHOT-bin.tar.gz"
+  url: "/opt/packages/apache-pulsar-2.8.0.1.1.31-SNAPSHOT-bin.tar.gz"
 #  url: "https://github.com/datastax/pulsar/releases/download/ls283_1.0.1/lunastreaming-2.8.3.1.0.1-bin.tar.gz"
   remote: "no"
   broker: "broker-offload.conf"
@@ -49,8 +49,8 @@ pulsar_package:
 tiered_storage:
   title: "AWS S3 offloader"
   version: "2.8.0.1.1.22"
-  path: "/opt/packages/tiered-storage-jcloud-2.8.0.1.1.27-SNAPSHOT.nar"
-  path2: "/opt/packages/tiered-storage-file-system-2.8.0.1.1.27-SNAPSHOT.nar"
+  path: "/opt/packages/tiered-storage-jcloud-2.8.0.1.1.31-SNAPSHOT.nar"
+  path2: "/opt/packages/tiered-storage-file-system-2.8.0.1.1.31-SNAPSHOT.nar"
   remote: "no"
 
 # optional
