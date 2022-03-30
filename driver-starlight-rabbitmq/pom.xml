@@ -29,7 +29,7 @@
 	<artifactId>driver-starlight-rabbitmq</artifactId>
 
 	<properties>
-		<pulsar.version>2.8.1</pulsar.version>
+		<pulsar.version>2.8.2</pulsar.version>
 	</properties>
 
 	<dependencies>
