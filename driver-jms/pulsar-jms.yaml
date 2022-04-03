@@ -34,7 +34,7 @@ client:
   serviceUrl: pulsar://localhost:6650
   httpUrl: http://localhost:8080
   clusterName: local
-  namespacePrefix: public/default
+  namespacePrefix: benchmark/ns
   topicType: persistent
   persistence:
     ensembleSize: 3
