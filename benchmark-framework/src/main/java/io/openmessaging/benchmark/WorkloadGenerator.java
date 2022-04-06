@@ -122,12 +122,12 @@ public class WorkloadGenerator implements AutoCloseable {
             producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
         }
 
-
-        log.info("----- Starting warm-up traffic ------");
-
         worker.startLoad(producerWorkAssignment);
 
-        printAndCollectStats(1, TimeUnit.MINUTES);
+        if (workload.warmupDurationMinutes > 0) {
+            log.info("----- Starting warm-up traffic ({}m) ------", workload.warmupDurationMinutes);
+            printAndCollectStats(workload.warmupDurationMinutes, TimeUnit.MINUTES);
+        }
 
         if (workload.consumerBacklogSizeGB > 0) {
             executor.execute(() -> {
@@ -140,7 +140,7 @@ public class WorkloadGenerator implements AutoCloseable {
         }
 
         worker.resetStats();
-        log.info("----- Starting benchmark traffic ------");
+        log.info("----- Starting benchmark traffic ({}m)------", workload.testDurationMinutes);
 
         TestResult result = printAndCollectStats(workload.testDurationMinutes, TimeUnit.MINUTES);
         runCompleted = true;
