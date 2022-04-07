@@ -200,6 +200,9 @@ public class DistributedWorkersEnsemble implements Worker {
                 stats.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
                         ByteBuffer.wrap(is.publishLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
 
+                stats.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                        ByteBuffer.wrap(is.publishDelayLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
+
                 stats.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
                         ByteBuffer.wrap(is.endToEndLatencyBytes), TimeUnit.HOURS.toMicros(12)));
             } catch (ArrayIndexOutOfBoundsException | DataFormatException e) {
@@ -222,6 +225,15 @@ public class DistributedWorkersEnsemble implements Worker {
             } catch (Exception e) {
                 log.error("Failed to decode publish latency: {}",
                         ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.publishLatencyBytes)));
+                throw new RuntimeException(e);
+            }
+
+            try {
+                stats.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                        ByteBuffer.wrap(is.publishDelayLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
+            } catch (Exception e) {
+                log.error("Failed to decode publish delay latency: {}",
+                          ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.publishDelayLatencyBytes)));
                 throw new RuntimeException(e);
             }
 
