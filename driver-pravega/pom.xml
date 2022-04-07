@@ -30,9 +30,9 @@
     <artifactId>driver-pravega</artifactId>
 
     <properties>
-        <!--Specify pravegaVersion in properties or use default: 0.10.0-->
-        <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
-        <pravegaVersion>0.10.1</pravegaVersion>
+        <!--Specify pravegaVersion in properties or use default: 0.12.0-->
+        <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.12.0-3080.e05a7fb-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
+        <pravegaVersion>0.12.0</pravegaVersion>
     </properties>
 
     <repositories>
@@ -68,7 +68,14 @@
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-all</artifactId>
-            <version>1.36.0</version>
+            <!-- NOTE: Please, use 1.36.0 for Pravega Client 0.10.*, 1.36.2 for Pravega 0.11.* builds -->
+            <version>1.39.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>2.0.39.Final</version>
         </dependency>
 
         <dependency>
