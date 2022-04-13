@@ -31,6 +31,10 @@ def create_charts(test_results):
     workload_results = {}
     for test_result in test_results:
         result = json.load(open(test_result))
+        try:
+            result['legend'] = result['driver']+" "+'-'.join(test_result.split('/')[-1].split('.')[-2].split('-')[-5:-2])
+        except TypeError:
+            continue
         if not result['workload'] in workload_results:
             workload_results[result['workload']] = []
         workload_results[result['workload']].append(result)
