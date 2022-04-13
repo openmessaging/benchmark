@@ -22,6 +22,8 @@ import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
+import io.openmessaging.benchmark.utils.PlaceHolderUtils;
 import org.HdrHistogram.Recorder;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -138,13 +141,21 @@ public class LocalWorker implements Worker, ConsumerCallback {
 	}
         Preconditions.checkArgument(benchmarkDriver == null);
 
-        DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile, DriverConfiguration.class);
+        DriverConfiguration driverConfiguration = PlaceHolderUtils.readAndApplyPlaceholders(driverConfigFile, DriverConfiguration.class);
 
         log.info("Driver: {}", writer.writeValueAsString(driverConfiguration));
 
         try {
             benchmarkDriver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
-            benchmarkDriver.initialize(driverConfigFile, statsLogger);
+
+            // create a tmp file
+            File tmpConfigFile = File.createTempFile("tmp-omb-" + driverConfigFile.getName(),".tmp");
+            tmpConfigFile.deleteOnExit();
+            log.info("Created tmp file {}", tmpConfigFile);
+            String config = PlaceHolderUtils.readAndApplyPlaceholders(driverConfigFile);
+            Files.write(tmpConfigFile.toPath(), config.getBytes(StandardCharsets.UTF_8));
+
+            benchmarkDriver.initialize(tmpConfigFile, statsLogger);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             if (benchmarkDriver != null) {
 		try {
@@ -418,13 +429,6 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
-
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    static {
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
-    }
 
     private static final Logger log = LoggerFactory.getLogger(LocalWorker.class);
 }

@@ -24,14 +24,14 @@ import static org.asynchttpclient.Dsl.asyncHttpClient;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.DataFormatException;
 
+import io.openmessaging.benchmark.utils.PlaceHolderUtils;
 import org.HdrHistogram.Histogram;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.asynchttpclient.AsyncHttpClient;
@@ -84,12 +84,12 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void initializeDriver(File configurationFile, File consumerDriverFile) throws IOException {
-        byte[] confFileContent = Files.readAllBytes(Paths.get(configurationFile.toString()));
+        byte[] confFileContent = PlaceHolderUtils.readAndApplyPlaceholders(configurationFile).getBytes(StandardCharsets.UTF_8);
 	if ( consumerDriverFile == null ) {
 	    sendPost(workers, "/initialize-driver", confFileContent);
 	} else {
 	    sendPost(producerWorkers, "/initialize-driver", confFileContent);
-	    confFileContent = Files.readAllBytes(Paths.get(consumerDriverFile.toString()));
+	    confFileContent = PlaceHolderUtils.readAndApplyPlaceholders(consumerDriverFile).getBytes(StandardCharsets.UTF_8);
 	    sendPost(consumerWorkers, "/initialize-driver", confFileContent);
 	}
     }
@@ -311,7 +311,7 @@ public class DistributedWorkersEnsemble implements Worker {
                     log.error("Failed to do HTTP get request to {}{} -- code: {}", host, path, response.getStatusCode());
                 }
                 Preconditions.checkArgument(response.getStatusCode() == 200);
-                return mapper.readValue(response.getResponseBody(), clazz);
+                return mapperJson.readValue(response.getResponseBody(), clazz);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -325,7 +325,7 @@ public class DistributedWorkersEnsemble implements Worker {
                     log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
                 }
                 Preconditions.checkArgument(response.getStatusCode() == 200);
-                return mapper.readValue(response.getResponseBody(), clazz);
+                return mapperJson.readValue(response.getResponseBody(), clazz);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -339,11 +339,11 @@ public class DistributedWorkersEnsemble implements Worker {
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
 
-    private static final ObjectMapper mapper = new ObjectMapper()
+    private static final ObjectMapper mapperJson = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
+        mapperJson.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
     }
 
     private static final Logger log = LoggerFactory.getLogger(DistributedWorkersEnsemble.class);
