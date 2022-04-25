@@ -47,7 +47,7 @@
 		<dependency>
 		  <groupId>com.datastax.oss</groupId>
 		  <artifactId>pulsar-jms</artifactId>
-		  <version>1.4.0</version>
+		  <version>1.5.0</version>
 		</dependency>
 		<dependency>
 		  <groupId>com.google.guava</groupId>
