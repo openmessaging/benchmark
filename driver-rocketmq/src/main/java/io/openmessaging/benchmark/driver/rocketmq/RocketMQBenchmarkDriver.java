@@ -29,13 +29,18 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.rocketmq.acl.common.AclClientRPCHook;
+import org.apache.rocketmq.acl.common.SessionCredentials;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
+import org.apache.rocketmq.client.consumer.rebalance.AllocateMessageQueueAveragely;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.common.TopicConfig;
 import org.apache.rocketmq.common.message.MessageExt;
+import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.tools.admin.DefaultMQAdminExt;
 import org.apache.rocketmq.tools.command.CommandUtil;
 import org.slf4j.Logger;
@@ -45,11 +50,17 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
     private DefaultMQAdminExt rmqAdmin;
     private RocketMQClientConfig rmqClientConfig;
     DefaultMQProducer rmqProducer;
+    private RPCHook rpcHook;
+
     @Override
     public void initialize(final File configurationFile, final StatsLogger statsLogger) throws IOException {
         this.rmqClientConfig = readConfig(configurationFile);
-
-        this.rmqAdmin = new DefaultMQAdminExt();
+        if (isAclEnabled()) {
+            rpcHook = new AclClientRPCHook(new SessionCredentials(this.rmqClientConfig.accessKey, this.rmqClientConfig.secretKey));
+            this.rmqAdmin = new DefaultMQAdminExt(rpcHook);
+        } else {
+            this.rmqAdmin = new DefaultMQAdminExt();
+        }
         this.rmqAdmin.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
         this.rmqAdmin.setInstanceName("AdminInstance-" + getRandomString());
         try {
@@ -92,16 +103,20 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(final String topic) {
         if (rmqProducer == null) {
-            rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString());
+            if (isAclEnabled()) {
+                rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString(), rpcHook);
+            } else {
+                rmqProducer = new DefaultMQProducer("ProducerGroup_" + getRandomString());
+            }
             rmqProducer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
             rmqProducer.setInstanceName("ProducerInstance" + getRandomString());
-            if(null != this.rmqClientConfig.vipChannelEnabled){
+            if (null != this.rmqClientConfig.vipChannelEnabled) {
                 rmqProducer.setVipChannelEnabled(this.rmqClientConfig.vipChannelEnabled);
             }
-            if(null != this.rmqClientConfig.maxMessageSize){
+            if (null != this.rmqClientConfig.maxMessageSize) {
                 rmqProducer.setMaxMessageSize(this.rmqClientConfig.maxMessageSize);
             }
-            if(null != this.rmqClientConfig.compressMsgBodyOverHowmuch){
+            if (null != this.rmqClientConfig.compressMsgBodyOverHowmuch) {
                 rmqProducer.setCompressMsgBodyOverHowmuch(this.rmqClientConfig.compressMsgBodyOverHowmuch);
             }
             try {
@@ -117,10 +132,15 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(final String topic, final String subscriptionName,
         final ConsumerCallback consumerCallback) {
-        DefaultMQPushConsumer rmqConsumer = new DefaultMQPushConsumer(subscriptionName);
+        DefaultMQPushConsumer rmqConsumer;
+        if (isAclEnabled()) {
+            rmqConsumer = new DefaultMQPushConsumer(subscriptionName, rpcHook, new AllocateMessageQueueAveragely());
+        } else {
+            rmqConsumer = new DefaultMQPushConsumer(subscriptionName);
+        }
         rmqConsumer.setNamesrvAddr(this.rmqClientConfig.namesrvAddr);
         rmqConsumer.setInstanceName("ConsumerInstance" + getRandomString());
-        if(null != this.rmqClientConfig.vipChannelEnabled){
+        if (null != this.rmqClientConfig.vipChannelEnabled) {
             rmqConsumer.setVipChannelEnabled(this.rmqClientConfig.vipChannelEnabled);
         }
         try {
@@ -137,6 +157,11 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
         }
 
         return CompletableFuture.completedFuture(new RocketMQBenchmarkConsumer(rmqConsumer));
+    }
+
+    public boolean isAclEnabled() {
+        return !(StringUtils.isAnyBlank(this.rmqClientConfig.accessKey, this.rmqClientConfig.secretKey) ||
+            StringUtils.isAnyEmpty(this.rmqClientConfig.accessKey, this.rmqClientConfig.secretKey));
     }
 
     @Override

@@ -19,4 +19,6 @@ public class RocketMQClientConfig {
     public Boolean vipChannelEnabled;
     public Integer maxMessageSize;
     public Integer compressMsgBodyOverHowmuch;
+    public String accessKey;
+    public String secretKey;
 }
