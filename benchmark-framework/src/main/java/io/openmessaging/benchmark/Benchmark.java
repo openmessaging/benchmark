@@ -22,11 +22,13 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import io.openmessaging.benchmark.utils.PlaceHolderUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +43,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.openmessaging.benchmark.worker.DistributedWorkersEnsemble;
 import io.openmessaging.benchmark.worker.LocalWorker;
 import io.openmessaging.benchmark.worker.Worker;
+
+import static io.openmessaging.benchmark.utils.PlaceHolderUtils.readAndApplyPlaceholders;
 
 public class Benchmark {
 
@@ -114,7 +118,7 @@ public class Benchmark {
 
         if (arguments.workersFile != null) {
             log.info("Reading workers list from {}", arguments.workersFile);
-            arguments.workers = mapper.readValue(arguments.workersFile, Workers.class).workers;
+            arguments.workers = PlaceHolderUtils.readAndApplyPlaceholders(arguments.workersFile, Workers.class).workers;
         }
 
         // Dump configuration variables
@@ -124,8 +128,8 @@ public class Benchmark {
         for (String path : arguments.workloads) {
             File file = new File(path);
             String name = file.getName().substring(0, file.getName().lastIndexOf('.'));
-
-            workloads.put(name, mapper.readValue(file, Workload.class));
+            Workload workload = PlaceHolderUtils.readAndApplyPlaceholders(file, Workload.class);
+            workloads.put(name, workload);
         }
 
         log.info("Workloads: {}", writer.writeValueAsString(workloads));
@@ -138,32 +142,32 @@ public class Benchmark {
             // Use local worker implementation
             worker = new LocalWorker();
         }
-
+        AtomicBoolean failed = new AtomicBoolean(false);
         workloads.forEach((workloadName, workload) -> {
             arguments.drivers.forEach(driverConfig -> {
                 try {
                     File driverConfigFile = new File(driverConfig);
-                    DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile,
+                    DriverConfiguration driverConfiguration = PlaceHolderUtils.readAndApplyPlaceholders(driverConfigFile,
                             DriverConfiguration.class);
-		    if (arguments.consumerDriver != null) {
-			DriverConfiguration consumerDriverConfiguration = mapper.readValue(arguments.consumerDriver,
-			        DriverConfiguration.class);
-			driverConfiguration.name += ":";
-			driverConfiguration.name += consumerDriverConfiguration.name;
-		    }
+                    if (arguments.consumerDriver != null) {
+                        DriverConfiguration consumerDriverConfiguration = PlaceHolderUtils.readAndApplyPlaceholders(arguments.consumerDriver,
+                                DriverConfiguration.class);
+                        driverConfiguration.name += ":";
+                        driverConfiguration.name += consumerDriverConfiguration.name;
+                    }
                     log.info("--------------- WORKLOAD : {} --- DRIVER : {}---------------", workload.name,
                             driverConfiguration.name);
 
                     // Stop any left over workload
                     worker.stopAll();
 
-		    try {
-			// consumer driver is only used if the worker is a DistributedWorkersEnsemble
-			worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
-		    } catch (Exception e) {
-			log.error("Failed to initialize driver '{}' - Retry once", driverConfig);
-			worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
-		    }
+                    try {
+                        // consumer driver is only used if the worker is a DistributedWorkersEnsemble
+                        worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
+                    } catch (Exception e) {
+                        log.error("Failed to initialize driver '{}' - Retry once", driverConfig);
+                        worker.initializeDriver(new File(driverConfig), arguments.consumerDriver);
+                    }
 
                     WorkloadGenerator generator = new WorkloadGenerator(driverConfiguration.name, workload, worker);
 
@@ -178,6 +182,7 @@ public class Benchmark {
                     generator.close();
                 } catch (Exception e) {
                     log.error("Failed to run the workload '{}' for driver '{}'", workload.name, driverConfig, e);
+                    failed.set(true);
                 } finally {
                     try {
                         worker.stopAll();
@@ -188,13 +193,10 @@ public class Benchmark {
         });
 
         worker.close();
-    }
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    static {
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
+        if (failed.get()) {
+            System.exit(-1);
+        }
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
