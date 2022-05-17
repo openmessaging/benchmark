@@ -41,6 +41,12 @@ client:
     writeQuorum: 3
     ackQuorum: 2
     deduplicationEnabled: false
+  tlsAllowInsecureConnection: false
+  tlsEnableHostnameVerification: false
+  tlsTrustCertsFilePath:
+  authentication:
+    plugin:
+    data:
 producer:
   blockIfQueueFull: true
   pendingQueueSize: 10000
