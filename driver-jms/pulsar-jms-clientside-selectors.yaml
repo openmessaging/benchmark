@@ -21,7 +21,7 @@ name: JMS
 driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
 
 connectionFactoryClassName: com.datastax.oss.pulsar.jms.PulsarConnectionFactory
-connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "jms.enableClientSideEmulation": "true", "webServiceUrl": "http://localhost:8080", "producerConfig":{"blockIfQueueFull":"true"}}'
+connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "jms.enableClientSideEmulation": "true", "webServiceUrl": "http://localhost:8080", "producerConfig":{"blockIfQueueFull":"true","batchingEnabled":"true"}}'
 use20api: true
 
 # add a property to every message

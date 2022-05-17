@@ -46,8 +46,9 @@
 		</dependency>
 		<dependency>
 		  <groupId>com.datastax.oss</groupId>
-		  <artifactId>pulsar-jms</artifactId>
-		  <version>1.5.0</version>
+                  <!-- the '-all' bundle contains a shaded version of Pulsar client-->
+		  <artifactId>pulsar-jms-all</artifactId>
+		  <version>2.1.0</version>
 		</dependency>
 		<dependency>
 		  <groupId>com.google.guava</groupId>
