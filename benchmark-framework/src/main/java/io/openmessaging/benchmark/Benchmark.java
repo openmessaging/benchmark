@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -138,7 +139,7 @@ public class Benchmark {
             // Use local worker implementation
             worker = new LocalWorker();
         }
-
+        AtomicBoolean failed = new AtomicBoolean(false);
         workloads.forEach((workloadName, workload) -> {
             arguments.drivers.forEach(driverConfig -> {
                 try {
@@ -178,6 +179,7 @@ public class Benchmark {
                     generator.close();
                 } catch (Exception e) {
                     log.error("Failed to run the workload '{}' for driver '{}'", workload.name, driverConfig, e);
+                    failed.set(true);
                 } finally {
                     try {
                         worker.stopAll();
@@ -188,6 +190,10 @@ public class Benchmark {
         });
 
         worker.close();
+
+        if (failed.get()) {
+            System.exit(-1);
+        }
     }
 
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
