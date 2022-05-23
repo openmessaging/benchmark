@@ -17,11 +17,11 @@
 # under the License.
 #
 
-name: ${RATE0:-1m}-${TOPICS:-10}-topics-${PARTITIONS:-3}-partitions-${MESSAGESIZE0:-1k}
+name: ${WORKLOAD_NAME:-generic-workload}
 
 topics: ${TOPICS:-10}
 partitionsPerTopic: ${PARTITIONS:-3}
-messageSize: ${MESSAGESIZE:-1024}
+messageSize: ${MESSAGE_SIZE:-1024}
 useRandomizedPayloads: true
 randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
@@ -30,7 +30,6 @@ subscriptionsPerTopic: 1
 consumerPerSubscription: 1
 producersPerTopic: 1
 
-# Discover max-sustainable rate
 producerRate: ${RATE:-1000000}
 
 consumerBacklogSizeGB: 0
