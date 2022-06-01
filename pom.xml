@@ -34,8 +34,8 @@
 
 		<!--<module>driver-pravega</module>-->
 		<module>driver-pulsar</module>
-		<!--<module>driver-kafka</module>
-		<module>driver-rabbitmq</module>-->
+		<!--<module>driver-kafka</module>-->
+		<module>driver-rabbitmq</module>
 		<module>driver-starlight-rabbitmq</module>
 		<!--<module>driver-artemis</module>
 		<module>driver-bookkeeper</module>
