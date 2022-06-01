@@ -189,4 +189,17 @@
 			</build>
 		</profile>
 	</profiles>
+<!-- to use Luna Straaming -->
+  <repositories>
+    <repository>
+      <id>DataStax Public repo</id>
+      <url>https://repo.datastax.com/artifactory/datastax-public-releases-local</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+  </repositories>
 </project>

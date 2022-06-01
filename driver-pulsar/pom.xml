@@ -30,7 +30,8 @@
 
 	<artifactId>driver-pulsar</artifactId>
 	<properties>
-		<pulsar.version>2.10.0</pulsar.version>
+		<pulsar.version>2.10.0.4</pulsar.version>
+                <pulsar.groupId>com.datastax.oss</pulsar.groupId>
 	</properties>
 
 	<dependencies>
@@ -41,7 +42,7 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.pulsar</groupId>
+			<groupId>${pulsar.groupId}</groupId>
 			<artifactId>pulsar-client-all</artifactId>
 			<version>${pulsar.version}</version>
 		</dependency>
