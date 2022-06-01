@@ -34,12 +34,12 @@
 
 		<!--<module>driver-pravega</module>-->
 		<module>driver-pulsar</module>
-		<!--<module>driver-kafka</module>
-		<module>driver-rabbitmq</module>-->
+		<module>driver-kafka</module>
+		<module>driver-rabbitmq</module>
 		<module>driver-starlight-rabbitmq</module>
-		<!--<module>driver-artemis</module>
+                <module>driver-artemis</module>
 		<module>driver-bookkeeper</module>
-		<module>driver-rocketmq</module>
+		<!-- <module>driver-rocketmq</module>
 		<module>driver-nats</module>
 		<module>driver-nats-streaming</module>
 		<module>driver-nsq</module>-->
@@ -62,6 +62,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<bookkeeper.version>4.14.0</bookkeeper.version>
+                <pulsar.version>2.10.0.4</pulsar.version>
+                <pulsar.groupId>com.datastax.oss</pulsar.groupId>
 	</properties>
 
 	<build>

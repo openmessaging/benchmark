@@ -29,10 +29,6 @@
 	</parent>
 
 	<artifactId>driver-pulsar</artifactId>
-	<properties>
-		<pulsar.version>2.10.0.4</pulsar.version>
-                <pulsar.groupId>com.datastax.oss</pulsar.groupId>
-	</properties>
 
 	<dependencies>
 		<dependency>
