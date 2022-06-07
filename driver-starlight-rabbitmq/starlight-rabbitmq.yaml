@@ -25,6 +25,7 @@ amqpUris:
   - amqp://localhost
 
 pulsarHttpUrl: http://localhost:8080
+
 clusterName: standalone
 namespacePrefix: benchmark/ns
 persistence:
