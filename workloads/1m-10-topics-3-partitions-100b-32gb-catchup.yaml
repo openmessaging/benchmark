@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: 200k-10-topics-3-partitions-100b-32gb-backlog-offload
+name: 1m-10-topics-3-partitions-100b-32gb-catchup
 
 topics: 10
 partitionsPerTopic: 3
