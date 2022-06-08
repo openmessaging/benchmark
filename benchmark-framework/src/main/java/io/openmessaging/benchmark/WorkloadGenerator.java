@@ -79,6 +79,15 @@ public class WorkloadGenerator implements AutoCloseable {
 	    List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
 	    log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
 
+	    // Pause to allow brokers to assign topic ownership (Pulsar async issues
+	    timer = new Timer();
+	    try {
+		Thread.sleep(5000);
+	    } catch (InterruptedException e) {
+		throw new RuntimeException(e);
+	    }
+	    log.info("Paused {} ms", timer.elapsedMillis());
+
 	    createConsumers(topics);
 	    createProducers(topics);
 
