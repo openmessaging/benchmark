@@ -175,8 +175,12 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
         return client.newConsumer().subscriptionType(SubscriptionType.Failover).messageListener((consumer, msg) -> {
-            consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
+            // call acknowledgeAsync before executing messageReceived
+            // because in backlog draining workloads the method messageReceived
+            // is blocked while building the backlog, and this leads to
+            // messages dispatched but not acknowledged for very long time
             consumer.acknowledgeAsync(msg);
+            consumerCallback.messageReceived(msg.getData(), msg.getPublishTime());
         }).topic(topic).subscriptionName(subscriptionName).subscribeAsync()
                         .thenApply(consumer -> new PulsarBenchmarkConsumer(consumer));
 
