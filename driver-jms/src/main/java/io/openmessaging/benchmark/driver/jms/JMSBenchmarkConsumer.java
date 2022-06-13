@@ -49,9 +49,10 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
         this.useGetBody = useGetBody;
         consumer.setMessageListener(message -> {
             try {
+                // we are using Session.AUTO_ACKNOWLEDGE
+                // no need to call Message.acknowledge() here
                 byte[] payload = getPayload(message);
                 callback.messageReceived(payload, message.getLongProperty("E2EStartMillis"));
-                message.acknowledge();
             } catch (Throwable e) {
                 log.warn("Failed to acknowledge message", e);
             }
