@@ -16,6 +16,7 @@
 FROM maven:latest as build
 COPY . /benchmark
 WORKDIR /benchmark
+RUN mvn license:format
 RUN mvn install
 
 # Create the benchmark image

@@ -30,6 +30,8 @@ import java.util.zip.DataFormatException;
 import org.HdrHistogram.Histogram;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.asynchttpclient.AsyncHttpClient;
+import org.asynchttpclient.AsyncHttpClientConfig;
+import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +59,10 @@ public class DistributedWorkersEnsemble implements Worker {
     private final List<String> producerWorkers;
     private final List<String> consumerWorkers;
 
-    private final AsyncHttpClient httpClient = asyncHttpClient();
+
+    private final AsyncHttpClient httpClient = asyncHttpClient(
+        new DefaultAsyncHttpClientConfig.Builder( ).setConnectTimeout( 86400001 ).setRequestTimeout( 86400002 ).setReadTimeout( 86400003 ).build()
+    );
 
     private int numberOfUsedProducerWorkers;
 
