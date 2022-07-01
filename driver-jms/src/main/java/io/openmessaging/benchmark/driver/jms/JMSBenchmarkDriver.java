@@ -31,6 +31,8 @@ import java.util.concurrent.CompletableFuture;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
+import javax.jms.IllegalStateException;
+import javax.jms.JMSException;
 import javax.jms.MessageConsumer;
 import javax.jms.Session;
 import javax.jms.Topic;
@@ -132,16 +134,27 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         try {
             if (config.sendWithTransactions) {
-                return CompletableFuture.completedFuture(new JMSBenchmarkTransactionProducer(connection, topic, config.use20api, config.properties));
+                return CompletableFuture.completedFuture(new JMSBenchmarkTransactionProducer(connection, topic, config));
             } else {
                 Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-                Destination destination = session.createTopic(topic);
+                Destination destination = buildDestination(config, session, topic);
                 return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
             }
         } catch (Exception err) {
             CompletableFuture<BenchmarkProducer> res = new CompletableFuture<>();
             res.completeExceptionally(err);
             return res;
+        }
+    }
+
+    static Destination buildDestination(JMSConfig config, Session session, String topic) throws JMSException  {
+        switch (config.destinationType) {
+            case Topic:
+                return session.createTopic(topic);
+            case Queue:
+                return session.createQueue(topic);
+            default:
+                throw new IllegalStateException("bad destinationType");
         }
     }
 
@@ -152,16 +165,35 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
             String selector = config.messageSelector != null && !config.messageSelector.isEmpty() ? config.messageSelector : null;
             Connection connection = connectionFactory.createConnection();
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-            Topic destination = session.createTopic(topic);
-            MessageConsumer durableConsumer;
+            Destination destination = buildDestination(config, session, topic);
+            MessageConsumer consumer;
             if (config.use20api) {
-                durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, selector);
+                switch (config.consumerType) {
+                    case SharedDurableConsumer:
+                        if (config.destinationType != JMSConfig.DestinationType.Topic) {
+                            throw new IllegalStateException("createSharedDurableConsumer is only for JMS Topics");
+                        }
+                        consumer = session.createSharedDurableConsumer((Topic) destination, subscriptionName, selector);
+                        break;
+                    case Consumer:
+                        consumer = session.createConsumer(destination, selector);
+                        break;
+                    case DurableSubscriber:
+                        if (config.destinationType != JMSConfig.DestinationType.Topic) {
+                            throw new IllegalStateException("createSharedDurableConsumer is only for JMS Topics");
+                        }
+                        consumer = session.createDurableSubscriber((Topic) destination, subscriptionName, selector, false);
+                        break;
+                    default:
+                        throw new java.lang.IllegalStateException("bad consumer type");
+                }
+
             } else {
                 // in JMS 1.0 we should use session.createDurableSubscriber()
                 // but it is not supported in Confluent Kafka JMS client
-                durableConsumer = session.createConsumer(destination, selector);
+                consumer = session.createConsumer(destination, selector);
             }
-            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, durableConsumer, consumerCallback, config.use20api));
+            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, consumer, consumerCallback, config.use20api));
         } catch (Exception err) {
             CompletableFuture<BenchmarkConsumer> res = new CompletableFuture<>();
             res.completeExceptionally(err);

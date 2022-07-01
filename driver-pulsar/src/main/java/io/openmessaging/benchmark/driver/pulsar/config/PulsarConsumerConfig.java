@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package io.openmessaging.benchmark.driver.pulsar.config;
 
-public class PulsarConfig {
-    public PulsarClientConfig client = new PulsarClientConfig();
-    public PulsarConsumerConfig consumer = new PulsarConsumerConfig();
-    public PulsarProducerConfig producer = new PulsarProducerConfig();
+import org.apache.pulsar.client.api.SubscriptionMode;
+import org.apache.pulsar.client.api.SubscriptionType;
+
+public class PulsarConsumerConfig {
+    public String subscriptionType = SubscriptionType.Failover.toString();
+    public String subscriptionMode = SubscriptionMode.Durable.toString();
+
 }

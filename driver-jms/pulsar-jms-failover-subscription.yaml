@@ -17,15 +17,22 @@
 # under the License.
 #
 
-name: Pulsar
-driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
+name: JMS
+driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
 
-# Pulsar client-specific configuration
+connectionFactoryClassName: com.datastax.oss.pulsar.jms.PulsarConnectionFactory
+connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "webServiceUrl": "http://localhost:8080","jms.topicSharedSubscriptionType":"Failover", "producerConfig":{"blockIfQueueFull":"true"}}'
+use20api: true
+
+# JMS API do not provide functions to admin the cluster
+# So we are going to delegate the initialization to another specific Driver
+delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
+
+# Pulsar specific configuration
+# the code that handles this configuration is the PulsarBenchmarkDriver
 client:
-  serviceUrl: ${pulsarServiceUrl:-pulsar://localhost:6650}
+  serviceUrl: pulsar://localhost:6650
   httpUrl: http://localhost:8080
-  ioThreads: 8
-  connectionsPerBroker: 8
   clusterName: local
   namespacePrefix: benchmark/ns
   topicType: persistent
@@ -40,16 +47,7 @@ client:
   authentication:
     plugin:
     data:
-
-# Producer configuration
 producer:
-  batchingEnabled: true
-  batchingMaxPublishDelayMs: 1
   blockIfQueueFull: true
   pendingQueueSize: 10000
-
-# Consumer configuration
-
-consumer:
-  subscriptionType: Failover
-  subscriptionMode: Durable
+  

@@ -36,6 +36,10 @@ public class JMSConfig
 
     public boolean use20api;
 
+    public DestinationType destinationType = DestinationType.Topic;
+
+    public ConsumerType consumerType = ConsumerType.SharedDurableConsumer;
+
     public boolean sendWithTransactions = false;
 
     public String delegateForAdminOperationsClassName;
@@ -43,5 +47,16 @@ public class JMSConfig
     public static class AddProperty {
         public String name = "";
         public String value = "";
+    }
+
+    public enum ConsumerType {
+        SharedDurableConsumer,
+        Consumer,
+        DurableSubscriber
+    }
+
+    public enum DestinationType {
+        Topic,
+        Queue
     }
 }

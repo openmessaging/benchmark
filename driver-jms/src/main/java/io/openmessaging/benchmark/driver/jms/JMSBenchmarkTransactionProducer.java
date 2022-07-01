@@ -36,11 +36,15 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
     private final boolean useAsyncSend;
     private final Connection connection;
     private final List<JMSConfig.AddProperty> properties;
-    public JMSBenchmarkTransactionProducer(Connection connection, String destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
+    private final JMSConfig config;
+    public JMSBenchmarkTransactionProducer(Connection connection,
+                                           String destination,
+                                           JMSConfig config) throws Exception {
         this.destination = destination;
-        this.useAsyncSend = useAsyncSend;
+        this.useAsyncSend = config.use20api;
         this.connection = connection;
-        this.properties = properties != null ? properties : Collections.emptyList();
+        this.config = config;
+        this.properties = config.properties != null ? config.properties : Collections.emptyList();
     }
 
     @Override

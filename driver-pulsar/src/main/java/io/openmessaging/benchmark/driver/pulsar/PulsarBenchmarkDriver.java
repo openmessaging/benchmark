@@ -34,6 +34,7 @@ import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
 import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.SubscriptionMode;
 import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.common.policies.data.BacklogQuota;
 import org.apache.pulsar.common.policies.data.BacklogQuota.RetentionPolicy;
@@ -174,7 +175,13 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
                     ConsumerCallback consumerCallback) {
-        return client.newConsumer().subscriptionType(SubscriptionType.Failover).messageListener((consumer, msg) -> {
+        SubscriptionType subscriptionType = SubscriptionType.valueOf(config.consumer.subscriptionType);
+        SubscriptionMode subscriptionMode = SubscriptionMode.valueOf(config.consumer.subscriptionMode);
+        log.info("Creating consumer subscriptionType {} subscriptionMode {}", subscriptionType, subscriptionMode);
+        return client.newConsumer()
+                .subscriptionType(subscriptionType)
+                .subscriptionMode(subscriptionMode)
+                .messageListener((consumer, msg) -> {
             // call acknowledgeAsync before executing messageReceived
             // because in backlog draining workloads the method messageReceived
             // is blocked while building the backlog, and this leads to

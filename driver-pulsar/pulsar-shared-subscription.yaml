@@ -51,5 +51,5 @@ producer:
 # Consumer configuration
 
 consumer:
-  subscriptionType: Failover
+  subscriptionType: Shared
   subscriptionMode: Durable
