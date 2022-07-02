@@ -21,7 +21,7 @@ name: JMS
 driverClass: io.openmessaging.benchmark.driver.jms.JMSBenchmarkDriver
 
 connectionFactoryClassName: com.datastax.oss.pulsar.jms.PulsarConnectionFactory
-connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "webServiceUrl": "http://localhost:8080", "producerConfig":{"blockIfQueueFull":"true"}}'
+connectionFactoryConfigurationParam: '{"brokerServiceUrl": "pulsar://localhost:6650", "webServiceUrl": "http://localhost:8080", "jms.topicSharedSubscriptionType":"Failover", "producerConfig":{"blockIfQueueFull":"true"}}'
 use20api: true
 
 # JMS API do not provide functions to admin the cluster
