@@ -136,8 +136,8 @@
         state: latest
         pkg:
           - wget
-          - java-11-openjdk
-          - java-11-openjdk-devel
+          - java-17-openjdk
+          - java-17-openjdk-devel
           - sysstat
           - vim
           - chrony
