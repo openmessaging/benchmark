@@ -161,29 +161,29 @@
         echo 'LANG=en_US.utf-8
               LC_ALL=en_US.utf-8' > /etc/environment
 
-- name: Protocol Handlers installation
-  hosts: pulsar
-  connection: ssh
-  become: true
-  tasks:
-    - file: path=/opt/pulsar/protocols state=absent
-    - file: path=/opt/pulsar/protocols state=directory
-    - name: Upload local protocol handlers
-      copy:
-        src: "{{ item.local_path }}"
-        dest: /opt/pulsar/protocols
-      loop: "{{ protocol_handlers }}"
-      when:
-        - protocol_handlers is defined
-        - item.local_path is defined
-    - name: Download protocol handlers
-      get_url:
-        url: "{{ item.url }}"
-        dest: /opt/pulsar/protocols
-      loop: "{{ protocol_handlers }}"
-      when:
-        - protocol_handlers is defined
-        - item.local_path is not defined
+#- name: Protocol Handlers installation
+#  hosts: pulsar
+#  connection: ssh
+#  become: true
+#  tasks:
+#    - file: path=/opt/pulsar/protocols state=absent
+#    - file: path=/opt/pulsar/protocols state=directory
+#    - name: Upload local protocol handlers
+#      copy:
+#        src: "{{ item.local_path }}"
+#        dest: /opt/pulsar/protocols
+#      loop: "{{ protocol_handlers }}"
+#      when:
+#        - protocol_handlers is defined
+#        - item.local_path is defined
+#    - name: Download protocol handlers
+#      get_url:
+#        url: "{{ item.url }}"
+#        dest: /opt/pulsar/protocols
+#      loop: "{{ protocol_handlers }}"
+#      when:
+#        - protocol_handlers is defined
+#        - item.local_path is not defined
 
 - name: ZooKeeper setup
   hosts: zookeeper
@@ -263,32 +263,32 @@
     - template:
         src: "templates/pulsar.service"
         dest: "/etc/systemd/system/pulsar.service"
-    - template:
-        src: "templates/{{ item.conf }}"
-        dest: "/opt/pulsar/conf/{{ item.conf }}"
-      loop: "{{ protocol_handlers }}"
-      when: protocol_handlers is defined
-    - set_fact:
-        protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
-      loop: "{{ protocol_handlers }}"
-      when: protocol_handlers is defined
-    - name: Enable protocol handlers
-      lineinfile:
-        path: /opt/pulsar/conf/broker.conf
-        line: "messagingProtocols={{ protocols | join(',') }}"
-      when: protocols is defined
-    - name: Read configurations of all protocol handlers
-      shell: |
-        grep -v "^#" "{{ '/opt/pulsar/conf/' + item.conf }}"
-      loop: "{{ protocol_handlers }}"
-      when: protocol_handlers is defined
-      register: conf_files
-    - name: Update broker.conf for protocol handlers
-      lineinfile:
-        path: /opt/pulsar/conf/broker.conf
-        line: "{{ item.stdout_lines | join('\n') }}"
-      loop: "{{ conf_files.results }}"
-      when: conf_files is defined
+#    - template:
+#        src: "templates/{{ item.conf }}"
+#        dest: "/opt/pulsar/conf/{{ item.conf }}"
+#      loop: "{{ protocol_handlers }}"
+#      when: protocol_handlers is defined
+#    - set_fact:
+#        protocols: "{{ protocols | default([]) + [ item.protocol ]}}"
+#      loop: "{{ protocol_handlers }}"
+#      when: protocol_handlers is defined
+#    - name: Enable protocol handlers
+#      lineinfile:
+#        path: /opt/pulsar/conf/broker.conf
+#        line: "messagingProtocols={{ protocols | join(',') }}"
+#      when: protocols is defined
+#    - name: Read configurations of all protocol handlers
+#      shell: |
+#        grep -v "^#" "{{ '/opt/pulsar/conf/' + item.conf }}"
+#      loop: "{{ protocol_handlers }}"
+#      when: protocol_handlers is defined
+#      register: conf_files
+#    - name: Update broker.conf for protocol handlers
+#      lineinfile:
+#        path: /opt/pulsar/conf/broker.conf
+#        line: "{{ item.stdout_lines | join('\n') }}"
+#      loop: "{{ conf_files.results }}"
+#      when: conf_files is defined
     - systemd:
         state: restarted
         daemon_reload: yes
