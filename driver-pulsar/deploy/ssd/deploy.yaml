@@ -192,8 +192,8 @@
   tasks:
     - set_fact:
         zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
-        max_heap_memory: "{{ zookeeper_max_heap_memory | default('512m') }}"
-        max_direct_memory: "{{ zookeeper_max_direct_memory | default('512m') }}"
+        max_heap_memory: "{{ zookeeper_max_heap_memory | default('10G') }}"
+        max_direct_memory: "{{ zookeeper_max_direct_memory | default('2G') }}"
     - file:
         path: "/opt/pulsar/{{ item }}"
         state: directory
