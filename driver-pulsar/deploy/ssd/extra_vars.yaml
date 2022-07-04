@@ -16,11 +16,11 @@ pulsar_version: 2.10.1
 node_exporter_version: 1.2.2
 prometheus_version: 2.31.1
 
-pulsar_max_heap_memory: 16g
-pulsar_max_direct_memory: 48g
+pulsar_max_heap_memory: 32g
+pulsar_max_direct_memory: 32g
 
-zookeeper_max_heap_memory: 512m
-zookeeper_max_direct_memory: 512m
+zookeeper_max_heap_memory: 10g
+zookeeper_max_direct_memory: 2g
 
 # Set it with true if you want BookKeeper to skip the journal writes.
 skip_journal: false

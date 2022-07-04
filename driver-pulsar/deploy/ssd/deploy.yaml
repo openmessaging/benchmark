@@ -151,11 +151,14 @@
         dest: /opt/pulsar
         extra_opts: ["--strip-components=1"]
     - set_fact:
-        max_heap_memory: "{{ pulsar_max_heap_memory | default('16g') }}"
-        max_direct_memory: "{{ pulsar_max_direct_memory | default('48g') }}"
+        max_heap_memory: "{{ pulsar_max_heap_memory | default('32g') }}"
+        max_direct_memory: "{{ pulsar_max_direct_memory | default('32g') }}"
     - template:
         src: "templates/pulsar_env.sh"
         dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - template:
+        src: "templates/bkenv.sh"
+        dest: "/opt/pulsar/conf/bkenv.sh"
     - name: Change locale to en_US.utf-8
       shell: |
         echo 'LANG=en_US.utf-8
