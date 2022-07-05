@@ -17,6 +17,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 * [NATS Streaming](https://nats.io/)
 * [Redis](https://redis.com/)
 * [Pravega](https://pravega.io/)
+* [TDengine](https://tdengine.com/)
 
 > More details could be found at the [official documentation](http://openmessaging.cloud/docs/benchmarks/).
 
