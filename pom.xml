@@ -40,6 +40,7 @@
 		<module>package</module>
 		<module>docker</module>
 		<module>driver-kop</module>
+		<module>driver-tdengine</module>
 	</modules>
 
 
