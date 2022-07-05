@@ -25,7 +25,7 @@ Configuration:
         
   Loggers: 
     Root:
-      level: info
+      level: debug
       additivity: false
       AppenderRef:
         ref: Console
