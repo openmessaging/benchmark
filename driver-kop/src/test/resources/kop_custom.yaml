@@ -31,6 +31,7 @@ pulsarConfig:
   blockIfQueueFull: false
   pendingQueueSize: 10000
   maxPendingMessagesAcrossPartitions: 500000
+  batchingPartitionSwitchFrequencyByPublishDelay: 100
   # consumer configs
   maxTotalReceiverQueueSizeAcrossPartitions: 500000
   receiverQueueSize: 10000
