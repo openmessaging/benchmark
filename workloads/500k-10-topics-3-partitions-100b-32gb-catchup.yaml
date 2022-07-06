@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: 1m-10-topics-3-partitions-100b-32gb-catchup
+name: 500k-10-topics-3-partitions-100b-32gb-catchup
 
 topics: 10
 partitionsPerTopic: 3
@@ -32,7 +32,7 @@ consumerPerSubscription: 1
 producersPerTopic: 1
 
 # Discover max-sustainable rate
-producerRate: 200000
+producerRate: 500000
 acceptableBacklog: 50000
 producerPauseDuringDrain: 0
 consumerBacklogSizeGB: 32
