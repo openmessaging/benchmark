@@ -20,7 +20,7 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public String getTopicNamePrefix() {
-        return null;
+        return "tmq";
     }
 
     @Override
@@ -39,13 +39,12 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName, ConsumerCallback consumerCallback) {
         log.debug("createConsumer topic {} subscriptionName {}", topic, subscriptionName);
-        return CompletableFuture.completedFuture(new TDengineBenchmarkConsumer());
+        return CompletableFuture.completedFuture(new TDengineBenchmarkConsumer(consumerCallback));
     }
 
     @Override
     public void close() throws Exception {
         log.debug("close");
-
     }
 
     private static final Logger log = LoggerFactory.getLogger(TDengineBenchmarkDriver.class);
