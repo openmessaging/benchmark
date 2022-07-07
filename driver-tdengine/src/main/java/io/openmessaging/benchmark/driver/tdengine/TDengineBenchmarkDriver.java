@@ -43,6 +43,7 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         log.debug("initialize");
+        TDengineProducer tDengineProducer = new TDengineProducer();
     }
 
     @Override
