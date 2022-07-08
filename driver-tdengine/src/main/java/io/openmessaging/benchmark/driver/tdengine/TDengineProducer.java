@@ -20,6 +20,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -33,16 +35,21 @@ public class TDengineProducer {
     private String topic;
     private boolean closing = false;
     private Config config;
+    private long startNano;
+    private long startTs;
 
     public TDengineProducer(String topic, Config config) {
         this.topic = topic;
         this.config = config;
+        this.startNano = System.nanoTime();
+        this.startTs = System.currentTimeMillis() * 1000000;
         this.workThread = new Thread(this::run);
         workThread.start();
     }
 
     public void send(byte[] payload, CompletableFuture<Void> future) throws InterruptedException {
-        queue.put(new Object[]{new String(payload), future});
+        long ts = System.nanoTime() - startNano + startTs;
+        queue.put(new Object[]{ts, new String(payload), future});
     }
 
     public void run() {
@@ -60,14 +67,15 @@ public class TDengineProducer {
             String q = "create table " + tableName + " using " + stableName + " tags(" + tableId + ")";
             log.info(q);
             stmt.executeUpdate(q);
-            String sql = "insert into " + tableName + " values(%d, '%s')";
-            long startNano = System.nanoTime();
-            long startTs = System.currentTimeMillis() * 1000000;
+            String sqlTemp = "insert into " + tableName + " values(%d, '%s')";
+            List<String> buffer = new ArrayList<>();
+
             while (!closing) {
                 try {
                     Object[] item = queue.poll();
                     if (item != null) {
-                        q = String.format(sql, System.nanoTime() - startNano + startTs, item[0]);
+                        // todo: bach insert
+                        q = "";
                         stmt.executeUpdate(q);
                         ((CompletableFuture<Void>) item[1]).complete(null);
                     } else {

@@ -28,22 +28,14 @@
 package io.openmessaging.benchmark.driver.tdengine;
 
 import com.taosdata.jdbc.tmq.ConsumerRecords;
-import com.taosdata.jdbc.tmq.Deserializer;
 import com.taosdata.jdbc.tmq.TaosConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.beans.IntrospectionException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.InetAddress;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

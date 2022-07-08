@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class TDengineBenchmarkProducer implements BenchmarkProducer {
-    private static final Logger log = LoggerFactory.getLogger(TDengineBenchmarkProducer.class);
     private TDengineProducer tdProducer;
 
     public TDengineBenchmarkProducer(TDengineProducer producer) {
