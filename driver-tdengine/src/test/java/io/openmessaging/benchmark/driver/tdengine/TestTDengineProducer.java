@@ -11,13 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package io.openmessaging.benchmark.driver.tdengine;
 
-//import io.openmessaging.benchmark.Benchmark;
 
-public class BenchmarkLocalRunner {
+public class TestTDengineProducer {
     public static void main(String[] args) throws Exception {
-        TDengineProducer producer = new TDengineProducer();
-//        Benchmark.main(new String[]{"--drivers", "driver-tdengine/tdengine.yaml", "workloads/td-test.yaml"});
+//        TDengineProducer producer = new TDengineProducer("test");
     }
 }

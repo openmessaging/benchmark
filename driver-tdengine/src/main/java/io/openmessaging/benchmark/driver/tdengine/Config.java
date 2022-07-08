@@ -27,5 +27,10 @@
 
 package io.openmessaging.benchmark.driver.tdengine;
 
+
 public class Config {
+    public String database;
+    public int maxBatchSize;
+    public int varcharLen;
+    public String jdbcURL;
 }
