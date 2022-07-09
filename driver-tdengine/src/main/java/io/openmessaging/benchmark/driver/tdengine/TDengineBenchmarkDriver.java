@@ -96,7 +96,9 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
-        conn.close();
+        if (conn != null) {
+            conn.close();
+        }
     }
 
     private static final Logger log = LoggerFactory.getLogger(TDengineBenchmarkDriver.class);
