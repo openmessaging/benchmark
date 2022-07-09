@@ -49,6 +49,7 @@ public class TDengineProducer {
 
     public void send(byte[] payload, CompletableFuture<Void> future) throws InterruptedException {
         long ts = System.nanoTime() - startNano + startTs;
+        // [ts, payload, future]
         queue.put(new Object[]{ts, new String(payload), future});
     }
 
@@ -67,24 +68,33 @@ public class TDengineProducer {
             String q = "create table " + tableName + " using " + stableName + " tags(" + tableId + ")";
             log.info(q);
             stmt.executeUpdate(q);
-            String sqlTemp = "insert into " + tableName + " values(%d, '%s')";
-            List<String> buffer = new ArrayList<>();
+            List<String> values = new ArrayList<>();
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
 
             while (!closing) {
                 try {
                     Object[] item = queue.poll();
                     if (item != null) {
-                        // todo: bach insert
-                        q = "";
-                        stmt.executeUpdate(q);
-                        ((CompletableFuture<Void>) item[1]).complete(null);
+                        Object ts = item[0];
+                        Object payload = item[1];
+                        values.add(" (" + ts + ",'" + payload + "')");
+                        futures.add((CompletableFuture<Void>) item[3]);
+                        if (values.size() == config.maxBatchSize) {
+                            flush(stmt, tableName, values, futures);
+                        }
                     } else {
+                        if (values.size() > 0) {
+                            flush(stmt, tableName, values, futures);
+                        }
                         Thread.sleep(100);
                     }
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 } catch (SQLException e) {
                 }
+            }
+            if (values.size() > 0) {
+                flush(stmt, tableName, values, futures);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -95,6 +105,19 @@ public class TDengineProducer {
             } catch (SQLException e) {
             }
         }
+    }
+
+    private void flush(Statement stmt, String table, List<String> values, List<CompletableFuture<Void>> futures) throws SQLException {
+        StringBuilder sb = new StringBuilder("insert into ").append(table).append(" values");
+        for (String value : values) {
+            sb.append(value);
+        }
+        String q = sb.toString();
+        log.debug(q);
+        stmt.executeUpdate(q);
+        futures.forEach(f -> f.complete(null));
+        values.clear();
+        futures.clear();
     }
 
     public void close() {
