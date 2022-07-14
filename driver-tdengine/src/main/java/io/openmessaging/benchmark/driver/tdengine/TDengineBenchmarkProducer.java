@@ -28,14 +28,13 @@ public class TDengineBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
         try {
             tdProducer.send(payload);
-            future.complete(null);
+            return CompletableFuture.completedFuture(null);
         } catch (InterruptedException e) {
-            future.completeExceptionally(e);
+            e.printStackTrace();
+            return null;
         }
-        return future;
     }
 
     @Override
