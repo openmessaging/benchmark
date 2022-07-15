@@ -19,4 +19,3 @@ database: omb
 maxBatchSize: 10
 varcharLen: 1024
 jdbcURL: "jdbc:TAOS://localhost:6030?user=root&password=taosdata"
-vgroups: 10

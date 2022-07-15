@@ -52,9 +52,6 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
             String q = "drop database if exists " + config.database;
             log.info(q);
             stmt.executeUpdate(q);
-            q = "create database " + config.database + " precision 'ns' vgroups " + config.vgroups;
-            log.info(q);
-            stmt.executeUpdate(q);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -69,9 +66,12 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
         CompletableFuture future = new CompletableFuture();
         try (Statement stmt = conn.createStatement()) {
+            String q = "create database if not exists " + config.database + " precision 'ns' vgroups " + partitions;
+            log.info(q);
+            stmt.executeUpdate(q);
             stmt.executeUpdate("use " + config.database);
             String stable = topic.replaceAll("-", "_");
-            String q = "create stable if not exists " + stable + "(ts timestamp, payload binary(" + config.varcharLen + ")) tags(id bigint)";
+            q = "create stable if not exists " + stable + "(ts timestamp, payload binary(" + config.varcharLen + ")) tags(id bigint)";
             log.info(q);
             stmt.executeUpdate(q);
             q = "create topic `" + topic + "` as select ts, payload from " + stable;
