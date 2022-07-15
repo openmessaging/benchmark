@@ -52,7 +52,7 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
             String q = "drop database if exists " + config.database;
             log.info(q);
             stmt.executeUpdate(q);
-            q = "create database " + config.database + " precision 'ns'";
+            q = "create database " + config.database + " precision 'ns' vgroups " + config.vgroups;
             log.info(q);
             stmt.executeUpdate(q);
         } catch (SQLException e) {

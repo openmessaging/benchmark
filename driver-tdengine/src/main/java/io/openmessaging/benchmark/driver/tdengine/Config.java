@@ -33,4 +33,5 @@ public class Config {
     public int maxBatchSize;
     public int varcharLen;
     public String jdbcURL;
+    public int vgroups;
 }
