@@ -78,7 +78,9 @@ public class WorkloadGenerator implements AutoCloseable {
 	    Timer timer = new Timer();
 	    List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
 	    log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
-
+	    for (String topic: topics) {
+		log.info("Topic: {}", topic);
+	    }
 	    // Pause to allow brokers to assign topic ownership (Pulsar async issues
 	    timer = new Timer();
 	    try {
@@ -312,6 +314,7 @@ public class WorkloadGenerator implements AutoCloseable {
         for(String topic: topics){
             for(int i = 0; i < workload.subscriptionsPerTopic; i++){
                 String subscriptionName = String.format("sub-%03d-%s", i, RandomGenerator.getRandomString());
+		log.info("Subscription: {} for {}", subscriptionName, topic);
                 for (int j = 0; j < workload.consumerPerSubscription; j++) {
                     consumerAssignment.topicsSubscriptions
                         .add(new TopicSubscription(topic, subscriptionName));

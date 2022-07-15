@@ -162,7 +162,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             // No-op
             return CompletableFuture.completedFuture(null);
         }
-
+	log.info("Create topic: {}; Partitions: {}", topic, partitions);
         return adminClient.topics().createPartitionedTopicAsync(topic, partitions);
     }
 
