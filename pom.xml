@@ -62,8 +62,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<bookkeeper.version>4.14.0</bookkeeper.version>
-                <pulsar.version>2.10.0.5</pulsar.version>
-                <pulsar.groupId>com.datastax.oss</pulsar.groupId>
+                <pulsar.version>2.10.1</pulsar.version>
+                <pulsar.groupId>org.apache.pulsar</pulsar.groupId>
 	</properties>
 
 	<build>
