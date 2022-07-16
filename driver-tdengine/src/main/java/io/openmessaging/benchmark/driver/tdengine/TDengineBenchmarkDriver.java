@@ -74,7 +74,11 @@ public class TDengineBenchmarkDriver implements BenchmarkDriver {
             q = "create stable if not exists " + stable + "(ts timestamp, payload binary(" + config.varcharLen + ")) tags(id bigint)";
             log.info(q);
             stmt.executeUpdate(q);
+            /*
             q = "create topic `" + topic + "` as select ts, payload from " + stable;
+            q = "create topic `" + topic + "` as database " + config.database;
+            */
+            q = "create topic `" + topic + "` as stable " + stable;
             log.info(q);
             stmt.executeUpdate(q);
             future.complete(null);
