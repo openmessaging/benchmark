@@ -1,6 +1,6 @@
 # The OpenMessaging Benchmark Framework
 
-**Notice：** We may release test results based on our fork this standard. For reference, you can purchase your benchmark tests on the cloud by yourself. 
+**Notice：** We may release test results based on our fork of this standard. For reference, you can purchase your benchmark tests on the cloud by yourself. 
 
 This repository houses user-friendly, cloud-ready benchmarking suites for the following messaging platforms:
 
