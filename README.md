@@ -16,6 +16,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 
 * JMS
 * Apache Kafka
+* RabbitMQ
 
 > More details could be found at the [official documentation](http://openmessaging.cloud/docs/benchmarks/).
 
@@ -41,7 +42,15 @@ $ sudo bin/benchmark \
 
 ### Examples
 
-1. Produce with Pulsar driver and consume with Starlight for Kafka.
+1. Produce and consume with the Pulsar driver
+
+   ```
+   $ sudo bin/benchmark \
+     --drivers driver-pulsar/pulsar.yaml \
+     workloads/1m-10-topics-3-partitions-100b.yaml
+   ```
+
+2. Produce with Pulsar driver and consume with Starlight for Kafka.
 
    ```
    $ sudo bin/benchmark \
@@ -50,7 +59,7 @@ $ sudo bin/benchmark \
      workloads/1m-10-topics-3-partitions-100b.yaml
    ```
 
-2. Benchmark using Starlight for JMS with twice as many consumer benchmark workers.
+3. Benchmark using Starlight for JMS with twice as many consumer benchmark workers.
 
    ```
    $ sudo bin/benchmark \
