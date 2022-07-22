@@ -15,11 +15,15 @@
 package io.openmessaging.benchmark.driver.tdengine;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class TDengineBenchmarkProducer implements BenchmarkProducer {
+    private final static Logger log = LoggerFactory.getLogger(TDengineBenchmarkProducer.class);
+
     private TDengineProducer tdProducer;
 
     public TDengineBenchmarkProducer(TDengineProducer producer) {
@@ -28,12 +32,15 @@ public class TDengineBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            tdProducer.send(payload);
-            return CompletableFuture.completedFuture(null);
+            tdProducer.send(payload, future);
         } catch (InterruptedException e) {
+            log.warn("Producer is too busy to handle so many messages");
+            future.exceptionally(null);
             e.printStackTrace();
-            return null;
+        } finally {
+            return future;
         }
     }
 

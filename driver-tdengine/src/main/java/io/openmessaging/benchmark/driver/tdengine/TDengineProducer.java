@@ -47,10 +47,10 @@ public class TDengineProducer {
         workThread.start();
     }
 
-    public void send(byte[] payload) throws InterruptedException {
+    public void send(byte[] payload, CompletableFuture<Void> future) throws InterruptedException {
         long ts = System.nanoTime() - startNano + startTs;
         // [ts, payload, future]
-        queue.put(new Object[]{ts, new String(payload)});
+        queue.put(new Object[]{ts, new String(payload), future});
     }
 
     public void run() {
@@ -76,6 +76,9 @@ public class TDengineProducer {
                     if (item != null) {
                         Object ts = item[0];
                         Object payload = item[1];
+                        CompletableFuture<Void> future = (CompletableFuture<Void>)item[2];
+                        // mark message sent successfully
+                        future.complete(null);
                         values.add(" (" + ts + ",'" + payload + "')");
                         if (values.size() == config.maxBatchSize) {
                             flush(stmt, tableName, values);
