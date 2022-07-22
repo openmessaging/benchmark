@@ -18,4 +18,5 @@ driverClass: io.openmessaging.benchmark.driver.tdengine.TDengineBenchmarkDriver
 database: omb
 maxBatchSize: 10
 varcharLen: 1024
+replica: 1
 jdbcURL: "jdbc:TAOS://localhost:6030?user=root&password=taosdata"

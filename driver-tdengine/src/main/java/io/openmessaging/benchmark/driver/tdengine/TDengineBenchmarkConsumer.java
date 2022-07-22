@@ -61,7 +61,7 @@ public class TDengineBenchmarkConsumer implements BenchmarkConsumer {
                 String topicName = '`' + topic + '`';
                 consumer.subscribe(Collections.singletonList(topicName));
                 while (!closing) {
-                    ConsumerRecords<Record> consumerRecords = consumer.poll(Duration.ofMillis(100));
+                    ConsumerRecords<Record> consumerRecords = consumer.poll(Duration.ofMillis(-1));
                     for (Record record : consumerRecords) {
                         callback.messageReceived(record.payload, record.ts / 1000000);
                     }
