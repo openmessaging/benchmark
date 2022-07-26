@@ -51,7 +51,7 @@ public class TDengineProducer {
     public boolean send(byte[] payload, CompletableFuture<Void> future) throws InterruptedException {
         long ts = System.nanoTime() - startNano + startTs;
         // [ts, payload, future]
-        return queue.offer(new Object[]{ts, new String(payload), future}, 3, TimeUnit.MILLISECONDS);
+        return queue.offer(new Object[]{ts, new String(payload), future}, 10, TimeUnit.MILLISECONDS);
     }
 
     public void run() {

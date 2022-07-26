@@ -36,11 +36,11 @@ public class TDengineBenchmarkProducer implements BenchmarkProducer {
         try {
             boolean suc = tdProducer.send(payload, future);
             if (!suc) {
-                log.warn("Producer is too busy to handle so many messages");
+                log.warn("failed to send message, queue is full");
                 future.exceptionally(null);
             }
         } catch (InterruptedException e) {
-            log.warn("Producer is too busy to handle so many messages");
+            log.warn("failed to send message");
             future.exceptionally(null);
             e.printStackTrace();
         } finally {
