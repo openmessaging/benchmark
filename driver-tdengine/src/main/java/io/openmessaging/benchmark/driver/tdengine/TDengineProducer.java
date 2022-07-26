@@ -88,7 +88,7 @@ public class TDengineProducer {
                         if (values.size() > 0) {
                             flush(stmt, tableName, values);
                         }
-                        Thread.sleep(100);
+                        Thread.sleep(3);
                     }
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
