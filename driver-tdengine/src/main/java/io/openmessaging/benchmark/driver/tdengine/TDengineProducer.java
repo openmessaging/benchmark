@@ -25,12 +25,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 
 public class TDengineProducer {
     private static final Logger log = LoggerFactory.getLogger(TDengineProducer.class);
 
-    private ArrayBlockingQueue<Object[]> queue = new ArrayBlockingQueue<>(10000000);
+    private ArrayBlockingQueue<Object[]> queue = new ArrayBlockingQueue<>(500000);
     private Thread workThread;
     private String topic;
     private boolean closing = false;
@@ -47,10 +48,10 @@ public class TDengineProducer {
         workThread.start();
     }
 
-    public void send(byte[] payload, CompletableFuture<Void> future) throws InterruptedException {
+    public boolean send(byte[] payload, CompletableFuture<Void> future) throws InterruptedException {
         long ts = System.nanoTime() - startNano + startTs;
         // [ts, payload, future]
-        queue.put(new Object[]{ts, new String(payload), future});
+        return queue.offer(new Object[]{ts, new String(payload), future}, 3, TimeUnit.MILLISECONDS);
     }
 
     public void run() {

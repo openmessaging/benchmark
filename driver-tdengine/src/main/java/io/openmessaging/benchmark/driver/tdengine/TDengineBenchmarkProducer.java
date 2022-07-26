@@ -34,7 +34,11 @@ public class TDengineBenchmarkProducer implements BenchmarkProducer {
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            tdProducer.send(payload, future);
+            boolean suc = tdProducer.send(payload, future);
+            if (!suc) {
+                log.warn("Producer is too busy to handle so many messages");
+                future.exceptionally(null);
+            }
         } catch (InterruptedException e) {
             log.warn("Producer is too busy to handle so many messages");
             future.exceptionally(null);
