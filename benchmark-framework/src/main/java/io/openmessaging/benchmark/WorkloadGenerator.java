@@ -154,7 +154,9 @@ public class WorkloadGenerator implements AutoCloseable {
         // In this case we just publish 1 message and then wait for consumers to receive the data
         worker.probeProducers();
 
-	while (true) {
+	    long start = System.currentTimeMillis();
+        long end = start + 60 * 1000;
+        while (System.currentTimeMillis() < end) {
             CountersStats stats = worker.getCountersStats();
 	    
             if (stats.messagesReceived < expectedMessages) {
@@ -168,7 +170,12 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         }
 
-        log.info("All consumers are ready");
+        if (System.currentTimeMillis() >= end) {
+            log.warn("Timed out waiting for consumers to be ready");
+        }
+        else {
+            log.info("All consumers are ready");
+        }        
     }
 
     /**
