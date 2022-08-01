@@ -13,13 +13,11 @@
  */
 package io.openmessaging.benchmark.driver.tdengine;
 
+import com.taosdata.jdbc.TSDBPreparedStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -44,7 +42,7 @@ public class TDengineProducer {
         this.config = config;
         this.startNano = System.nanoTime();
         this.startTs = System.currentTimeMillis() * 1000000;
-        this.workThread = new Thread(this::run);
+        this.workThread = new Thread(this::runStmt);
         workThread.start();
     }
 
@@ -52,6 +50,71 @@ public class TDengineProducer {
         long ts = System.nanoTime() - startNano + startTs;
         // [ts, payload, future]
         return queue.offer(new Object[]{ts, new String(payload), future}, 10, TimeUnit.MILLISECONDS);
+    }
+
+    public void runStmt() {
+        Connection conn = null;
+        Statement stmt = null;
+        try {
+            String jdbcUrl = config.jdbcURL;
+            conn = DriverManager.getConnection(jdbcUrl);
+            stmt = conn.createStatement();
+            stmt.executeUpdate("use " + config.database);
+            long tableId = System.nanoTime() + new Random().nextLong();
+            tableId = Math.abs(tableId);
+            String stableName = topic.replaceAll("-", "_");
+            String tableName = stableName + "_" + tableId;
+            String q = "create table " + tableName + " using " + stableName + " tags(" + tableId + ")";
+            log.info(q);
+            stmt.executeUpdate(q);
+            ArrayList<Long> tsBuffer = new ArrayList<>();
+            ArrayList<String> payloadBuffer = new ArrayList<>();
+            String psql = "INSERT INTO " + tableName + "VALUES(?, ?)";
+            try (TSDBPreparedStatement pst = (TSDBPreparedStatement) conn.prepareStatement(psql)) {
+                while (!closing) {
+                    try {
+                        Object[] item = queue.poll();
+                        if (item != null) {
+                            Long ts = (Long) item[0];
+                            String payload = (String) item[1];
+                            CompletableFuture<Void> future = (CompletableFuture<Void>) item[2];
+                            // mark message sent successfully
+                            future.complete(null);
+                            tsBuffer.add(ts);
+                            payloadBuffer.add(payload);
+                            if (tsBuffer.size() == config.maxBatchSize) {
+                                flushStmt(pst, tsBuffer, payloadBuffer);
+                            }
+                        } else {
+                            Thread.sleep(3);
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    } catch (SQLException e) {
+                        log.info(e.getMessage());
+                    }
+                }
+                if (tsBuffer.size() > 0) {
+                    flushStmt(pst, tsBuffer, payloadBuffer);
+                }
+
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                stmt.close();
+                conn.close();
+            } catch (SQLException e) {
+            }
+        }
+    }
+
+    public void flushStmt(TSDBPreparedStatement pst, ArrayList<Long> tsBuffer, ArrayList<String> payloadBuffer) throws SQLException {
+        pst.setTimestamp(0, tsBuffer);
+        pst.setString(1, payloadBuffer, config.varcharLen);
+        pst.columnDataAddBatch();
+        pst.columnDataExecuteBatch();
     }
 
     public void run() {
@@ -77,7 +140,7 @@ public class TDengineProducer {
                     if (item != null) {
                         Object ts = item[0];
                         Object payload = item[1];
-                        CompletableFuture<Void> future = (CompletableFuture<Void>)item[2];
+                        CompletableFuture<Void> future = (CompletableFuture<Void>) item[2];
                         // mark message sent successfully
                         future.complete(null);
                         values.add(" (" + ts + ",'" + payload + "')");
