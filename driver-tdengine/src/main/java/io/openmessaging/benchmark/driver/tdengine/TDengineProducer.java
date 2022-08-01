@@ -69,8 +69,9 @@ public class TDengineProducer {
             stmt.executeUpdate(q);
             ArrayList<Long> tsBuffer = new ArrayList<>();
             ArrayList<String> payloadBuffer = new ArrayList<>();
-            String psql = "INSERT INTO " + tableName + "VALUES(?, ?)";
+            String psql = "INSERT INTO ? "  + "VALUES(?, ?)";
             try (TSDBPreparedStatement pst = (TSDBPreparedStatement) conn.prepareStatement(psql)) {
+                pst.setTableName(tableName);
                 while (!closing) {
                     try {
                         Object[] item = queue.poll();
