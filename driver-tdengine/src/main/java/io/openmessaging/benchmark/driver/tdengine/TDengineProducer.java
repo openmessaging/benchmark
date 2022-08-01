@@ -115,6 +115,8 @@ public class TDengineProducer {
         pst.setString(1, payloadBuffer, config.varcharLen);
         pst.columnDataAddBatch();
         pst.columnDataExecuteBatch();
+        tsBuffer.clear();
+        payloadBuffer.clear();
     }
 
     public void run() {
