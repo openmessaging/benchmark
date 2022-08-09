@@ -45,6 +45,13 @@ public class Workload {
 
     public int consumerPerSubscription;
 
+    /**
+     * For some testing we apply a filter subscriptions and the subscription won't
+     * receive all the messages.
+     * This config controls the backlog calculations.
+     */
+    public int messageRateReceivedForSubscription = 100;
+
     public int producerRate;
     /**
      * If the producerRate = 0, the generator will slowly grow producerRate to find the maximum balanced rate

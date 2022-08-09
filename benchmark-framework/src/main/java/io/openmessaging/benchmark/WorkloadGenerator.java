@@ -84,7 +84,7 @@ public class WorkloadGenerator implements AutoCloseable {
 	    // Pause to allow brokers to assign topic ownership (Pulsar async issues
 	    timer = new Timer();
 	    try {
-		Thread.sleep(5000);
+		Thread.sleep(10000);
 	    } catch (InterruptedException e) {
 		throw new RuntimeException(e);
 	    }
@@ -168,14 +168,35 @@ public class WorkloadGenerator implements AutoCloseable {
         return result;
     }
 
+    private long computeExpectedInitialBacklog(int numTopics) {
+        return computeBacklog(1, 0) * numTopics;
+    }
+
+    private long computeBacklog(long messagesSent, long messagesReceived) {
+        // each subscription is supposed to receive all the messages
+        long overallBacklog = workload.subscriptionsPerTopic * messagesSent;
+
+        // apply filters
+        long filteredBacklog = (overallBacklog * workload.messageRateReceivedForSubscription) / 100;
+
+        // remaining messages
+        long currentBacklogSize = filteredBacklog - messagesReceived;
+
+
+        log.debug("computeBacklog: sent {} subsPerTopic {} rate {}% received {} backlog {}",
+                messagesSent, workload.subscriptionsPerTopic, workload.messageRateReceivedForSubscription,
+                messagesReceived, currentBacklogSize);
+
+        return currentBacklogSize;
+    }
+
     private void ensureTopicsAreReady() throws IOException {
-        log.info("Waiting for consumers to be ready");
+        long expectedMessages = computeExpectedInitialBacklog(workload.producersPerTopic * workload.topics);
+        log.info("Waiting for consumers to be ready ({} messages to be received)", expectedMessages);
         // This is work around the fact that there's no way to have a consumer ready in Kafka without first publishing
         // some message on the topic, which will then trigger the partitions assignment to the consumers
 
-        int expectedMessages = workload.topics * workload.subscriptionsPerTopic;
-
-        // In this case we just publish 1 message and then wait for consumers to receive the data
+        // In this case we just publish 1 message on each producer and then wait for consumers to receive the data
         worker.probeProducers();
 
 	while (true) {
@@ -358,7 +379,7 @@ public class WorkloadGenerator implements AutoCloseable {
         while (true) {
 	    // Retrieve stats and calculate the current backlog in messages
             CountersStats stats = worker.getCountersStats();
-            long currentBacklogSize = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
+            long currentBacklogSize = computeBacklog(stats.messagesSent, stats.messagesReceived);
 
             if (currentBacklogSize >= requestedBacklogSize) {
 		break;
@@ -400,7 +421,7 @@ public class WorkloadGenerator implements AutoCloseable {
 
         while (true) {
             CountersStats stats = worker.getCountersStats();
-            double currentBacklog = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
+            double currentBacklog = computeBacklog(stats.messagesSent, stats.messagesReceived);
             if (currentBacklog <= acceptableBacklog) {
                 log.info("--- Completed backlog draining ---");
                 needToWaitForBacklogDraining = false;
@@ -455,8 +476,7 @@ public class WorkloadGenerator implements AutoCloseable {
             double consumeRate = stats.messagesReceived / elapsed;
             double consumeThroughput = stats.bytesReceived / elapsed / 1024 / 1024;
 
-            long currentBacklog = workload.subscriptionsPerTopic * stats.totalMessagesSent
-                    - stats.totalMessagesReceived;
+            long currentBacklog = computeBacklog(stats.totalMessagesSent, stats.totalMessagesReceived);
 
             log.info(
                     "Pub rate {} msg/s / {} MB/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",

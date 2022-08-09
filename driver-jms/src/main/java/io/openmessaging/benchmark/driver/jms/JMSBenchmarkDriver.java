@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.util.Map;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
@@ -56,11 +57,13 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     private ConnectionFactory connectionFactory;
     private Connection connection;
     private JMSConfig config;
+    private List<JMSConfig.AddSelectors> selectors;
     private BenchmarkDriver delegateForAdminOperations;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         this.config = readConfig(configurationFile);
+        this.selectors = config.messageSelectors;
         log.info("JMS driver configuration: {}", writer.writeValueAsString(config));
 
         if (config.delegateForAdminOperationsClassName != null && !config.delegateForAdminOperationsClassName.isEmpty()) {
@@ -163,11 +166,18 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
                     ConsumerCallback consumerCallback) {
         try {
             String selector = config.messageSelector != null && !config.messageSelector.isEmpty() ? config.messageSelector : null;
+            if (selectors != null && selectors.size() > 0) {
+                log.info("Subscription id: {}; size: {}", subscriptionName.substring(4,7), selectors.size());
+                int num_selector = Integer.parseInt(subscriptionName.substring(4,7)) % selectors.size();
+                selector = selectors.get(num_selector).selector;
+                log.info("Choosing selector {} for subscription {} gives: {}", num_selector, subscriptionName, selector);
+            }
             Connection connection = connectionFactory.createConnection();
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Destination destination = buildDestination(config, session, topic);
             MessageConsumer consumer;
             if (config.use20api) {
+                log.info("buildingConsumer of type {} on destination {}", config.consumerType, destination);
                 switch (config.consumerType) {
                     case SharedDurableConsumer:
                         if (config.destinationType != JMSConfig.DestinationType.Topic) {
@@ -193,8 +203,9 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
                 // but it is not supported in Confluent Kafka JMS client
                 consumer = session.createConsumer(destination, selector);
             }
-            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, consumer, consumerCallback, config.use20api));
+            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, consumer, consumerCallback, config.use20api, config.errorOnRedelivered));
         } catch (Exception err) {
+            log.error("Failed to createConsumer '{}' for '{}'", subscriptionName, topic, err);
             CompletableFuture<BenchmarkConsumer> res = new CompletableFuture<>();
             res.completeExceptionally(err);
             return res;

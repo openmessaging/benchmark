@@ -20,6 +20,7 @@ package io.openmessaging.benchmark.driver.jms;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -45,12 +46,17 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     private final Destination destination;
     private final MessageProducer producer;
     private final boolean useAsyncSend;
+    private long count;
+    private final HashMap<String,Integer> counters;
     private final List<JMSConfig.AddProperty> properties;
+    private final Integer zero = new Integer(0);
     public JMSBenchmarkProducer(Session session, Destination destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
         this.session = session;
         this.destination = destination;
         this.useAsyncSend = useAsyncSend;
         this.producer = session.createProducer(destination);
+        this.count = 0;
+        this.counters = new HashMap<String,Integer>();
         this.properties = properties != null ? properties : Collections.emptyList();
     }
 
@@ -72,10 +78,25 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                 bytesMessage.setStringProperty("JMSXGroupID", key.get());
             }
             for (JMSConfig.AddProperty prop : properties) {
-                bytesMessage.setStringProperty(prop.name, prop.value);
+                // allow for some metadata to be only for every n of m messages
+                if ( prop.of <= 0 || (count % prop.of) == prop.every ) {
+                    String name_value = prop.name+"="+prop.value;
+                    Integer n = counters.getOrDefault(name_value, zero) + 1;
+                    counters.put(name_value, n);
+                    bytesMessage.setStringProperty(prop.name, prop.value);
+                }
             }
-	    // Add a timer property for end to end
-	    bytesMessage.setLongProperty("E2EStartMillis",System.currentTimeMillis());
+            // avoid eventual overflow
+            count = (count + 1) % 1000000L;
+            if (count == 0) {
+                log.info("counters");
+                counters.forEach((meta, value) -> {
+                        log.info("{}={}", meta, value);
+                    });
+                counters.clear();
+            }
+            // Add a timer property for end to end
+            bytesMessage.setLongProperty("E2EStartMillis",System.currentTimeMillis());
             if (useAsyncSend) {
                 producer.send(bytesMessage, new CompletionListener()
                 {

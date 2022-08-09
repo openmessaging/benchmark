@@ -32,6 +32,13 @@ import org.slf4j.LoggerFactory;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
     private final Connection connection;
@@ -42,7 +49,7 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
     public JMSBenchmarkConsumer(Connection connection,
             Session session,
             MessageConsumer consumer, ConsumerCallback callback,
-            boolean useGetBody) throws Exception {
+            boolean useGetBody, boolean errorOnRedeliveredMessage) throws Exception {
         this.connection = connection;
         this.consumer = consumer;
         this.session = session;
@@ -52,7 +59,26 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
                 // we are using Session.AUTO_ACKNOWLEDGE
                 // no need to call Message.acknowledge() here
                 byte[] payload = getPayload(message);
-                callback.messageReceived(payload, message.getLongProperty("E2EStartMillis"));
+
+                // handling redelivered messages
+                if (message.getJMSRedelivered()) {
+                    if (errorOnRedeliveredMessage) {
+                        // skip duplicates
+                        Map<Object, Object> props =
+                                Collections.list(
+                                                ((Enumeration<String>) message.getPropertyNames())).stream()
+                                        .collect(Collectors.toMap(n -> n, n -> {
+                                            try {
+                                                return message.getObjectProperty(n + "");
+                                            } catch (Exception err) {
+                                                throw new RuntimeException(err);
+                                            }
+                                        }));
+                        log.error("Detected redelivered message id {} properties {}", message.getJMSMessageID(), props);
+                    }
+                } else {
+                    callback.messageReceived(payload, message.getLongProperty("E2EStartMillis"));
+                }
             } catch (Throwable e) {
                 log.warn("Failed to acknowledge message", e);
             }

@@ -32,9 +32,16 @@ public class JMSConfig
 
     public String messageSelector;
 
+    public List<AddSelectors> messageSelectors = new ArrayList<>();
+
     public List<AddProperty> properties = new ArrayList<>();
 
     public boolean use20api;
+
+    /**
+     * Print a error on the log (of the worker) in case of duplicate message
+     */
+    public boolean errorOnRedelivered = true;
 
     public DestinationType destinationType = DestinationType.Topic;
 
@@ -47,6 +54,12 @@ public class JMSConfig
     public static class AddProperty {
         public String name = "";
         public String value = "";
+        public int every = 0;
+        public int of = 0;
+    }
+
+    public static class AddSelectors {
+        public String selector;
     }
 
     public enum ConsumerType {
