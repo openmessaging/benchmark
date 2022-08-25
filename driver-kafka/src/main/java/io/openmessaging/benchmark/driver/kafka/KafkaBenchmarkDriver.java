@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -110,15 +110,17 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                NewTopic newTopic = new NewTopic(topic, partitions, config.replicationFactor);
-                newTopic.configs(new HashMap<>((Map) topicProperties));
-                admin.createTopics(Arrays.asList(newTopic)).all().get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
+        NewTopic newTopic = new NewTopic(topic, partitions, config.replicationFactor);
+        newTopic.configs(new HashMap<>((Map) topicProperties));
+        CompletableFuture<Void> promise = new CompletableFuture<>();
+        admin.createTopics(Collections.singletonList(newTopic)).all().whenComplete((__, e) -> {
+            if (e != null) {
+                promise.completeExceptionally(e);
+            } else {
+                promise.complete(null);
             }
         });
+        return promise;
     }
 
     @Override

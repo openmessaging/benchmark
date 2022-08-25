@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,6 +25,8 @@ public class PulsarClientConfig {
     public int ioThreads = 8;
 
     public int connectionsPerBroker = 8;
+
+    public int maxConcurrentLookupRequests = 1000;
 
     public String namespacePrefix;
 

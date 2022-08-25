@@ -25,6 +25,7 @@ topicConfig: |
 
 commonConfig: |
   bootstrap.servers=localhost:9092
+  default.api.timeout.ms=600000
 
 producerConfig: |
   acks=all
