@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -87,12 +87,13 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final LongAdder totalMessagesSent = new LongAdder();
     private final LongAdder totalMessagesReceived = new LongAdder();
 
-    private final Recorder publishLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
-    private final Recorder cumulativePublishLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
+    private final static long highestTrackableValue = TimeUnit.SECONDS.toMicros(60);
+    private final Recorder publishLatencyRecorder = new Recorder(highestTrackableValue, 5);
+    private final Recorder cumulativePublishLatencyRecorder = new Recorder(highestTrackableValue, 5);
     private final OpStatsLogger publishLatencyStats;
 
-    private final Recorder publishDelayLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
-    private final Recorder cumulativePublishDelayLatencyRecorder = new Recorder(TimeUnit.SECONDS.toMicros(60), 5);
+    private final Recorder publishDelayLatencyRecorder = new Recorder(highestTrackableValue, 5);
+    private final Recorder cumulativePublishDelayLatencyRecorder = new Recorder(highestTrackableValue, 5);
     private final OpStatsLogger publishDelayLatencyStats;
 
     private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
@@ -228,12 +229,14 @@ public class LocalWorker implements Worker, ConsumerCallback {
                             bytesSent.add(payloadData.length);
                             bytesSentCounter.add(payloadData.length);
 
-                            long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
+                            final long latencyMicros = Math.min(highestTrackableValue,
+                                    TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime));
                             publishLatencyRecorder.recordValue(latencyMicros);
                             cumulativePublishLatencyRecorder.recordValue(latencyMicros);
                             publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
 
-                            final long sendDelayMicros = TimeUnit.NANOSECONDS.toMicros(sendTime - intendedSendTime);
+                            final long sendDelayMicros = Math.min(highestTrackableValue,
+                                    TimeUnit.NANOSECONDS.toMicros(sendTime - intendedSendTime));
                             publishDelayLatencyRecorder.recordValue(sendDelayMicros);
                             cumulativePublishDelayLatencyRecorder.recordValue(sendDelayMicros);
                             publishDelayLatencyStats.registerSuccessfulEvent(sendDelayMicros, TimeUnit.MICROSECONDS);

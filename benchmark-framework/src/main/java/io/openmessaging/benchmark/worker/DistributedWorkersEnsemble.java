@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,6 +30,8 @@ import java.util.zip.DataFormatException;
 import org.HdrHistogram.Histogram;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.asynchttpclient.AsyncHttpClient;
+import org.asynchttpclient.DefaultAsyncHttpClientConfig;
+import org.asynchttpclient.Dsl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,13 +59,16 @@ public class DistributedWorkersEnsemble implements Worker {
     private final List<String> producerWorkers;
     private final List<String> consumerWorkers;
 
-    private final AsyncHttpClient httpClient = asyncHttpClient();
+    private final AsyncHttpClient httpClient;
 
     private int numberOfUsedProducerWorkers;
 
     public DistributedWorkersEnsemble(List<String> workers, boolean extraConsumerWorkers) {
         Preconditions.checkArgument(workers.size() > 1);
-
+        DefaultAsyncHttpClientConfig.Builder clientBuilder = Dsl.config()
+                .setReadTimeout(600000)
+                .setRequestTimeout(600000);
+        httpClient = asyncHttpClient(clientBuilder);
         this.workers = workers;
 
 	// For driver-jms extra consumers are required.

@@ -218,21 +218,21 @@
         state: restarted
         daemon_reload: yes
         name: "zookeeper"
-    - command: >
-        bin/pulsar initialize-cluster-metadata --cluster local
-        --zookeeper localhost:2181
-        --configuration-store localhost:2181
-        --web-service-url {{ httpUrl }}
-        --broker-service-url {{ serviceUrl }}
-      args:
-        chdir: /opt/pulsar
-      when: groups['zookeeper'][0] == inventory_hostname
 
 - name: BookKeeper setup
   hosts: pulsar
   connection: ssh
   become: true
   tasks:
+    - command: >
+        bin/pulsar initialize-cluster-metadata --cluster local
+        --zookeeper {{ hostvars[groups['zookeeper'][0]].private_ip }}:2181
+        --configuration-store {{ hostvars[groups['zookeeper'][0]].private_ip }}:2181
+        --web-service-url {{ httpUrl }}
+        --broker-service-url {{ serviceUrl }}
+      args:
+        chdir: /opt/pulsar
+      when: groups['pulsar'][0] == inventory_hostname
     - set_fact:
         skip_journal: "{{ skip_journal | default(false) }}"
     - name: Apply BookKeeper configuration file [Bypass Journal]
