@@ -171,7 +171,7 @@ public class WorkloadGenerator implements AutoCloseable {
         }
 
         if (System.currentTimeMillis() >= end) {
-            log.warn("Timed out waiting for consumers to be ready");
+            throw new RuntimeException("Timed out waiting for consumers to be ready");
         }
         else {
             log.info("All consumers are ready");
