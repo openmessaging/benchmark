@@ -43,6 +43,29 @@
           remote: yes
       when: prometheus_binary is not defined
 
+- name: Format and mount disks for Zookeeper hosts
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - name: Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
+      with_items:
+        - "{{ disk_dev[0] }}"
+        - "{{ disk_dev[1] }}"
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/zookeeper/logs", src: "{{ disk_dev[0] }}" }
+        - { path: "/mnt/zookeeper/data", src: "{{ disk_dev[1] }}" }
+
 - name: Format and mount disks for Pulsar/BookKeeper hosts
   hosts: pulsar
   connection: ssh
@@ -195,7 +218,7 @@
   tasks:
     - set_fact:
         zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
-        max_heap_memory: "{{ zookeeper_max_heap_memory | default('10G') }}"
+        max_heap_memory: "{{ zookeeper_max_heap_memory | default('32G') }}"
         max_direct_memory: "{{ zookeeper_max_direct_memory | default('2G') }}"
     - file:
         path: "/opt/pulsar/{{ item }}"
@@ -210,7 +233,7 @@
         dest: "/opt/pulsar/conf/zookeeper.conf"
     - template:
         src: templates/myid
-        dest: "/opt/pulsar/data/zookeeper/myid"
+        dest: "/mnt/zookeeper/data/myid"
     - template:
         src: "templates/zookeeper.service"
         dest: "/etc/systemd/system/zookeeper.service"
