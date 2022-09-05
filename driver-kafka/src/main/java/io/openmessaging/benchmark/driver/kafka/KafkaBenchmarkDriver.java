@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
+import static java.util.stream.Collectors.toList;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
@@ -107,20 +108,25 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         return "test-topic";
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        NewTopic newTopic = new NewTopic(topic, partitions, config.replicationFactor);
+        NewTopic newTopic = createNewTopic(new TopicInfo(topic, partitions));
+        return admin.createTopics(Collections.singletonList(newTopic)).all().toCompletionStage().toCompletableFuture();
+    }
+
+    @Override
+    public CompletableFuture<Void> createTopics(List<TopicInfo> topicInfos) {
+        List<NewTopic> newTopics = topicInfos.stream()
+                .map(this::createNewTopic)
+                .collect(toList());
+        return admin.createTopics(newTopics).all().toCompletionStage().toCompletableFuture();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private NewTopic createNewTopic(TopicInfo topicInfo) {
+        NewTopic newTopic = new NewTopic(topicInfo.getTopic(), topicInfo.getPartitions(), config.replicationFactor);
         newTopic.configs(new HashMap<>((Map) topicProperties));
-        CompletableFuture<Void> promise = new CompletableFuture<>();
-        admin.createTopics(Collections.singletonList(newTopic)).all().whenComplete((__, e) -> {
-            if (e != null) {
-                promise.completeExceptionally(e);
-            } else {
-                promise.complete(null);
-            }
-        });
-        return promise;
+        return newTopic;
     }
 
     @Override
