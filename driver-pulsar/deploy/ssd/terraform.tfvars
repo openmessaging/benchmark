@@ -5,7 +5,7 @@ ami             = "ami-08970fb2e5767e3b8" // RHEL-8
 
 instance_types = {
   "pulsar"     = "i3en.6xlarge"
-  "zookeeper"  = "t2.xlarge"
+  "zookeeper"  = "i3en.2xlarge"
   "client"     = "m5n.8xlarge"
   "prometheus" = "t2.large"
 }
