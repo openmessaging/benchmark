@@ -31,7 +31,6 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -107,20 +106,17 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         return "test-topic";
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        NewTopic newTopic = new NewTopic(topic, partitions, config.replicationFactor);
-        newTopic.configs(new HashMap<>((Map) topicProperties));
-        CompletableFuture<Void> promise = new CompletableFuture<>();
-        admin.createTopics(Collections.singletonList(newTopic)).all().whenComplete((__, e) -> {
-            if (e != null) {
-                promise.completeExceptionally(e);
-            } else {
-                promise.complete(null);
-            }
-        });
-        return promise;
+        return createTopics(Collections.singletonList(new TopicInfo(topic, partitions)));
+    }
+
+    @Override
+    public CompletableFuture<Void> createTopics(List<TopicInfo> topicInfos) {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        Map<String, String> topicConfigs = new HashMap<>((Map) topicProperties);
+        KafkaTopicCreator topicCreator = new KafkaTopicCreator(admin, topicConfigs, config.replicationFactor);
+        return topicCreator.create(topicInfos);
     }
 
     @Override

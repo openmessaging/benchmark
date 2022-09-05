@@ -16,6 +16,7 @@ package io.openmessaging.benchmark.worker;
 import static io.openmessaging.benchmark.utils.UniformRateLimiter.*;
 import static java.util.stream.Collectors.toList;
 
+import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
 import io.openmessaging.benchmark.utils.UniformRateLimiter;
+import java.util.stream.IntStream;
 import org.HdrHistogram.Recorder;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -142,23 +144,22 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public List<String> createTopics(TopicsInfo topicsInfo) {
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
         Timer timer = new Timer();
 
+        List<TopicInfo> topicInfos = IntStream.range(0, topicsInfo.numberOfTopics)
+                .mapToObj(i -> new TopicInfo(generateTopicName(i), topicsInfo.numberOfPartitionsPerTopic))
+                .collect(toList());
 
-        List<String> topics = new ArrayList<>();
-        for (int i = 0; i < topicsInfo.numberOfTopics; i++) {
-            String topicPrefix = benchmarkDriver.getTopicNamePrefix();
-            String topic = String.format("%s-%s-%04d", topicPrefix, RandomGenerator.getRandomString(), i);
-            topics.add(topic);
-            futures.add(benchmarkDriver.createTopic(topic, topicsInfo.numberOfPartitionsPerTopic));
-        }
+        benchmarkDriver.createTopics(topicInfos).join();
 
-        futures.forEach(CompletableFuture::join);
+        List<String> topics = topicInfos.stream().map(TopicInfo::getTopic).collect(toList());
 
         log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
         return topics;
+    }
+
+    private String generateTopicName(int i) {
+        return String.format("%s-%s-%07d", benchmarkDriver.getTopicNamePrefix(), RandomGenerator.getRandomString(), i);
     }
 
     @Override
