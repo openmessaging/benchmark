@@ -110,8 +110,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        NewTopic newTopic = createNewTopic(new TopicInfo(topic, partitions));
-        return admin.createTopics(Collections.singletonList(newTopic)).all().toCompletionStage().toCompletableFuture();
+        return createTopics(Collections.singletonList(new TopicInfo(topic, partitions)));
     }
 
     @Override
