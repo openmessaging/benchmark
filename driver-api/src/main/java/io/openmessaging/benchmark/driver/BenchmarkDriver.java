@@ -15,7 +15,9 @@ package io.openmessaging.benchmark.driver;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import lombok.Value;
 import org.apache.bookkeeper.stats.StatsLogger;
 
 /**
@@ -45,6 +47,17 @@ public interface BenchmarkDriver extends AutoCloseable {
     CompletableFuture<Void> createTopic(String topic, int partitions);
 
     /**
+     * Create a list of new topics with the given number of partitions
+     */
+    default CompletableFuture<Void> createTopics(List<TopicInfo> topicInfos) {
+        @SuppressWarnings("unchecked")
+        CompletableFuture<Void>[] futures =  topicInfos.stream()
+                .map(topicInfo -> createTopic(topicInfo.getTopic(), topicInfo.getPartitions()))
+                .toArray(CompletableFuture[]::new);
+        return CompletableFuture.allOf(futures);
+    }
+
+    /**
      * Create a producer for a given topic
      */
     CompletableFuture<BenchmarkProducer> createProducer(String topic);
@@ -64,4 +77,10 @@ public interface BenchmarkDriver extends AutoCloseable {
         String topic,
         String subscriptionName,
         ConsumerCallback consumerCallback);
+
+    @Value
+    class TopicInfo {
+        String topic;
+        int partitions;
+    }
 }
