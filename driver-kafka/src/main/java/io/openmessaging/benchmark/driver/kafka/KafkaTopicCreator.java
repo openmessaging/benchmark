@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -24,6 +25,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +40,7 @@ import org.apache.kafka.common.errors.TopicExistsException;
 @RequiredArgsConstructor
 class KafkaTopicCreator {
     private static final int MAX_BATCH_SIZE = 500;
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final AdminClient admin;
     private final Map<String, String> topicConfigs;
     private final short replicationFactor;
@@ -53,20 +58,28 @@ class KafkaTopicCreator {
         BlockingQueue<TopicInfo> queue = new ArrayBlockingQueue<>(topicInfos.size(), true, topicInfos);
         List<TopicInfo> batch = new ArrayList<>();
         AtomicInteger succeeded = new AtomicInteger();
-        while (succeeded.get() < topicInfos.size()) {
-            int batchSize = queue.drainTo(batch, maxBatchSize);
-            if (batchSize > 0) {
-                executeBatch(batch).forEach((topicInfo, success) -> {
-                    if (success) {
-                        succeeded.incrementAndGet();
-                    } else {
-                        //noinspection ResultOfMethodCallIgnored
-                        queue.offer(topicInfo);
-                    }
-                });
-                log.info("Created batch of {}", batchSize);
-                batch.clear();
+
+        ScheduledFuture<?> loggingFuture =
+                executor.scheduleAtFixedRate(() -> log.info("Created topics {}/{}", succeeded.get(), topicInfos.size()),
+                        10, 10, SECONDS);
+
+        try {
+            while (succeeded.get() < topicInfos.size()) {
+                int batchSize = queue.drainTo(batch, maxBatchSize);
+                if (batchSize > 0) {
+                    executeBatch(batch).forEach((topicInfo, success) -> {
+                        if (success) {
+                            succeeded.incrementAndGet();
+                        } else {
+                            //noinspection ResultOfMethodCallIgnored
+                            queue.offer(topicInfo);
+                        }
+                    });
+                    batch.clear();
+                }
             }
+        } finally {
+            loggingFuture.cancel(true);
         }
     }
 

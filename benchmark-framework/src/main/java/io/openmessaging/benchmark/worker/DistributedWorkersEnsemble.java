@@ -25,10 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import java.util.zip.DataFormatException;
 
 import org.HdrHistogram.Histogram;
-import org.apache.pulsar.common.util.FutureUtil;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.asynchttpclient.Dsl;
@@ -71,12 +71,12 @@ public class DistributedWorkersEnsemble implements Worker {
         httpClient = asyncHttpClient(clientBuilder);
         this.workers = workers;
 
-	// For driver-jms extra consumers are required.
-	// If there is an odd number of workers then allocate the extra to consumption.
-	int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
-	List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
-	this.producerWorkers = partitions.get(1); 
-	this.consumerWorkers = partitions.get(0);
+        // For driver-jms extra consumers are required.
+        // If there is an odd number of workers then allocate the extra to consumption.
+        int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
+        List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
+        this.producerWorkers = partitions.get(1);
+        this.consumerWorkers = partitions.get(0);
 
         log.info("Workers list - producers: {}", producerWorkers);
         log.info("Workers list - consumers: {}", consumerWorkers);
@@ -109,7 +109,7 @@ public class DistributedWorkersEnsemble implements Worker {
         // Number of actually used workers might be less than available workers
         numberOfUsedProducerWorkers = i;
 
-        List<CompletableFuture<Void>> futures = topicsPerProducerMap.keySet().stream().map(producer -> {
+        CompletableFuture<Void>[] futures = topicsPerProducerMap.keySet().stream().map(producer -> {
             try {
                 return sendPost(producer, "/create-producers",
                         writer.writeValueAsBytes(topicsPerProducerMap.get(producer)));
@@ -118,9 +118,9 @@ public class DistributedWorkersEnsemble implements Worker {
                 future.completeExceptionally(e);
                 return future;
             }
-        }).collect(toList());
+        }).toArray(this::newArray);
 
-        FutureUtil.waitForAll(futures).join();
+        CompletableFuture.allOf(futures).join();
     }
 
     @Override
@@ -170,7 +170,7 @@ public class DistributedWorkersEnsemble implements Worker {
             topicsPerWorkerMap.put(consumerWorkers.get(i++), individualAssignement);
         }
 
-        List<CompletableFuture<Void>> futures = topicsPerWorkerMap.keySet().stream().map(consumer -> {
+        CompletableFuture<Void>[] futures = topicsPerWorkerMap.keySet().stream().map(consumer -> {
             try {
                 return sendPost(consumer, "/create-consumers",
                         writer.writeValueAsBytes(topicsPerWorkerMap.get(consumer)));
@@ -179,9 +179,9 @@ public class DistributedWorkersEnsemble implements Worker {
                 future.completeExceptionally(e);
                 return future;
             }
-        }).collect(toList());
+        }).toArray(this::newArray);
 
-        FutureUtil.waitForAll(futures).join();
+        CompletableFuture.allOf(futures).join();
     }
 
     @Override
@@ -273,7 +273,8 @@ public class DistributedWorkersEnsemble implements Worker {
      * Send a request to multiple hosts and wait for all responses
      */
     private void sendPost(List<String> hosts, String path, byte[] body) {
-        FutureUtil.waitForAll(hosts.stream().map(w -> sendPost(w, path, body)).collect(toList())).join();
+        CompletableFuture<Void>[] futures = hosts.stream().map(w -> sendPost(w, path, body)).toArray(this::newArray);
+        CompletableFuture.allOf(futures).join();
     }
 
     private CompletableFuture<Void> sendPost(String host, String path, byte[] body) {
@@ -287,11 +288,11 @@ public class DistributedWorkersEnsemble implements Worker {
     }
 
     private <T> List<T> get(List<String> hosts, String path, Class<T> clazz) {
-        List<CompletableFuture<T>> futures = hosts.stream().map(w -> get(w, path, clazz)).collect(toList());
+        CompletableFuture<T>[] futures = hosts.stream().map(w -> get(w, path, clazz)).toArray(this::newArray);
 
         CompletableFuture<List<T>> resultFuture = new CompletableFuture<>();
-        FutureUtil.waitForAll(futures).thenRun(() -> {
-            resultFuture.complete(futures.stream().map(CompletableFuture::join).collect(toList()));
+        CompletableFuture.allOf(futures).thenRun(() -> {
+            resultFuture.complete(Stream.of(futures).map(CompletableFuture::join).collect(toList()));
         }).exceptionally(ex -> {
             resultFuture.completeExceptionally(ex);
             return null;
@@ -331,6 +332,11 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void close() throws Exception {
         httpClient.close();
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> CompletableFuture<T>[] newArray(int size) {
+        return new CompletableFuture[size];
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();

@@ -22,12 +22,21 @@ Configuration:
       target: SYSTEM_OUT
       PatternLayout:
         Pattern: "%d{HH:mm:ss.SSS} [%t] %-4level - %msg%n"
-        
+    RollingFile:
+      name: RollingFile
+      fileName: benchmark-worker.log
+      filePattern: benchmark-worker.log.%d{yyyy-MM-dd-hh-mm-ss}.gz
+      PatternLayout:
+        Pattern: "%d{HH:mm:ss.SSS} [%t] %-4level - %msg%n"
+      Policies:
+        SizeBasedTriggeringPolicy:
+          size: 100MB
+      DefaultRollOverStrategy:
+        max: 10
   Loggers: 
     Root:
       level: info
       additivity: false
       AppenderRef:
-        ref: Console
-        
-       
+        - ref: Console
+        - ref: RollingFile
