@@ -69,6 +69,7 @@ There's a handful of configurable parameters related to the Terraform deployment
 Variable | Description | Default
 :--------|:------------|:-------
 `region` | The AWS region in which the RabbitMQ cluster will be deployed | `us-west-2`
+`az` | The availability zone in which the RabbitMQ cluster will be deployed | `us-west-2a`
 `public_key_path` | The path to the SSH public key that you've generated | `~/.ssh/rabbitmq_aws.pub`
 `ami` | The [Amazon Machine Image](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) (AWI) to be used by the cluster's machines | [`ami-9fa343e7`](https://access.redhat.com/articles/3135091)
 `instance_types` | The EC2 instance types used by the various components | `i3.4xlarge` (RabbitMQ brokers), `c4.8xlarge` (benchmarking client)
@@ -77,10 +78,11 @@ Variable | Description | Default
 
 ### Running the Ansible playbook
 
-With the appropriate infrastructure in place, you can install and start the RabbitMQ cluster using Ansible with just one command:
+With the appropriate infrastructure in place, you can install and start the RabbitMQ cluster using Ansible with just one command.
+Note that a `TFSTATE` environment must point to the folder in which the `tf.state` file is located. 
 
 ```bash
-$ ansible-playbook \
+$ TF_STATE=. ansible-playbook \
   --user ec2-user \
   --inventory `which terraform-inventory` \
   deploy.yaml
