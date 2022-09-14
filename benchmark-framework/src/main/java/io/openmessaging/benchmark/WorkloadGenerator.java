@@ -158,10 +158,11 @@ public class WorkloadGenerator implements AutoCloseable {
         long end = start + 60 * 1000;
         while (System.currentTimeMillis() < end) {
             CountersStats stats = worker.getCountersStats();
-	    
+
+            log.info("Sent: {}, Received: {}", stats.messagesSent, stats.messagesReceived);
             if (stats.messagesReceived < expectedMessages) {
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(2_000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
