@@ -43,8 +43,8 @@
   connection: ssh
   tasks:
   - set_fact:
-      erlangVersion: 23.3.4.10
-      rabbitMqVersion: 3.9.11
+      erlangVersion: 24.3.4.5
+      rabbitMqVersion: 3.10.7
   - name: Install RPM packages
     yum: pkg={{ item }} state=latest
     with_items:
@@ -54,12 +54,14 @@
       - socat
   - name: Install Erlang
     yum:
-      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el7.x86_64.rpm
+      name: https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el8.x86_64.rpm
       state: present
+      disable_gpg_check: yes
   - name: Install Rabbitmq Server
     yum:
-      name: https://github.com/rabbitmq/rabbitmq-server/releases/download/v{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el7.noarch.rpm
+      name: https://github.com/rabbitmq/rabbitmq-server/releases/download/v{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el8.noarch.rpm
       state: present
+      disable_gpg_check: yes
 
   - name: Create rabbitmq-env.conf file
     template:
