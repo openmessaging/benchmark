@@ -128,6 +128,7 @@ public class Benchmark {
 
         if (arguments.workers != null && !arguments.workers.isEmpty()) {
             worker = new DistributedWorkersEnsemble(arguments.workers, arguments.extraConsumers);
+            Runtime.getRuntime().addShutdownHook(new Thread(worker::stopAll));
         } else {
             // Use local worker implementation
             worker = new LocalWorker();
