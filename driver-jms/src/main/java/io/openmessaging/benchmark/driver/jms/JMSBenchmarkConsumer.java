@@ -15,8 +15,6 @@ package io.openmessaging.benchmark.driver.jms;
 
 import javax.jms.BytesMessage;
 import javax.jms.Connection;
-import javax.jms.JMSConsumer;
-import javax.jms.JMSContext;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.Session;
