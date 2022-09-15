@@ -21,7 +21,6 @@
 		<groupId>io.openmessaging.benchmark</groupId>
 		<artifactId>messaging-benchmark</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>..</relativePath>
 	</parent>
 
 	<artifactId>package</artifactId>
@@ -32,7 +31,7 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>3.1.0</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<id>distro-assembly</id>

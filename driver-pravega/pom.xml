@@ -20,14 +20,13 @@
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath>..</relativePath>
     </parent>
     <artifactId>driver-pravega</artifactId>
 
     <properties>
         <!--Specify pravegaVersion in properties or use default: 0.10.0-->
         <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
-        <pravegaVersion>0.10.1</pravegaVersion>
+        <pravegaVersion>0.10.2</pravegaVersion>
     </properties>
 
     <repositories>
@@ -47,48 +46,39 @@
             <artifactId>driver-api</artifactId>
             <version>${project.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.pravega</groupId>
             <artifactId>pravega-client</artifactId>
             <version>${pravegaVersion}</version>
         </dependency>
-
         <dependency>
             <groupId>io.pravega</groupId>
             <artifactId>pravega-keycloak-client</artifactId>
-            <version>0.9.0</version>
+            <version>0.11.0</version>
         </dependency>
-
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-all</artifactId>
-            <version>1.36.0</version>
+            <version>1.49.0</version>
         </dependency>
-
         <dependency>
             <groupId>io.perfmark</groupId>
             <artifactId>perfmark-api</artifactId>
-            <version>0.23.0</version>
+            <version>0.25.0</version>
             <scope>compile</scope>
         </dependency>
-
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.1.65.Final</version>
         </dependency>
-
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
-            <version>3.4.0</version>
+            <version>3.21.5</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.7</version>
         </dependency>
     </dependencies>
 

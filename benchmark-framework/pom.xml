@@ -20,14 +20,12 @@
 		<groupId>io.openmessaging.benchmark</groupId>
 		<artifactId>messaging-benchmark</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>..</relativePath>
 	</parent>
 
 	<artifactId>benchmark-framework</artifactId>
 
 	<properties>
-		<log4j.version>2.17.1</log4j.version>
-		<jackson.version>2.13.2</jackson.version>
+		<jetty.version>9.4.42.v20210604</jetty.version>
 	</properties>
 
 	<dependencies>
@@ -36,180 +34,110 @@
 			<artifactId>driver-api</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.hdrhistogram</groupId>
 			<artifactId>HdrHistogram</artifactId>
 			<version>2.1.10</version>
 		</dependency>
-
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-			<version>${log4j.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.jaxrs</groupId>
-			<artifactId>jackson-jaxrs-base</artifactId>
-			<version>${jackson.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.jaxrs</groupId>
-			<artifactId>jackson-jaxrs-json-provider</artifactId>
-			<version>${jackson.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-			<version>${jackson.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.dataformat</groupId>
-			<artifactId>jackson-dataformat-yaml</artifactId>
-			<version>${jackson.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-slf4j-impl</artifactId>
-			<version>${log4j.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>com.beust</groupId>
 			<artifactId>jcommander</artifactId>
-			<version>1.48</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-pulsar</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-jms</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-kafka</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-kop</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-pravega</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-rocketmq</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-rabbitmq</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-artemis</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-bookkeeper</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-nats</artifactId>
 	    	<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-nats-streaming</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-nsq</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>driver-redis</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
- 		<dependency>
-			<groupId>org.apache.bookkeeper.stats</groupId>
-			<artifactId>bookkeeper-stats-api</artifactId>
-			<version>${bookkeeper.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.apache.bookkeeper.stats</groupId>
 			<artifactId>prometheus-metrics-provider</artifactId>
 			<version>${bookkeeper.version}</version>
 		</dependency>
-
 		<dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
             <version>1.3.0</version>
         </dependency>
-
 		<dependency>
 			<groupId>org.asynchttpclient</groupId>
 			<artifactId>async-http-client</artifactId>
-			<version>2.10.4</version>
+			<version>2.12.3</version>
 		</dependency>
-
 		<!-- set jetty version to be consistent across all transitive dependencies  -->
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
-			<version>9.4.42.v20210604</version>
+			<version>${jetty.version}</version>
 		</dependency>
-
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.13.1</version>
-			<scope>test</scope>
-		</dependency>
-
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-util</artifactId>
-			<version>9.4.42.v20210604</version>
+			<version>${jetty.version}</version>
 		</dependency>
-
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -19,7 +19,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.nats.client.Dispatcher;
 import io.nats.client.Nats;
 import io.nats.client.Options;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
