@@ -23,14 +23,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.DeleteTopicsResult;
-import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -85,20 +81,6 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         topicProperties.load(new StringReader(config.topicConfig));
 
         admin = AdminClient.create(commonProperties);
-
-        if (config.reset) {
-            // List existing topics
-            ListTopicsResult result = admin.listTopics();
-            try {
-                Set<String> topics = result.names().get();
-                // Delete all existing topics
-                DeleteTopicsResult deletes = admin.deleteTopics(topics);
-                deletes.all().get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-                throw new IOException(e);
-            }
-        }
     }
 
     @Override
