@@ -18,7 +18,6 @@ driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
 replicationFactor: 3
-reset: true
 
 topicConfig: |
   min.insync.replicas=2

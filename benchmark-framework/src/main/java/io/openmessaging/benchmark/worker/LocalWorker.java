@@ -159,7 +159,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     private String generateTopicName(int i) {
-        return String.format("%s-%s-%07d", benchmarkDriver.getTopicNamePrefix(), RandomGenerator.getRandomString(), i);
+        return String.format("%s-%07d-%s", benchmarkDriver.getTopicNamePrefix(), i, RandomGenerator.getRandomString());
     }
 
     @Override
