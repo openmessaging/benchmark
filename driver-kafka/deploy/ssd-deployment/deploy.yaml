@@ -102,10 +102,11 @@
     - file: path=/opt/kafka state=directory
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
-        boostrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
+        bootstrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
         kafkaVersion: "3.2.1"
+      tags: [client-code]
     - debug:
-        msg: "zookeeper servers: {{ zookeeperServers }}\nboostrap servers: {{ boostrapServers }}"
+        msg: "zookeeper servers: {{ zookeeperServers }}\nbootstrap servers: {{ bootstrapServers }}"
     - name: Download Kafka package
       unarchive:
         src: "http://archive.apache.org/dist/kafka/{{ kafkaVersion }}/kafka_2.13-{{ kafkaVersion }}.tgz"
@@ -158,6 +159,7 @@
         state: restarted
         daemon_reload: yes
         name: "kafka"
+      tags: [restart-kafka]
 
 - name: Chrony setup
   hosts: client
@@ -179,23 +181,28 @@
   become: true
   tasks:
     - file: path=/opt/benchmark state=absent
+      tags: [client-code]
     - name: Copy benchmark code
       unarchive:
         src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
+      tags: [client-code]
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+      tags: [client-code]
     - shell: tuned-adm profile latency-performance
 
     - name: Get list of driver config files
       raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
       register: drivers_list
+      tags: [client-code]
 
     - name: Configure Bootstrap Servers
       lineinfile:
          dest: '{{ item }}'
          regexp: '^  bootstrap.servers='
-         line: '  bootstrap.servers={{ boostrapServers }}'
+         line: '  bootstrap.servers={{ bootstrapServers }}'
       with_items: '{{ drivers_list.stdout_lines }}'
+      tags: [client-code]
 
     - name: Get list of jms driver config files
       raw: ls -1 /opt/benchmark/driver-jms/kafka*.yaml
@@ -205,14 +212,14 @@
       lineinfile:
          dest: '{{ item }}'
          regexp: '^  bootstrap.servers='
-         line: '  bootstrap.servers={{ boostrapServers }}'
+         line: '  bootstrap.servers={{ bootstrapServers }}'
       with_items: '{{ jms_drivers_list.stdout_lines }}'
 
     - name: Configure JMS Connection Factory
       ansible.builtin.replace:
          dest: '{{ item }}'
          regexp: 'localhost\:9092'
-         replace: '{{ boostrapServers }}'
+         replace: '{{ bootstrapServers }}'
       with_items: '{{ jms_drivers_list.stdout_lines }}'
 
     - name: Configure memory
@@ -220,22 +227,27 @@
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
          line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
+      tags: [client-code]
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
          line: 'JVM_MEM="-Xmx4G"'
+      tags: [client-code]
     - template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
+      tags: [client-code]
     - name: Install benchmark systemd service
       template:
         src: "templates/benchmark-worker.service"
         dest: "/etc/systemd/system/benchmark-worker.service"
+      tags: [client-code]
     - systemd:
         state: restarted
         daemon_reload: yes
         name: "benchmark-worker"
+      tags: [client-code]
 
 - name:  Hosts addresses
   hosts: localhost
