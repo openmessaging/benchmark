@@ -52,5 +52,5 @@ public interface Worker extends AutoCloseable {
 
     void resetStats() throws IOException;
 
-    void stopAll() throws IOException;
+    void stopAll();
 }

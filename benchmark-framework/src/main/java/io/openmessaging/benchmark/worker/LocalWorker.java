@@ -355,7 +355,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
-    public void stopAll() throws IOException {
+    public void stopAll() {
         testCompleted = true;
         consumersArePaused = false;
 
