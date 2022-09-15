@@ -45,7 +45,7 @@ resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags = {
-    Name = "Kafka-Benchmark-VPC-${random_id.hash.hex}"
+    Name = "Kafka_Benchmark_VPC_${random_id.hash.hex}"
   }
 }
 
@@ -116,7 +116,8 @@ resource "aws_instance" "zookeeper" {
   count                  = "${var.num_instances["zookeeper"]}"
 
   tags = {
-    Name = "zk-${count.index}"
+    Name      = "zk_${count.index}"
+    Benchmark = "Kafka"
   }
 }
 
@@ -129,7 +130,8 @@ resource "aws_instance" "kafka" {
   count                  = "${var.num_instances["kafka"]}"
 
   tags = {
-    Name = "kafka-${count.index}"
+    Name      = "kafka_${count.index}"
+    Benchmark = "Kafka"
   }
 }
 
@@ -142,7 +144,8 @@ resource "aws_instance" "client" {
   count                  = "${var.num_instances["client"]}"
 
   tags = {
-    Name = "kafka-client-${count.index}"
+    Name      = "kafka_client_${count.index}"
+    Benchmark = "Kafka"
   }
 }
 
