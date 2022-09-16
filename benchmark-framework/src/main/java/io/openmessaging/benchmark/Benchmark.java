@@ -14,7 +14,6 @@
 package io.openmessaging.benchmark;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -128,7 +127,6 @@ public class Benchmark {
 
         if (arguments.workers != null && !arguments.workers.isEmpty()) {
             worker = new DistributedWorkersEnsemble(arguments.workers, arguments.extraConsumers);
-            Runtime.getRuntime().addShutdownHook(new Thread(worker::stopAll));
         } else {
             // Use local worker implementation
             worker = new LocalWorker();
