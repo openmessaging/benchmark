@@ -1,6 +1,5 @@
 package io.openmessaging.benchmark.tool.workload;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.openmessaging.benchmark.Workload;
