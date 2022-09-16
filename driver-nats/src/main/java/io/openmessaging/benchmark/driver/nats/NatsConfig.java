@@ -15,4 +15,6 @@ package io.openmessaging.benchmark.driver.nats;
 
 public class NatsConfig {
     public String natsHostUrl;
+
+    public int replicationFactor;
 }

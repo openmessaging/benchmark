@@ -137,7 +137,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         try {
             benchmarkDriver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
             benchmarkDriver.initialize(driverConfigFile, statsLogger);
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
