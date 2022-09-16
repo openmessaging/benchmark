@@ -19,6 +19,11 @@ import java.util.List;
 import lombok.NoArgsConstructor;
 import lombok.Value;
 
+/**
+ * A template that defines a set of workload definitions. This is much like the
+ * {@link io.openmessaging.benchmark.Workload} entity, except that for many values that typically change in a benchmark,
+ * one can specify a sequence of values.
+ */
 @Value
 @NoArgsConstructor
 public class WorkloadSetTemplate {
