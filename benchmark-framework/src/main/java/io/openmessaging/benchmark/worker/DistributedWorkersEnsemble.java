@@ -54,7 +54,7 @@ import io.openmessaging.benchmark.worker.commands.TopicSubscription;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 
 public class DistributedWorkersEnsemble implements Worker {
-
+    private final Thread shutdownHook = new Thread(this::stopAll);
     private final List<String> workers;
     private final List<String> producerWorkers;
     private final List<String> consumerWorkers;
@@ -80,6 +80,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
         log.info("Workers list - producers: {}", producerWorkers);
         log.info("Workers list - consumers: {}", consumerWorkers);
+
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     @Override
@@ -331,6 +333,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void close() throws Exception {
+        Runtime.getRuntime().removeShutdownHook(shutdownHook);
         httpClient.close();
     }
 
