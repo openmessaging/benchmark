@@ -1,3 +1,4 @@
+nameFormat: "${topics}-topics-${partitionsPerTopic}-partitions-${messageSize}b-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}"
 topics: [1]
 partitionsPerTopic: [1]
 messageSize: [10000]
