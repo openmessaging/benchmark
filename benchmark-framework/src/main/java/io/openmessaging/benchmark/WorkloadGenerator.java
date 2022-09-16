@@ -358,7 +358,7 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         }
 
-        log.info("--- Completed backlog build in {} ms ---", timer.elapsedMillis());
+        log.info("--- Completed backlog build in {} s ---", timer.elapsedSeconds());
         timer = new Timer();
         log.info("--- Start draining backlog ---");
 
@@ -370,7 +370,7 @@ public class WorkloadGenerator implements AutoCloseable {
             CountersStats stats = worker.getCountersStats();
             long currentBacklog = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
             if (currentBacklog <= minBacklog) {
-                log.info("--- Completed backlog draining in {} ms ---", timer.elapsedMillis());
+                log.info("--- Completed backlog draining in {} s ---", timer.elapsedSeconds());
                 needToWaitForBacklogDraining = false;
                 return;
             }
