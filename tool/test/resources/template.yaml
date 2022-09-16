@@ -1,0 +1,10 @@
+topics: [1]
+partitionsPerTopic: [1]
+messageSize: [10000]
+payloadFile: "payload/payload-100b.data"
+subscriptionsPerTopic: [1]
+consumerPerSubscription: [1, 2, 4, 8, 16, 32, 64]
+producersPerTopic: [1, 2, 4, 8, 16, 32, 64]
+producerRate: [50000]
+consumerBacklogSizeGB: 0
+testDurationMinutes: 15
