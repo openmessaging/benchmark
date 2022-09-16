@@ -2,7 +2,7 @@
 
 ## `WorkloadGenerationTool`
 
-Generates a set of {@link Workload} definition files from a {@link WorkloadSetTemplate} file.
+Generates a set of `Workload` definition files from a `WorkloadSetTemplate` file.
 
 ### Example
 
