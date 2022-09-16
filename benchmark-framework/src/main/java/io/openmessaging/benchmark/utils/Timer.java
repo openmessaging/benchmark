@@ -23,7 +23,15 @@ public class Timer {
     }
 
     public double elapsedMillis() {
+        return elapsed(TimeUnit.MILLISECONDS);
+    }
+
+    public double elapsedSeconds() {
+        return elapsed(TimeUnit.SECONDS);
+    }
+
+    private double elapsed(TimeUnit unit) {
         long now = System.nanoTime();
-        return (now - startTime) / (double) TimeUnit.MILLISECONDS.toNanos(1);
+        return (now - startTime) / (double) unit.toNanos(1);
     }
 }

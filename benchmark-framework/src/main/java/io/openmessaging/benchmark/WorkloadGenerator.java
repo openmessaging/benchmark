@@ -334,6 +334,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     private void buildAndDrainBacklog(List<String> topics) throws IOException {
+        Timer timer = new Timer();
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
 
@@ -357,6 +358,8 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         }
 
+        log.info("--- Completed backlog build in {} s ---", timer.elapsedSeconds());
+        timer = new Timer();
         log.info("--- Start draining backlog ---");
 
         worker.resumeConsumers();
@@ -367,7 +370,7 @@ public class WorkloadGenerator implements AutoCloseable {
             CountersStats stats = worker.getCountersStats();
             long currentBacklog = workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
             if (currentBacklog <= minBacklog) {
-                log.info("--- Completed backlog draining ---");
+                log.info("--- Completed backlog draining in {} s ---", timer.elapsedSeconds());
                 needToWaitForBacklogDraining = false;
                 return;
             }
