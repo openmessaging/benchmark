@@ -146,7 +146,7 @@
         daemon_reload: yes
         name: "chronyd"
 
-- name: Rabbitmq benchmarking client setup
+- name: RabbitMQ benchmarking client setup
   hosts: client
   connection: ssh
   become: true
