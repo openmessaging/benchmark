@@ -5,13 +5,18 @@
 
 This repository houses user-friendly, cloud-ready benchmarking suites for the following messaging platforms:
 
+* [Apache ActiveMQ Artemis](https://activemq.apache.org/components/artemis/)
+* [Apache Bookkeeper](https://bookkeeper.apache.org)
 * [Apache Kafka](https://kafka.apache.org)
-* [Apache RocketMQ](https://rocketmq.apache.org)
-* [RabbitMQ](https://www.rabbitmq.com/)
 * [Apache Pulsar](https://pulsar.apache.org)
+* [Apache RocketMQ](https://rocketmq.apache.org)
+* Generic [JMS](https://javaee.github.io/jms-spec/)
+* [KoP (Kafka-on-Pulsar)](https://github.com/streamnative/kop)
 * [NATS Streaming](https://nats.io/)
-* [Redis](https://redis.com/)
+* [NSQ](https://nsq.io) 
 * [Pravega](https://pravega.io/)
+* [RabbitMQ](https://www.rabbitmq.com/)
+* [Redis](https://redis.com/)
 
 > More details could be found at the [official documentation](http://openmessaging.cloud/docs/benchmarks/).
 
