@@ -14,7 +14,7 @@
 
 Configuration:
   status: INFO
-  name: messaging-benchmark
+  name: driver-kafka-test
   
   Appenders:
     Console:
@@ -22,21 +22,9 @@ Configuration:
       target: SYSTEM_OUT
       PatternLayout:
         Pattern: "%d{HH:mm:ss.SSS} [%t] %-4level %c{1} - %msg%n"
-    RollingFile:
-      name: RollingFile
-      fileName: benchmark-worker.log
-      filePattern: benchmark-worker.log.%d{yyyy-MM-dd-hh-mm-ss}.gz
-      PatternLayout:
-        Pattern: "%d{HH:mm:ss.SSS} [%t] %-4level %c{1} - %msg%n"
-      Policies:
-        SizeBasedTriggeringPolicy:
-          size: 100MB
-      DefaultRollOverStrategy:
-        max: 10
-  Loggers: 
+  Loggers:
     Root:
       level: info
       additivity: false
       AppenderRef:
         - ref: Console
-        - ref: RollingFile
