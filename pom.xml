@@ -49,7 +49,9 @@
 		<name>OpenMessaging Project</name>
 		<url>https://openmessaging.cloud</url>
 	</organization>
-	
+
+	<inceptionYear>2017</inceptionYear>
+
 	<licenses>
 		<license>
 			<name>Apache License, Version 2.0</name>
@@ -402,7 +404,7 @@
 								<source>8</source>
 								<target>8</target>
 								<release>8</release>
-								<encoding>${project.build.sourceEncoding}}</encoding>
+								<encoding>${project.build.sourceEncoding}</encoding>
 								<showDeprecation>true</showDeprecation>
 								<showWarnings>true</showWarnings>
 								<optimize>true</optimize>
