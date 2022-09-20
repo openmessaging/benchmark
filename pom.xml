@@ -45,7 +45,11 @@
 		<module>tool</module>
   </modules>
 
-
+	<organization>
+		<name>OpenMessaging Project</name>
+		<url>https://openmessaging.cloud</url>
+	</organization>
+	
 	<licenses>
 		<license>
 			<name>Apache License, Version 2.0</name>
@@ -60,6 +64,7 @@
 
 		<assertj.version>3.23.1</assertj.version>
 		<bookkeeper.version>4.14.4</bookkeeper.version>
+		<checkstyle.version>10.3.3</checkstyle.version>
 		<commons.lang3.version>3.12.0</commons.lang3.version>
 		<log4j.version>2.17.1</log4j.version>
 		<lombok.version>1.18.24</lombok.version>
@@ -67,17 +72,94 @@
 		<jcommander.version>1.48</jcommander.version>
 		<netty.version>4.1.65.Final</netty.version>
 		<slf4j.version>1.7.36</slf4j.version>
+
+		<checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
+		<jacoco.plugin.version>0.8.8</jacoco.plugin.version>
+		<license.plugin.version>4.1</license.plugin.version>
+		<maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
+		<maven.enforcer.plugin.version>3.1.0</maven.enforcer.plugin.version>
+		<maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
+		<spotbugs.plugin.version>4.7.2.0</spotbugs.plugin.version>
+		<spotless.plugin.version>2.25.0</spotless.plugin.version>
 	</properties>
 
 	<build>
 		<plugins>
 			<plugin>
+				<!-- Check formats of various source files -->
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>${spotless.plugin.version}</version>
+				<configuration>
+					<pom>
+						<sortPom>
+							<expandEmptyElements>false</expandEmptyElements>
+							<indentSchemaLocation>true</indentSchemaLocation>
+							<sortDependencies>scope,groupId,artifactId</sortDependencies>
+							<sortDependencyExclusions>groupId,artifactId</sortDependencyExclusions>
+							<sortPlugins>groupId,artifactId</sortPlugins>
+						</sortPom>
+					</pom>
+					<java>
+						<googleJavaFormat/>
+						<importOrder/>
+						<removeUnusedImports/>
+					</java>
+					<markdown>
+						<includes>
+							<include>**/*.md</include>
+						</includes>
+						<flexmark/>
+					</markdown>
+					<formats>
+						<format>
+							<includes>
+								<include>etc/**/*.xml</include>
+								<include>.github/workflows/**/*.yml</include>
+								<include>**/doc/**/*.md</include>
+								<include>**/doc/**/*.puml</include>
+							</includes>
+							<trimTrailingWhitespace/>
+							<endWithNewline/>
+							<indent>
+								<spaces>true</spaces>
+								<spacesPerTab>4</spacesPerTab>
+							</indent>
+						</format>
+					</formats>
+				</configuration>
+				<executions>
+					<execution>
+						<id>check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<!-- Check for typical bugs -->
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>${spotbugs.plugin.version}</version>
+				<configuration>
+					<excludeFilterFile>etc/findbugsExclude.xml</excludeFilterFile>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<!-- Check that source files have appropriate license headers -->
 				<groupId>com.mycila</groupId>
 				<artifactId>license-maven-plugin</artifactId>
-				<version>3.0</version>
+				<version>${license.plugin.version}</version>
 				<configuration>
-					<header>dev/license-header.txt</header>
-
+					<header>etc/APACHE-2.txt</header>
 					<excludes>
 						<exclude>LICENSE</exclude>
 						<exclude>NOTICE</exclude>
@@ -92,19 +174,146 @@
 						<conf>SCRIPT_STYLE</conf>
 						<yaml>SCRIPT_STYLE</yaml>
 						<md>XML_STYLE</md>
+						<lombok.config>SCRIPT_STYLE</lombok.config>
+						<puml>APOSTROPHE_STYLE</puml>
 					</mapping>
 				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>com.mycila</groupId>
+						<artifactId>license-maven-plugin-git</artifactId>
+						<version>${license.plugin.version}</version>
+					</dependency>
+				</dependencies>
 				<executions>
 					<execution>
 						<goals>
 							<goal>check</goal>
+						</goals>
+						<phase>process-sources</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<!-- Deeper code style check -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>${checkstyle.plugin.version}</version>
+				<configuration>
+					<consoleOutput>true</consoleOutput>
+					<failOnViolation>true</failOnViolation>
+					<failsOnError>true</failsOnError>
+					<configLocation>etc/checkstyle.xml</configLocation>
+					<includeTestSourceDirectory>true</includeTestSourceDirectory>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>com.puppycrawl.tools</groupId>
+						<artifactId>checkstyle</artifactId>
+						<version>${checkstyle.version}</version>
+					</dependency>
+				</dependencies>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<phase>validate</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>${maven.enforcer.plugin.version}</version>
+				<executions>
+					<execution>
+						<id>enforce-maven-version</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireMavenVersion>
+									<version>[3.8.6,)</version>
+								</requireMavenVersion>
+							</rules>
+							<fail>true</fail>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>${maven.surefire.plugin.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
 						</goals>
 					</execution>
 				</executions>
 			</plugin>
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0-M7</version>
+				<version>${maven.surefire.plugin.version}</version>
+			</plugin>
+			<plugin>
+				<!-- Check test coverage -->
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.plugin.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<goals>
+							<goal>report</goal>
+						</goals>
+						<phase>verify</phase>
+					</execution>
+					<execution>
+						<id>check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<phase>verify</phase>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>CLASS</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.00</minimum>
+										</limit>
+										<limit>
+											<counter>METHOD</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.00</minimum>
+										</limit>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.00</minimum>
+										</limit>
+										<limit>
+											<counter>BRANCH</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.00</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
@@ -193,7 +402,7 @@
 								<source>8</source>
 								<target>8</target>
 								<release>8</release>
-								<encoding>UTF-8</encoding>
+								<encoding>${project.build.sourceEncoding}}</encoding>
 								<showDeprecation>true</showDeprecation>
 								<showWarnings>true</showWarnings>
 								<optimize>true</optimize>
@@ -218,7 +427,7 @@
 							<configuration>
 								<source>8</source>
 								<target>8</target>
-								<encoding>UTF-8</encoding>
+								<encoding>${project.build.sourceEncoding}</encoding>
 								<showDeprecation>true</showDeprecation>
 								<showWarnings>true</showWarnings>
 								<optimize>true</optimize>
