@@ -105,7 +105,7 @@ resource "aws_instance" "rabbitmq" {
   count                  = "${var.num_instances["rabbitmq"]}"
 
   tags = {
-    Name = "rabbitmq-${count.index}"
+    Name = "rabbitmq_${count.index}"
   }
 }
 
@@ -118,7 +118,7 @@ resource "aws_instance" "client" {
   count                  = "${var.num_instances["client"]}"
 
   tags = {
-    Name = "rabbitmq-client-${count.index}"
+    Name = "rabbitmq_client_${count.index}"
   }
 }
 
