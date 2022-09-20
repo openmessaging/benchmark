@@ -45,7 +45,11 @@
 		<module>tool</module>
   </modules>
 
-
+	<organization>
+		<name>OpenMessaging Project</name>
+		<url>https://openmessaging.cloud</url>
+	</organization>
+	
 	<licenses>
 		<license>
 			<name>Apache License, Version 2.0</name>
