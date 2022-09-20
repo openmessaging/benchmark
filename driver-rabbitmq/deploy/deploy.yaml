@@ -164,10 +164,9 @@
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
       tags: [client-code]
-    - shell: >
-        tuned-adm profile latency-performance &&
-        mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
       tags: [client-code]
+    - shell: tuned-adm profile latency-performance
 
     - template:
         src: "templates/workers.yaml"
