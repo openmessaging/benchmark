@@ -16,15 +16,15 @@ package io.openmessaging.benchmark.tool.workload;
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
 import java.util.Collections;
 import java.util.List;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Value;
 
 /**
  * A template that defines a set of workload definitions. This is much like the
  * {@link io.openmessaging.benchmark.Workload} entity, except that for many values that typically change in a benchmark,
  * one can specify a sequence of values.
  */
-@Value
+@Data
 @NoArgsConstructor
 public class WorkloadSetTemplate {
     public static final String DEFAULT_NAME_TEMPLATE =

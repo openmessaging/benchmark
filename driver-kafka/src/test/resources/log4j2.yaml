@@ -12,7 +12,22 @@
 # limitations under the License.
 #
 
-org.slf4j.simpleLogger.showDateTime=true
-org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSS
-org.slf4j.simpleLogger.log.org.apache.kafka=WARN
-org.slf4j.simpleLogger.log.io.openmessaging.benchmark.driver.kafka=DEBUG
+Configuration:
+  status: INFO
+  name: driver-kafka-test
+  
+  Appenders:
+    Console:
+      name: Console
+      target: SYSTEM_OUT
+      PatternLayout:
+        Pattern: "%d{HH:mm:ss.SSS} [%t] %-4level %c{1} - %msg%n"
+  Loggers:
+    Logger:
+      name: io.openmessaging.benchmark.driver.kafka
+      level: debug
+    Root:
+      level: info
+      additivity: false
+      AppenderRef:
+        - ref: Console

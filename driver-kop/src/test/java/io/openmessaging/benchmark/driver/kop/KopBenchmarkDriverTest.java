@@ -74,7 +74,7 @@ public class KopBenchmarkDriverTest {
         assertFalse(pulsarConfig.blockIfQueueFull);
         assertEquals(pulsarConfig.pendingQueueSize, 10000);
         assertEquals(pulsarConfig.maxPendingMessagesAcrossPartitions, 500000);
-        assertEquals(pulsarConfig.batchingPartitionSwitchFrequencyByPublishDelay, 100);
+        assertEquals(pulsarConfig.batchingPartitionSwitchFrequencyByPublishDelay, 10);
         assertEquals(pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions, 500000);
         assertEquals(pulsarConfig.receiverQueueSize, 10000);
 
