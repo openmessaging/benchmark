@@ -15,4 +15,6 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 
 > More details could be found at the [official documentation](http://openmessaging.cloud/docs/benchmarks/).
 
+## License
 
+Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
