@@ -90,6 +90,7 @@
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
+    tags: [restart-rabbitmq]
 
   - name: RabbitMQ status
     shell: rabbitmqctl cluster_status
@@ -162,36 +163,44 @@
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
+      tags: [client-code]
     - shell: >
         tuned-adm profile latency-performance &&
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+      tags: [client-code]
 
     - template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
+      tags: [client-code]
 
     - template:
         src: "templates/rabbitmq.yaml"
         dest: "/opt/benchmark/driver-rabbitmq/rabbitmq.yaml"
+      tags: [client-code]
 
     - name: Configure benchmark-worker memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark-worker
         regexp: '^JVM_MEM='
         line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
+      tags: [client-code]
     - name: Configure benchmark memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark
         regexp: '^JVM_MEM='
         line: 'JVM_MEM="-Xmx4G"'
+      tags: [client-code]
     - name: Install benchmark-worker systemd service
       template:
         src: "templates/benchmark-worker.service"
         dest: "/etc/systemd/system/benchmark-worker.service"
+      tags: [client-code]
     - systemd:
         state: restarted
         daemon_reload: yes
         name: "benchmark-worker"
+      tags: [client-code]
 
 - name: List host addresses
   hosts: localhost
