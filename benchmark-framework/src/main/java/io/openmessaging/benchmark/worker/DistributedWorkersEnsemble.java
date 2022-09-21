@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.worker;
 
+import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 
@@ -69,7 +70,7 @@ public class DistributedWorkersEnsemble implements Worker {
                 .setReadTimeout(600000)
                 .setRequestTimeout(600000);
         httpClient = asyncHttpClient(clientBuilder);
-        this.workers = workers;
+        this.workers = unmodifiableList(workers);
 
         // For driver-jms extra consumers are required.
         // If there is an odd number of workers then allocate the extra to consumption.
