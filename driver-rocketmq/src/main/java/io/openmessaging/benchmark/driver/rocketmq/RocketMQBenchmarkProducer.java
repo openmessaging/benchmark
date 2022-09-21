@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.client.producer.MQProducer;
 import org.apache.rocketmq.client.producer.SendCallback;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
@@ -24,10 +25,10 @@ import org.apache.rocketmq.common.message.Message;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class RocketMQBenchmarkProducer implements BenchmarkProducer {
-    private final DefaultMQProducer rmqProducer;
+    private final MQProducer rmqProducer;
     private final String rmqTopic;
 
-    public RocketMQBenchmarkProducer(final DefaultMQProducer rmqProducer, final String rmqTopic) {
+    public RocketMQBenchmarkProducer(final MQProducer rmqProducer, final String rmqTopic) {
         this.rmqProducer = rmqProducer;
         this.rmqTopic = rmqTopic;
     }

@@ -30,16 +30,17 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
-    private final KafkaProducer<String, byte[]> producer;
+    private final Producer<String, byte[]> producer;
     private final String topic;
 
-    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]> producer, String topic) {
+    public KafkaBenchmarkProducer(Producer<String, byte[]> producer, String topic) {
         this.producer = producer;
         this.topic = topic;
     }
