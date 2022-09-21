@@ -39,7 +39,6 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
     @Override
     public void initialize(final File configurationFile, final StatsLogger statsLogger) throws IOException {
         this.clientConfig = readConfig(configurationFile);
-
     }
 
     @Override
