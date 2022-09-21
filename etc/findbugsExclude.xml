@@ -14,4 +14,96 @@
 
 -->
 <FindBugsFilter>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.pulsar.config.PulsarClientConfig$AuthenticationConfiguration" />
+    <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.jms.JMSBenchmarkConsumer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.jms.JMSBenchmarkProducer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.jms.JMSBenchmarkTransactionProducer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.kafka.KafkaTopicCreator" />
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.kop.config.PulsarConfig" />
+    <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.pravega.config.PravegaClientConfig" />
+    <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkProducer" />
+    <Bug pattern="RV_RETURN_VALUE_OF_PUTIFABSENT_IGNORED" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkConsumer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkProducer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.bookkeeper.DlogBenchmarkConsumer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.bookkeeper.DlogBenchmarkProducer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.bookkeeper.stats.StatsLoggerAdaptor" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.nsq.NsqBenchmarkProducer" />
+    <Bug pattern="NP_NONNULL_PARAM_VIOLATION" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.redis.RedisBenchmarkConsumer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.redis.RedisBenchmarkProducer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.ResultsToCsv" />
+    <Bug pattern="DM_DEFAULT_ENCODING" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.WorkloadGenerator" />
+    <Bug pattern="DLS_DEAD_LOCAL_STORE" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.WorkloadGenerator" />
+    <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.utils.PaddingDecimalFormat" />
+    <Bug pattern="EQ_DOESNT_OVERRIDE_EQUALS" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.utils.distributor.KeyDistributor" />
+    <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.LocalWorker" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.WorkerHandler" />
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE" />
+  </Match>
 </FindBugsFilter>
