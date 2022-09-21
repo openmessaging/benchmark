@@ -440,6 +440,7 @@ public class WorkloadGenerator implements AutoCloseable {
                     throughputFormat.format(stats.publishDelayLatency.getMaxValue()));
 
             result.publishRate.add(publishRate);
+            result.publishErrorRate.add(errorRate);
             result.consumeRate.add(consumeRate);
             result.backlog.add(currentBacklog);
             result.publishLatencyAvg.add(microsToMillis(stats.publishLatency.getMean()));
