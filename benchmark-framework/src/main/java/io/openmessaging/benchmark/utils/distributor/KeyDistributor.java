@@ -36,11 +36,11 @@ public abstract class KeyDistributor {
     private static final int KEY_BYTE_SIZE = 7;
 
     private static final String[] randomKeys = new String[UNIQUE_COUNT];
-    private static final Random random = new Random();
 
     static {
         // Generate a number of random keys to be used when publishing
         byte[] buffer = new byte[KEY_BYTE_SIZE];
+        Random random = new Random();
         for (int i = 0; i < randomKeys.length; i++) {
             random.nextBytes(buffer);
             randomKeys[i] = BaseEncoding.base64Url().omitPadding().encode(buffer);
