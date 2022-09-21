@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.natsStreaming;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -94,7 +95,7 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
         String clientId = "ConsumerInstance" + getRandomString();
         try {
             streamingConnection = NatsStreaming.connect(clusterId, clientId, optsBuilder.build());
-            sub = streamingConnection.subscribe(topic, subscriptionName, new MessageHandler() {
+            streamingConnection.subscribe(topic, subscriptionName, new MessageHandler() {
                 @Override public void onMessage(Message message) {
                     consumerCallback.messageReceived(message.getData(), message.getTimestamp());
                 }
@@ -103,7 +104,7 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
             log.warn("nats streaming create consumer exception", e);
             return null;
         }
-        return CompletableFuture.completedFuture(new NatsStreamingBenchmarkConsumer(streamingConnection, sub, topic));
+        return CompletableFuture.completedFuture(new NatsStreamingBenchmarkConsumer(streamingConnection));
     }
 
     @Override public void close() throws Exception {
@@ -149,7 +150,7 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
                 }
             };
 
-            guid[0] = natsStreamingPublisher.publish("topicTest", "HelloStreaming".getBytes(), acb);
+            guid[0] = natsStreamingPublisher.publish("topicTest", "HelloStreaming".getBytes(UTF_8), acb);
 
             if (guid[0].isEmpty()) {
                 System.out.println("Expected non-empty guid to be returned.");

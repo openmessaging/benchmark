@@ -135,6 +135,7 @@ public class Benchmark {
         workloads.forEach((workloadName, workload) -> {
             arguments.drivers.forEach(driverConfig -> {
                 try {
+                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                     File driverConfigFile = new File(driverConfig);
                     DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile,
                             DriverConfiguration.class);
@@ -178,8 +179,6 @@ public class Benchmark {
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
-
-    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     private static final Logger log = LoggerFactory.getLogger(Benchmark.class);
 }

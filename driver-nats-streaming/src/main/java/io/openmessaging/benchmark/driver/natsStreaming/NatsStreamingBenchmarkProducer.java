@@ -33,7 +33,7 @@ public class NatsStreamingBenchmarkProducer implements BenchmarkProducer {
         AckHandler acb = new AckHandler() {
             @Override public void onAck(String s, Exception e) {
                if ((e != null) || !guid[0].equals(s)) {
-                   future.completeExceptionally(e);
+                   future.completeExceptionally(e != null ? e : new IllegalStateException("guid != nuid"));
                } else {
                    future.complete(null);
                }

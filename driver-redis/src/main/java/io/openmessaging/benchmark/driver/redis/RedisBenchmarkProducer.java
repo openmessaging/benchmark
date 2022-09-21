@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.redis;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,15 +37,15 @@ public class RedisBenchmarkProducer implements BenchmarkProducer {
     @Override
     public CompletableFuture<Void> sendAsync(final Optional<String> key, final byte[] payload) {
         Map<byte[], byte[]> map1 = new HashMap<>();
-        map1.put("payload".getBytes(), payload);
+        map1.put("payload".getBytes(UTF_8), payload);
 
         if (key.isPresent()) {
-            map1.put("key".getBytes(), key.toString().getBytes());
+            map1.put("key".getBytes(UTF_8), key.toString().getBytes(UTF_8));
         }
 
         CompletableFuture<Void> future = new CompletableFuture<>();
             try (Jedis jedis = this.pool.getResource()) {
-                jedis.xadd(this.rmqTopic.getBytes(),map1, this.xaddParams);
+                jedis.xadd(this.rmqTopic.getBytes(UTF_8),map1, this.xaddParams);
                 future.complete(null);
             } catch (Exception e) {
                 future.completeExceptionally(e);

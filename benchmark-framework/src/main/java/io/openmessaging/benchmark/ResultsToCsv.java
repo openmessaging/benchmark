@@ -37,6 +37,9 @@ public class ResultsToCsv {
         try {
             File dir = new File(directory);
             File[] directoryListing = dir.listFiles();
+            if (directoryListing == null) {
+                throw new IllegalArgumentException("Not a directory: " + directory);
+            }
             Arrays.sort(directoryListing);
 
             List<String> lines = new ArrayList<>();
@@ -62,14 +65,14 @@ public class ResultsToCsv {
             }
 
             String resultsFileName = "results-" + Instant.now().getEpochSecond() + ".csv";
-            FileWriter writer = new FileWriter(resultsFileName);
-            for (String str : lines) {
-                writer.write(str + System.lineSeparator());
+            try (FileWriter writer = new FileWriter(resultsFileName)) {
+                for (String str : lines) {
+                    writer.write(str + System.lineSeparator());
+                }
+                log.info("Results extracted into CSV " + resultsFileName);
             }
-            writer.close();
-            log.info("Results extracted into CSV " + resultsFileName);
         }
-        catch(Exception e) {
+        catch(IOException e) {
             log.error("Failed creating csv file.", e);
         }
     }

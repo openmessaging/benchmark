@@ -15,7 +15,7 @@ package io.openmessaging.benchmark.driver.pravega.config;
 
 public class PravegaConfig {
     // By default, Stream auto-scaling is not configured. So the scaling thresholds are initialized with -1.
-    public static int DEFAULT_STREAM_AUTOSCALING_VALUE = -1;
+    public static final int DEFAULT_STREAM_AUTOSCALING_VALUE = -1;
 
     public PravegaClientConfig client;
     public PravegaWriterConfig writer;
