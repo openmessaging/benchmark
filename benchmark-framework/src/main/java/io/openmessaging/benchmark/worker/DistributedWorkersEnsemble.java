@@ -193,10 +193,12 @@ public class DistributedWorkersEnsemble implements Worker {
         PeriodStats stats = new PeriodStats();
         individualStats.forEach(is -> {
             stats.messagesSent += is.messagesSent;
+            stats.messageSendErrors += is.messageSendErrors;
             stats.bytesSent += is.bytesSent;
             stats.messagesReceived += is.messagesReceived;
             stats.bytesReceived += is.bytesReceived;
             stats.totalMessagesSent += is.totalMessagesSent;
+            stats.totalMessageSendErrors += is.totalMessageSendErrors;
             stats.totalMessagesReceived += is.totalMessagesReceived;
 
             try {
@@ -262,6 +264,7 @@ public class DistributedWorkersEnsemble implements Worker {
         individualStats.forEach(is -> {
             stats.messagesSent += is.messagesSent;
             stats.messagesReceived += is.messagesReceived;
+            stats.messageSendErrors += is.messageSendErrors;
         });
 
         return stats;

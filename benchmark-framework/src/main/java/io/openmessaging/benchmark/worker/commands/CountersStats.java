@@ -16,4 +16,5 @@ package io.openmessaging.benchmark.worker.commands;
 public class CountersStats {
     public long messagesSent;
     public long messagesReceived;
+    public long messageSendErrors;
 }

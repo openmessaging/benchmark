@@ -156,8 +156,10 @@ public class Benchmark {
                     String fileName = useOutput? arguments.output: String.format("%s-%s-%s.json", workloadName,
                     driverConfiguration.name, dateFormat.format(new Date()));
 
-                    log.info("Writing test result into {}", fileName);
-                    writer.writeValue(new File(fileName), result);
+                    log.info("Writing test result into {}/{}", workloadName, fileName);
+                    File folder = new File(workloadName);
+                    folder.mkdirs();
+                    writer.writeValue(new File(folder, fileName), result);
 
                     generator.close();
                 } catch (Exception e) {

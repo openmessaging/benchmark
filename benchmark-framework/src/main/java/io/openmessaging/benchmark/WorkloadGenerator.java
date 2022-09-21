@@ -414,6 +414,7 @@ public class WorkloadGenerator implements AutoCloseable {
 
             double publishRate = stats.messagesSent / elapsed;
             double publishThroughput = stats.bytesSent / elapsed / 1024 / 1024;
+            double errorRate = stats.messageSendErrors / elapsed;
 
             double consumeRate = stats.messagesReceived / elapsed;
             double consumeThroughput = stats.bytesReceived / elapsed / 1024 / 1024;
@@ -422,8 +423,9 @@ public class WorkloadGenerator implements AutoCloseable {
                     - stats.totalMessagesReceived;
 
             log.info(
-                    "Pub rate {} msg/s / {} MB/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | Pub Delay Latency (us) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
+                    "Pub rate {} msg/s / {} MB/s | Pub err {} err/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | Pub Delay Latency (us) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
                     rateFormat.format(publishRate), throughputFormat.format(publishThroughput),
+                    rateFormat.format(errorRate),
                     rateFormat.format(consumeRate), throughputFormat.format(consumeThroughput),
                     dec.format(currentBacklog / 1000.0), //
                     dec.format(microsToMillis(stats.publishLatency.getMean())),
