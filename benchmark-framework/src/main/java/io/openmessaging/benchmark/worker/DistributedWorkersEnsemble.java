@@ -111,6 +111,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
         // Number of actually used workers might be less than available workers
         numberOfUsedProducerWorkers = (int) topicsPerProducerMap.values().stream().filter(t -> !t.isEmpty()).count();
+        log.debug("Producing worker count: {} of {}", numberOfUsedProducerWorkers, producerWorkers.size());
 
         CompletableFuture<Void>[] futures = topicsPerProducerMap.keySet().stream().map(producer -> {
             try {
@@ -130,6 +131,7 @@ public class DistributedWorkersEnsemble implements Worker {
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         // Reduce the publish rate across all the brokers
         producerWorkAssignment.publishRate /= numberOfUsedProducerWorkers;
+        log.debug("Setting worker assigned publish rate to {} msgs/sec", producerWorkAssignment.publishRate);
         sendPost(producerWorkers, "/start-load", writer.writeValueAsBytes(producerWorkAssignment));
     }
 
@@ -142,6 +144,7 @@ public class DistributedWorkersEnsemble implements Worker {
     public void adjustPublishRate(double publishRate) throws IOException {
         // Reduce the publish rate across all the brokers
         publishRate /= numberOfUsedProducerWorkers;
+        log.debug("Adjusting worker publish rate to {} msgs/sec", publishRate);
         sendPost(producerWorkers, "/adjust-publish-rate", writer.writeValueAsBytes(publishRate));
     }
 
