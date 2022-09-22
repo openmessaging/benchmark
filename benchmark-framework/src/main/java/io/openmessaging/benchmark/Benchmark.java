@@ -158,7 +158,9 @@ public class Benchmark {
 
                     log.info("Writing test result into {}/{}", workloadName, fileName);
                     File folder = new File(workloadName);
-                    folder.mkdirs();
+                    if (!folder.mkdirs()) {
+                        log.debug("Unable to create folder {}", folder);
+                    }
                     writer.writeValue(new File(folder, fileName), result);
 
                     generator.close();
