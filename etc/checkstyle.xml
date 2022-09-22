@@ -151,7 +151,9 @@
 
     <!-- Checks for whitespace                               -->
     <!-- See https://checkstyle.org/config_whitespace.html -->
-    <module name="EmptyForIteratorPad"/>
+    <module name="EmptyForIteratorPad">
+      <property name="option" value="space"/>
+    </module>
     <module name="GenericWhitespace"/>
     <module name="MethodParamPad"/>
     <module name="NoWhitespaceAfter"/>
