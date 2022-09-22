@@ -419,8 +419,8 @@ public class WorkloadGenerator implements AutoCloseable {
             double consumeRate = stats.messagesReceived / elapsed;
             double consumeThroughput = stats.bytesReceived / elapsed / 1024 / 1024;
 
-            long currentBacklog = workload.subscriptionsPerTopic * stats.totalMessagesSent
-                    - stats.totalMessagesReceived;
+            long currentBacklog = Math.max(0L, workload.subscriptionsPerTopic * stats.totalMessagesSent
+                    - stats.totalMessagesReceived);
 
             log.info(
                     "Pub rate {} msg/s / {} MB/s | Pub err {} err/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | Pub Delay Latency (us) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
