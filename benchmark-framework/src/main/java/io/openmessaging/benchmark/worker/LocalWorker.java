@@ -43,7 +43,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.RateLimiter;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.openmessaging.benchmark.DriverConfiguration;
@@ -77,7 +76,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final StatsLogger statsLogger;
 
     private final LongAdder messagesSent = new LongAdder();
+    private final LongAdder messageSendErrors = new LongAdder();
     private final LongAdder bytesSent = new LongAdder();
+    private final Counter messageSendErrorCounter;
     private final Counter messagesSentCounter;
     private final Counter bytesSentCounter;
 
@@ -87,6 +88,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final Counter bytesReceivedCounter;
 
     private final LongAdder totalMessagesSent = new LongAdder();
+    private final LongAdder totalMessageSendErrors = new LongAdder();
     private final LongAdder totalMessagesReceived = new LongAdder();
 
     private final static long highestTrackableValue = TimeUnit.SECONDS.toMicros(60);
@@ -115,6 +117,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         StatsLogger producerStatsLogger = statsLogger.scope("producer");
         this.messagesSentCounter = producerStatsLogger.getCounter("messages_sent");
+        this.messageSendErrorCounter = producerStatsLogger.getCounter("message_send_errors");
         this.bytesSentCounter = producerStatsLogger.getCounter("bytes_sent");
         this.publishDelayLatencyStats = producerStatsLogger.getOpStatsLogger("producer_delay_latency");
         this.publishLatencyStats = producerStatsLogger.getOpStatsLogger("produce_latency");
@@ -242,6 +245,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
                             cumulativePublishDelayLatencyRecorder.recordValue(sendDelayMicros);
                             publishDelayLatencyStats.registerSuccessfulEvent(sendDelayMicros, TimeUnit.MICROSECONDS);
                         }).exceptionally(ex -> {
+                            messageSendErrors.increment();
+                            messageSendErrorCounter.inc();
+                            totalMessageSendErrors.increment();
                             log.warn("Write error on message", ex);
                             return null;
                         });
@@ -267,12 +273,14 @@ public class LocalWorker implements Worker, ConsumerCallback {
         PeriodStats stats = new PeriodStats();
 
         stats.messagesSent = messagesSent.sumThenReset();
+        stats.messageSendErrors = messageSendErrors.sumThenReset();
         stats.bytesSent = bytesSent.sumThenReset();
 
         stats.messagesReceived = messagesReceived.sumThenReset();
         stats.bytesReceived = bytesReceived.sumThenReset();
 
         stats.totalMessagesSent = totalMessagesSent.sum();
+        stats.totalMessageSendErrors = totalMessageSendErrors.sum();
         stats.totalMessagesReceived = totalMessagesReceived.sum();
 
         stats.publishLatency = publishLatencyRecorder.getIntervalHistogram();
@@ -294,6 +302,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public CountersStats getCountersStats() throws IOException {
         CountersStats stats = new CountersStats();
         stats.messagesSent = totalMessagesSent.sum();
+        stats.messageSendErrors = totalMessageSendErrors.sum();
         stats.messagesReceived = totalMessagesReceived.sum();
         return stats;
     }
@@ -367,6 +376,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         endToEndCumulativeLatencyRecorder.reset();
 
         messagesSent.reset();
+        messageSendErrors.reset();
         bytesSent.reset();
         messagesReceived.reset();
         bytesReceived.reset();

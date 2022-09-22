@@ -28,6 +28,7 @@ public class TestResult {
     public int consumersPerTopic;
 
     public List<Double> publishRate = new ArrayList<>();
+    public List<Double> publishErrorRate = new ArrayList<>();
     public List<Double> consumeRate = new ArrayList<>();
     public List<Long> backlog = new ArrayList<>();
 
