@@ -118,7 +118,6 @@
 							<includes>
 								<include>etc/**/*.xml</include>
 								<include>.github/workflows/**/*.yml</include>
-								<include>**/doc/**/*.md</include>
 								<include>**/doc/**/*.puml</include>
 							</includes>
 							<trimTrailingWhitespace/>
