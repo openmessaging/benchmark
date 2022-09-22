@@ -110,7 +110,7 @@ public class DistributedWorkersEnsemble implements Worker {
         }
 
         // Number of actually used workers might be less than available workers
-        numberOfUsedProducerWorkers = i;
+        numberOfUsedProducerWorkers = (int) topicsPerProducerMap.values().stream().filter(t -> !t.isEmpty()).count();
 
         CompletableFuture<Void>[] futures = topicsPerProducerMap.keySet().stream().map(producer -> {
             try {
