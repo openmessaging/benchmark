@@ -24,3 +24,6 @@ connectionFactoryClassName: org.apache.activemq.artemis.jms.client.ActiveMQConne
 connectionFactoryConfigurationParam: 'tcp://localhost:61616'
 use20api: true
 sendWithTransactions: true
+
+delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.artemis.ArtemisBenchmarkDriver
+brokerAddress: tcp://localhost:61616
