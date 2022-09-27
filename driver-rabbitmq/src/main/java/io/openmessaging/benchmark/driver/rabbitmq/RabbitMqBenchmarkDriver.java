@@ -123,7 +123,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                 String queueName = exchange + "-" + subscriptionName;
                 channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
                 // Create the queue
-                channel.queueDeclare(queueName, true, false, false, Collections.emptyMap());
+                channel.queueDeclare(queueName, true, false, false, Collections.singletonMap("x-queue-type", "quorum"));
                 channel.queueBind(queueName, exchange, "");
                 future.complete(new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
             } catch (IOException e) {
