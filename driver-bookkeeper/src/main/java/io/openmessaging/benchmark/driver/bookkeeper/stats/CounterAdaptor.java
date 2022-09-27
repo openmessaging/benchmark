@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
+
 import org.apache.bookkeeper.stats.Counter;
 
 class CounterAdaptor implements dlshade.org.apache.bookkeeper.stats.Counter {

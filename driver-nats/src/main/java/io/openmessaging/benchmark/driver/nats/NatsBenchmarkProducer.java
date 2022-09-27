@@ -13,19 +13,11 @@
  */
 package io.openmessaging.benchmark.driver.nats;
 
+
 import io.nats.client.JetStream;
-import io.nats.client.Message;
-import io.nats.client.PublishOptions;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
-import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import io.nats.client.Connection;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class NatsBenchmarkProducer implements BenchmarkProducer {
     private final String topic;
@@ -44,8 +36,7 @@ public class NatsBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public void close() throws Exception {
-    }
+    public void close() throws Exception {}
 
     public static void writeLongToBytes(long l, byte[] dst) {
         for (int i = 7; i >= 0; i--) {
@@ -53,6 +44,4 @@ public class NatsBenchmarkProducer implements BenchmarkProducer {
             l >>= 8;
         }
     }
-
-
 }

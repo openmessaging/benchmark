@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
@@ -55,8 +56,10 @@ class UniformRateLimiterTest {
 
     @Test
     void cinitExceptions() {
-        assertThatCode(() -> new UniformRateLimiter(Double.NaN)).isInstanceOf(IllegalArgumentException.class);
-        assertThatCode(() -> new UniformRateLimiter(1.0d / 0.0d)).isInstanceOf(IllegalArgumentException.class);
+        assertThatCode(() -> new UniformRateLimiter(Double.NaN))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatCode(() -> new UniformRateLimiter(1.0d / 0.0d))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatCode(() -> new UniformRateLimiter(-0.1)).isInstanceOf(IllegalArgumentException.class);
         assertThatCode(() -> new UniformRateLimiter(0.0)).isInstanceOf(IllegalArgumentException.class);
     }

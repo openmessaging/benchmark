@@ -13,6 +13,9 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
+
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,16 +23,12 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,41 +43,50 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private volatile boolean closing = false;
     private boolean autoCommit;
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer,
-                                  Properties consumerConfig,
-                                  ConsumerCallback callback) {
+    public KafkaBenchmarkConsumer(
+            KafkaConsumer<String, byte[]> consumer,
+            Properties consumerConfig,
+            ConsumerCallback callback) {
         this(consumer, consumerConfig, callback, 100L);
     }
 
-    public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer,
-                                  Properties consumerConfig,
-                                  ConsumerCallback callback,
-                                  long pollTimeoutMs) {
+    public KafkaBenchmarkConsumer(
+            KafkaConsumer<String, byte[]> consumer,
+            Properties consumerConfig,
+            ConsumerCallback callback,
+            long pollTimeoutMs) {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
-        this.autoCommit= Boolean.valueOf((String)consumerConfig.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,"false"));
-        this.consumerTask = this.executor.submit(() -> {
-            while (!closing) {
-                try {
-                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(pollTimeoutMs));
+        this.autoCommit =
+                Boolean.valueOf(
+                        (String)
+                                consumerConfig.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"));
+        this.consumerTask =
+                this.executor.submit(
+                        () -> {
+                            while (!closing) {
+                                try {
+                                    ConsumerRecords<String, byte[]> records =
+                                            consumer.poll(Duration.ofMillis(pollTimeoutMs));
 
-                    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
-                    for (ConsumerRecord<String, byte[]> record : records) {
-                        callback.messageReceived(record.value(), record.timestamp());
+                                    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
+                                    for (ConsumerRecord<String, byte[]> record : records) {
+                                        callback.messageReceived(record.value(), record.timestamp());
 
-                        offsetMap.put(new TopicPartition(record.topic(), record.partition()),
-                            new OffsetAndMetadata(record.offset()+1));
-                    }
+                                        offsetMap.put(
+                                                new TopicPartition(record.topic(), record.partition()),
+                                                new OffsetAndMetadata(record.offset() + 1));
+                                    }
 
-                    if (!autoCommit&&!offsetMap.isEmpty()) {
-                        // Async commit all messages polled so far
-                        consumer.commitAsync(offsetMap, null);
-                    }
-                } catch(Exception e){
-                    log.error("exception occur while consuming message", e);
-                }
-            }
-        });
+                                    if (!autoCommit && !offsetMap.isEmpty()) {
+                                        // Async commit all messages polled so far
+                                        consumer.commitAsync(offsetMap, null);
+                                    }
+                                } catch (Exception e) {
+                                    log.error("exception occur while consuming message", e);
+                                }
+                            }
+                        });
     }
 
     @Override
@@ -88,5 +96,4 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
         consumerTask.get();
         consumer.close();
     }
-
 }

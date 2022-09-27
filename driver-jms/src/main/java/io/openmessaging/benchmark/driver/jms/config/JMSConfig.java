@@ -14,11 +14,11 @@
 
 package io.openmessaging.benchmark.driver.jms.config;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class JMSConfig
-{
+public class JMSConfig {
     public String connectionFactoryClassName = "<PLEASE SET A VALUE>";
 
     public String connectionFactoryConfigurationParam = "";

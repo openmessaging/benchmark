@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.tool.workload;
 
 import static java.util.Collections.unmodifiableList;
+
 import io.openmessaging.benchmark.Workload;
 import java.io.IOException;
 import java.util.ArrayList;

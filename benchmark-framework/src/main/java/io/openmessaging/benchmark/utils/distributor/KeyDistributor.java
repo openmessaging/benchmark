@@ -26,8 +26,8 @@
  */
 package io.openmessaging.benchmark.utils.distributor;
 
-import com.google.common.io.BaseEncoding;
 
+import com.google.common.io.BaseEncoding;
 import java.util.Random;
 
 public abstract class KeyDistributor {
@@ -69,8 +69,9 @@ public abstract class KeyDistributor {
             case RANDOM_NANO:
                 keyDistributor = new RandomNano();
                 break;
+            default:
+                throw new IllegalStateException("Unexpected KeyDistributorType: " + keyType);
         }
         return keyDistributor;
     }
-
 }

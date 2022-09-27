@@ -13,16 +13,14 @@
  */
 package io.openmessaging.benchmark.driver.rocketmq;
 
+
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-
-import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.MQProducer;
 import org.apache.rocketmq.client.producer.SendCallback;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
-
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class RocketMQBenchmarkProducer implements BenchmarkProducer {
     private final MQProducer rmqProducer;
@@ -42,17 +40,19 @@ public class RocketMQBenchmarkProducer implements BenchmarkProducer {
 
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            this.rmqProducer.send(message, new SendCallback() {
-                @Override
-                public void onSuccess(final SendResult sendResult) {
-                    future.complete(null);
-                }
+            this.rmqProducer.send(
+                    message,
+                    new SendCallback() {
+                        @Override
+                        public void onSuccess(final SendResult sendResult) {
+                            future.complete(null);
+                        }
 
-                @Override
-                public void onException(final Throwable e) {
-                    future.completeExceptionally(e);
-                }
-            });
+                        @Override
+                        public void onException(final Throwable e) {
+                            future.completeExceptionally(e);
+                        }
+                    });
         } catch (Exception e) {
             future.completeExceptionally(e);
         }

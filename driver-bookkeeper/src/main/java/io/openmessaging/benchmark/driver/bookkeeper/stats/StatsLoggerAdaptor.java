@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
+
 import dlshade.com.google.common.collect.Maps;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.bookkeeper.stats.Gauge;
@@ -22,7 +23,8 @@ public class StatsLoggerAdaptor implements dlshade.org.apache.bookkeeper.stats.S
 
     private final StatsLogger statsLogger;
     private final ConcurrentMap<dlshade.org.apache.bookkeeper.stats.Gauge, Gauge> gauges;
-    private final ConcurrentMap<dlshade.org.apache.bookkeeper.stats.StatsLogger, StatsLogger> statsLoggers;
+    private final ConcurrentMap<dlshade.org.apache.bookkeeper.stats.StatsLogger, StatsLogger>
+            statsLoggers;
 
     public StatsLoggerAdaptor(StatsLogger statsLogger) {
         this.statsLogger = statsLogger;
@@ -41,14 +43,16 @@ public class StatsLoggerAdaptor implements dlshade.org.apache.bookkeeper.stats.S
     }
 
     @Override
-    public <T extends Number> void registerGauge(String name, dlshade.org.apache.bookkeeper.stats.Gauge<T> gauge) {
+    public <T extends Number> void registerGauge(
+            String name, dlshade.org.apache.bookkeeper.stats.Gauge<T> gauge) {
         Gauge<T> gaugeAdaptor = new GaugeAdaptor<>(gauge);
         statsLogger.registerGauge(name, gaugeAdaptor);
         gauges.put(gauge, gaugeAdaptor);
     }
 
     @Override
-    public <T extends Number> void unregisterGauge(String name, dlshade.org.apache.bookkeeper.stats.Gauge<T> gauge) {
+    public <T extends Number> void unregisterGauge(
+            String name, dlshade.org.apache.bookkeeper.stats.Gauge<T> gauge) {
         Gauge<T> gaugeAdaptor = gauges.remove(gauge);
         if (null != gaugeAdaptor) {
             statsLogger.unregisterGauge(name, gaugeAdaptor);
@@ -64,7 +68,8 @@ public class StatsLoggerAdaptor implements dlshade.org.apache.bookkeeper.stats.S
     }
 
     @Override
-    public void removeScope(String name, dlshade.org.apache.bookkeeper.stats.StatsLogger dlShadeStatsLogger) {
+    public void removeScope(
+            String name, dlshade.org.apache.bookkeeper.stats.StatsLogger dlShadeStatsLogger) {
         StatsLogger scopedStatsLogger = statsLoggers.remove(dlShadeStatsLogger);
         if (null != scopedStatsLogger) {
             statsLogger.removeScope(name, scopedStatsLogger);

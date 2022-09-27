@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper;
 
+
 import dlshade.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
@@ -44,64 +45,74 @@ public class DlogBenchmarkConsumer implements BenchmarkConsumer {
             return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Interrupted at backoff {} ms",
-                timeUnit.toMillis(backoffTime), e);
+            log.warn("Interrupted at backoff {} ms", timeUnit.toMillis(backoffTime), e);
             return false;
         }
     }
 
-    public DlogBenchmarkConsumer(DistributedLogManager dlm,
-                                 ConsumerCallback callback) {
+    @SuppressWarnings("checkstyle:LineLength")
+    public DlogBenchmarkConsumer(DistributedLogManager dlm, ConsumerCallback callback) {
         this.dlm = dlm;
-        this.executor = Executors.newSingleThreadExecutor(
-            new ThreadFactoryBuilder().setNameFormat("dlog-benchmark-reader-thread-%d").build());
+        this.executor =
+                Executors.newSingleThreadExecutor(
+                        new ThreadFactoryBuilder().setNameFormat("dlog-benchmark-reader-thread-%d").build());
 
-        this.readerTask = executor.submit(() -> {
-            LogReader reader = null;
-            DLSN lastDLSN = DLSN.InitialDLSN;
-            LogRecordWithDLSN record;
+        this.readerTask =
+                executor.submit(
+                        () -> {
+                            LogReader reader = null;
+                            DLSN lastDLSN = DLSN.InitialDLSN;
+                            LogRecordWithDLSN record;
 
-            while (!closing) {
-                if (null == reader) {
-                    try {
-                        reader = dlm.openLogReader(lastDLSN);
-                        log.info("Successfully open log reader for stream {} at {}",
-                            dlm.getStreamName(), lastDLSN);
-                    } catch (IOException e) {
-                        log.error("Failed to open reader of stream {} at {}",
-                            dlm.getStreamName(), lastDLSN, e);
-                        if (backoff(10, TimeUnit.SECONDS)) {
-                            continue;
-                        } else {
-                            break;
-                        }
-                    }
-                }
+                            while (!closing) {
+                                if (null == reader) {
+                                    try {
+                                        reader = dlm.openLogReader(lastDLSN);
+                                        log.info(
+                                                "Successfully open log reader for stream {} at {}",
+                                                dlm.getStreamName(),
+                                                lastDLSN);
+                                    } catch (IOException e) {
+                                        log.error(
+                                                "Failed to open reader of stream {} at {}",
+                                                dlm.getStreamName(),
+                                                lastDLSN,
+                                                e);
+                                        if (backoff(10, TimeUnit.SECONDS)) {
+                                            continue;
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                }
 
-                try {
-                    record = reader.readNext(false);
-                    if (null == record) {
-                        try {
-                            Thread.sleep(1);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                        continue;
-                    }
+                                try {
+                                    record = reader.readNext(false);
+                                    if (null == record) {
+                                        try {
+                                            Thread.sleep(1);
+                                        } catch (InterruptedException e) {
+                                            Thread.currentThread().interrupt();
+                                        }
+                                        continue;
+                                    }
 
-                    callback.messageReceived(record.getPayload(), record.getTransactionId());
+                                    callback.messageReceived(record.getPayload(), record.getTransactionId());
 
-                    lastDLSN = record.getDlsn();
-                } catch (IOException e) {
-                    log.info("Encountered error on reading records from reading stream {}, last record = {}",
-                        dlm.getStreamName(), lastDLSN, e);
-                    Utils.closeQuietly(reader);
-                    reader = null;
-                }
-            }
+                                    lastDLSN = record.getDlsn();
+                                } catch (IOException e) {
+                                    log.info(
+                                            "Encountered error on reading records from reading stream {}, last record = {}",
+                                            dlm.getStreamName(),
+                                            lastDLSN,
+                                            e);
+                                    Utils.closeQuietly(reader);
+                                    reader = null;
+                                }
+                            }
 
-            Utils.closeQuietly(reader);
-        });
+                            Utils.closeQuietly(reader);
+                        });
     }
 
     @Override
@@ -113,5 +124,4 @@ public class DlogBenchmarkConsumer implements BenchmarkConsumer {
             dlm.close();
         }
     }
-
 }

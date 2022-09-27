@@ -13,17 +13,16 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
+
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.Session;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
 
 public class JMSBenchmarkConsumer implements BenchmarkConsumer {
 
@@ -32,33 +31,39 @@ public class JMSBenchmarkConsumer implements BenchmarkConsumer {
     private final MessageConsumer consumer;
     private final boolean useGetBody;
 
-    public JMSBenchmarkConsumer(Connection connection,
+    public JMSBenchmarkConsumer(
+            Connection connection,
             Session session,
-            MessageConsumer consumer, ConsumerCallback callback,
-            boolean useGetBody) throws Exception {
+            MessageConsumer consumer,
+            ConsumerCallback callback,
+            boolean useGetBody)
+            throws Exception {
         this.connection = connection;
         this.consumer = consumer;
         this.session = session;
         this.useGetBody = useGetBody;
-        consumer.setMessageListener(message -> {
-            try {
-                byte[] payload = getPayload(message);
-                callback.messageReceived(payload, message.getLongProperty("E2EStartMillis"));
-                message.acknowledge();
-            } catch (Throwable e) {
-                log.warn("Failed to acknowledge message", e);
-            }
-        });
+        consumer.setMessageListener(
+                message -> {
+                    try {
+                        byte[] payload = getPayload(message);
+                        callback.messageReceived(payload, message.getLongProperty("E2EStartMillis"));
+                        message.acknowledge();
+                    } catch (Throwable e) {
+                        log.warn("Failed to acknowledge message", e);
+                    }
+                });
         // Kafka JMS client does not allow you to add a listener after the connection has been started
         connection.start();
     }
 
     @Override
     public void close() throws Exception {
-	// This exception may be thrown: java.util.concurrent.ExecutionException: java.util.ConcurrentModificationException: KafkaConsumer is not safe for multi-threaded access
-	// See https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/session#close--
-	// and https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/connection#close--
-	// It should be enough to just close the connection.
+        // This exception may be thrown: java.util.concurrent.ExecutionException:
+        // java.util.ConcurrentModificationException: KafkaConsumer is not safe for multi-threaded
+        // access
+        // See https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/session#close--
+        // and https://jakarta.ee/specifications/platform/8/apidocs/javax/jms/connection#close--
+        // It should be enough to just close the connection.
         connection.close();
     }
 

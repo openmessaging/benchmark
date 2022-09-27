@@ -17,6 +17,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,21 +61,26 @@ class KafkaTopicCreator {
         AtomicInteger succeeded = new AtomicInteger();
 
         ScheduledFuture<?> loggingFuture =
-                executor.scheduleAtFixedRate(() -> log.info("Created topics {}/{}", succeeded.get(), topicInfos.size()),
-                        10, 10, SECONDS);
+                executor.scheduleAtFixedRate(
+                        () -> log.info("Created topics {}/{}", succeeded.get(), topicInfos.size()),
+                        10,
+                        10,
+                        SECONDS);
 
         try {
             while (succeeded.get() < topicInfos.size()) {
                 int batchSize = queue.drainTo(batch, maxBatchSize);
                 if (batchSize > 0) {
-                    executeBatch(batch).forEach((topicInfo, success) -> {
-                        if (success) {
-                            succeeded.incrementAndGet();
-                        } else {
-                            //noinspection ResultOfMethodCallIgnored
-                            queue.offer(topicInfo);
-                        }
-                    });
+                    executeBatch(batch)
+                            .forEach(
+                                    (topicInfo, success) -> {
+                                        if (success) {
+                                            succeeded.incrementAndGet();
+                                        } else {
+                                            //noinspection ResultOfMethodCallIgnored
+                                            queue.offer(topicInfo);
+                                        }
+                                    });
                     batch.clear();
                 }
             }
@@ -85,20 +91,17 @@ class KafkaTopicCreator {
 
     private Map<TopicInfo, Boolean> executeBatch(List<TopicInfo> batch) {
         log.debug("Executing batch, size: {}", batch.size());
-        Map<String, TopicInfo> lookup = batch.stream()
-                .collect(toMap(TopicInfo::getTopic, identity()));
+        Map<String, TopicInfo> lookup = batch.stream().collect(toMap(TopicInfo::getTopic, identity()));
 
-        List<NewTopic> newTopics = batch.stream()
-                .map(this::newTopic)
-                .collect(toList());
+        List<NewTopic> newTopics = batch.stream().map(this::newTopic).collect(toList());
 
-        return admin.createTopics(newTopics).values()
-                .entrySet().stream()
+        return admin.createTopics(newTopics).values().entrySet().stream()
                 .collect(toMap(e -> lookup.get(e.getKey()), e -> isSuccess(e.getValue())));
     }
 
     private NewTopic newTopic(TopicInfo topicInfo) {
-        NewTopic newTopic = new NewTopic(topicInfo.getTopic(), topicInfo.getPartitions(), replicationFactor);
+        NewTopic newTopic =
+                new NewTopic(topicInfo.getTopic(), topicInfo.getPartitions(), replicationFactor);
         newTopic.configs(topicConfigs);
         return newTopic;
     }

@@ -53,10 +53,10 @@ $ terraform apply
 
 That will install the following [EC2](https://aws.amazon.com/ec2) instances (plus some other resources, such as a [Virtual Private Cloud](https://aws.amazon.com/vpc/) (VPC)):
 
-Resource | Description | Count
-:--------|:------------|:-----
-RabbitMQ instances | The VMs on which RabbitMQ brokers will run | 3
-Client instance | The VM from which the benchmarking suite itself will be run | 1
+| Resource           | Description                                                 | Count |
+|:-------------------|:------------------------------------------------------------|:------|
+| RabbitMQ instances | The VMs on which RabbitMQ brokers will run                  | 3     |
+| Client instance    | The VM from which the benchmarking suite itself will be run | 1     |
 
 When you run `terraform apply`, you will be prompted to type `yes`. Type `yes` to continue with the installation or anything else to quit.
 
@@ -66,20 +66,20 @@ Once the installation is complete, you will see a confirmation message listing t
 
 There's a handful of configurable parameters related to the Terraform deployment that you can alter by modifying the defaults in the `terraform.tfvars` file.
 
-Variable | Description | Default
-:--------|:------------|:-------
-`region` | The AWS region in which the RabbitMQ cluster will be deployed | `us-west-2`
-`az` | The availability zone in which the RabbitMQ cluster will be deployed | `us-west-2a`
-`public_key_path` | The path to the SSH public key that you've generated | `~/.ssh/rabbitmq_aws.pub`
-`ami` | The [Amazon Machine Image](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) (AWI) to be used by the cluster's machines | [`ami-9fa343e7`](https://access.redhat.com/articles/3135091)
-`instance_types` | The EC2 instance types used by the various components | `i3.4xlarge` (RabbitMQ brokers), `c4.8xlarge` (benchmarking client)
+| Variable          | Description                                                                                                                         | Default                                                             |
+|:------------------|:------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------|
+| `region`          | The AWS region in which the RabbitMQ cluster will be deployed                                                                       | `us-west-2`                                                         |
+| `az`              | The availability zone in which the RabbitMQ cluster will be deployed                                                                | `us-west-2a`                                                        |
+| `public_key_path` | The path to the SSH public key that you've generated                                                                                | `~/.ssh/rabbitmq_aws.pub`                                           |
+| `ami`             | The [Amazon Machine Image](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) (AWI) to be used by the cluster's machines | [`ami-9fa343e7`](https://access.redhat.com/articles/3135091)        |
+| `instance_types`  | The EC2 instance types used by the various components                                                                               | `i3.4xlarge` (RabbitMQ brokers), `c4.8xlarge` (benchmarking client) |
 
 > If you modify the `public_key_path`, make sure that you point to the appropriate SSH key path when running the [Ansible playbook](#running-the-ansible-playbook).
 
 ### Running the Ansible playbook
 
 With the appropriate infrastructure in place, you can install and start the RabbitMQ cluster using Ansible with just one command.
-Note that a `TFSTATE` environment must point to the folder in which the `tf.state` file is located. 
+Note that a `TFSTATE` environment must point to the folder in which the `tf.state` file is located.
 
 ```bash
 $ TF_STATE=. ansible-playbook \
@@ -120,4 +120,5 @@ The `rabbitmq_management` plugin is installed, and the HTTP endpoint is exposed 
 to access the management REST API at this endpoint.
 
 Note that the connection is authenticated but not currently encrypted and so passwords will be passed in plain text. Use
-the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.tf) file to log in. 
+the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.tf) file to log in.
+

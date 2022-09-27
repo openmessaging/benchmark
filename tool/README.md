@@ -6,7 +6,8 @@ Generates a set of `Workload` definition files from a `WorkloadSetTemplate` file
 
 ### Example
 
-Template: 
+Template:
+
 ```yaml
 nameFormat: "${topics}-topics-${partitionsPerTopic}-partitions-${messageSize}b-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}"
 topics: [1]
@@ -22,6 +23,7 @@ testDurationMinutes: 15
 ```
 
 Usage:
+
 ```
 mkdir my-workloads
 <java + cp> io.openmessaging.benchmark.tool.workload.WorkloadGenerationTool \
@@ -30,6 +32,7 @@ mkdir my-workloads
 ```
 
 Output:
+
 ```
 Starting benchmark with config: templateFile: "template.yaml"
 outputFolder: "my-workloads"
@@ -43,6 +46,7 @@ Generated 49 workloads.
 ```
 
 Example generated workload:
+
 ```yaml
 name: "1-topics-1-partitions-10kb-64p-2c-50k"
 topics: 1
@@ -61,3 +65,4 @@ consumerBacklogSizeGB: 0
 testDurationMinutes: 5
 warmupDurationMinutes: 1
 ```
+

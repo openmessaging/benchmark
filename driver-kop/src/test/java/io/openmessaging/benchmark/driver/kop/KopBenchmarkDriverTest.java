@@ -19,14 +19,14 @@ import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
+import io.openmessaging.benchmark.driver.kop.config.ClientType;
+import io.openmessaging.benchmark.driver.kop.config.Config;
+import io.openmessaging.benchmark.driver.kop.config.PulsarConfig;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Properties;
-import io.openmessaging.benchmark.driver.kop.config.ClientType;
-import io.openmessaging.benchmark.driver.kop.config.Config;
-import io.openmessaging.benchmark.driver.kop.config.PulsarConfig;
 import org.testng.annotations.Test;
 
 public class KopBenchmarkDriverTest {

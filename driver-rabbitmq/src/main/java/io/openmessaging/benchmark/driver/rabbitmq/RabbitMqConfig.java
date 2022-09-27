@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+
 import java.util.ArrayList;
 import java.util.List;
 

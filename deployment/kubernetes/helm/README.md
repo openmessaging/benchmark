@@ -1,11 +1,10 @@
-
 Users can deploy the helm chart:
 
 ```bash
 $ helm install ./benchmark --name benchmark
 ```
 
-After the chart has started, users can exec into the pod name "benchmark-driver" and run the benchmark from there.  
+After the chart has started, users can exec into the pod name "benchmark-driver" and run the benchmark from there.
 
 For example, once inside the "benchmark-driver" pod, users can execute:
 

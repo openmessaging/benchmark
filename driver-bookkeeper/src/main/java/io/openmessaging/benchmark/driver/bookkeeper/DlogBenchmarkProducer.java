@@ -13,14 +13,13 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper;
 
+
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-
 import org.apache.distributedlog.LogRecord;
 import org.apache.distributedlog.api.AsyncLogWriter;
 import org.apache.distributedlog.util.TimeSequencer;
-
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class DlogBenchmarkProducer implements BenchmarkProducer {
 
@@ -39,10 +38,8 @@ public class DlogBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        LogRecord record = new LogRecord(
-            sequencer.nextId(), payload);
+        LogRecord record = new LogRecord(sequencer.nextId(), payload);
 
         return writer.write(record).thenApply(dlsn -> null);
     }
-
 }

@@ -13,25 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.StringReader;
-import java.lang.reflect.Constructor;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.Destination;
-import javax.jms.MessageConsumer;
-import javax.jms.Session;
-import javax.jms.Topic;
-
-import org.apache.bookkeeper.stats.StatsLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +23,23 @@ import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
+import java.lang.reflect.Constructor;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.Destination;
+import javax.jms.MessageConsumer;
+import javax.jms.Session;
+import javax.jms.Topic;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JMSBenchmarkDriver implements BenchmarkDriver {
 
@@ -55,35 +53,46 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         this.config = readConfig(configurationFile);
         log.info("JMS driver configuration: {}", writer.writeValueAsString(config));
 
-        if (config.delegateForAdminOperationsClassName != null && !config.delegateForAdminOperationsClassName.isEmpty()) {
-            log.info("Initializing Driver for Admin operations {}", config.delegateForAdminOperationsClassName);
-            try
-            {
-                delegateForAdminOperations = (BenchmarkDriver) Class.forName(config.delegateForAdminOperationsClassName,
-                        true, JMSBenchmarkDriver.class.getClassLoader())
-                        .getConstructor().newInstance();
+        if (config.delegateForAdminOperationsClassName != null
+                && !config.delegateForAdminOperationsClassName.isEmpty()) {
+            log.info(
+                    "Initializing Driver for Admin operations {}",
+                    config.delegateForAdminOperationsClassName);
+            try {
+                delegateForAdminOperations =
+                        (BenchmarkDriver)
+                                Class.forName(
+                                                config.delegateForAdminOperationsClassName,
+                                                true,
+                                                JMSBenchmarkDriver.class.getClassLoader())
+                                        .getConstructor()
+                                        .newInstance();
                 delegateForAdminOperations.initialize(configurationFile, statsLogger);
-            }
-            catch (Throwable e)
-            {
-                log.error("Cannot created delegate driver " + config.delegateForAdminOperationsClassName, e);
+            } catch (Throwable e) {
+                log.error(
+                        "Cannot created delegate driver " + config.delegateForAdminOperationsClassName, e);
                 throw new IOException(e);
             }
         }
 
-        try
-        {
+        try {
             connectionFactory = buildConnectionFactory();
             connection = connectionFactory.createConnection();
             connection.start();
         } catch (Throwable t) {
-            log.error("Cannot initialize connectionFactoryClassName = "+config.connectionFactoryClassName, t);
+            log.error(
+                    "Cannot initialize connectionFactoryClassName = " + config.connectionFactoryClassName, t);
             throw new IOException(t);
         }
     }
 
     private ConnectionFactory buildConnectionFactory() throws Exception {
-        Class<ConnectionFactory> clazz = (Class<ConnectionFactory>) Class.forName(config.connectionFactoryClassName, true, Thread.currentThread().getContextClassLoader());
+        Class<ConnectionFactory> clazz =
+                (Class<ConnectionFactory>)
+                        Class.forName(
+                                config.connectionFactoryClassName,
+                                true,
+                                Thread.currentThread().getContextClassLoader());
 
         // constructor with a String (like DataStax Pulsar JMS)
         try {
@@ -97,7 +106,8 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
             Constructor<ConnectionFactory> constructor = clazz.getConstructor(Properties.class);
             Properties props = new Properties();
             ObjectMapper mapper = new ObjectMapper();
-            Map map = mapper.readValue(new StringReader(config.connectionFactoryConfigurationParam), Map.class);
+            Map map =
+                    mapper.readValue(new StringReader(config.connectionFactoryConfigurationParam), Map.class);
             props.putAll(map);
             return constructor.newInstance(props);
         } catch (NoSuchMethodException ignore) {
@@ -126,11 +136,14 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         try {
             if (config.sendWithTransactions) {
-                return CompletableFuture.completedFuture(new JMSBenchmarkTransactionProducer(connection, topic, config.use20api, config.properties));
+                return CompletableFuture.completedFuture(
+                        new JMSBenchmarkTransactionProducer(
+                                connection, topic, config.use20api, config.properties));
             } else {
                 Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
                 Destination destination = session.createTopic(topic);
-                return CompletableFuture.completedFuture(new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
+                return CompletableFuture.completedFuture(
+                        new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
             }
         } catch (Exception err) {
             CompletableFuture<BenchmarkProducer> res = new CompletableFuture<>();
@@ -140,22 +153,28 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-                    ConsumerCallback consumerCallback) {
+    public CompletableFuture<BenchmarkConsumer> createConsumer(
+            String topic, String subscriptionName, ConsumerCallback consumerCallback) {
         try {
-            String selector = config.messageSelector != null && !config.messageSelector.isEmpty() ? config.messageSelector : null;
+            String selector =
+                    config.messageSelector != null && !config.messageSelector.isEmpty()
+                            ? config.messageSelector
+                            : null;
             Connection connection = connectionFactory.createConnection();
             Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Topic destination = session.createTopic(topic);
             MessageConsumer durableConsumer;
             if (config.use20api) {
-                durableConsumer = session.createSharedDurableConsumer(destination, subscriptionName, selector);
+                durableConsumer =
+                        session.createSharedDurableConsumer(destination, subscriptionName, selector);
             } else {
                 // in JMS 1.0 we should use session.createDurableSubscriber()
                 // but it is not supported in Confluent Kafka JMS client
                 durableConsumer = session.createConsumer(destination, selector);
             }
-            return CompletableFuture.completedFuture(new JMSBenchmarkConsumer(connection, session, durableConsumer, consumerCallback, config.use20api));
+            return CompletableFuture.completedFuture(
+                    new JMSBenchmarkConsumer(
+                            connection, session, durableConsumer, consumerCallback, config.use20api));
         } catch (Exception err) {
             CompletableFuture<BenchmarkConsumer> res = new CompletableFuture<>();
             res.completeExceptionally(err);
@@ -178,7 +197,8 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         }
     }
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private static JMSConfig readConfig(File configurationFile) throws IOException {

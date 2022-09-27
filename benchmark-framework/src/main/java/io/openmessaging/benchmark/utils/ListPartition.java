@@ -13,18 +13,19 @@
  */
 package io.openmessaging.benchmark.utils;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class ListPartition {
 
     /**
-     * partition a list to specified size
+     * partition a list to specified size.
      *
      * @param originList
      * @param size
      * @param <T>
-     * @return
+     * @return the partitioned list
      */
     public static <T> List<List<T>> partitionList(List<T> originList, int size) {
 
@@ -55,5 +56,4 @@ public class ListPartition {
         }
         return resultList;
     }
-
 }

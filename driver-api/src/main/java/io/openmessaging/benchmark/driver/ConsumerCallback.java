@@ -13,29 +13,24 @@
  */
 package io.openmessaging.benchmark.driver;
 
+
 import java.nio.ByteBuffer;
 
-/**
- * Callback that the driver implementation calls when a message is received
- */
+/** Callback that the driver implementation calls when a message is received. */
 public interface ConsumerCallback {
     /**
-     * Driver should invoke this method (or the ByteBuffer variant) once for each message received
-     * 
-     * @param payload
-     *            the received message payload
-     * @param publishTimestamp
-     *            the publish timestamp in milliseconds
+     * Driver should invoke this method (or the ByteBuffer variant) once for each message received.
+     *
+     * @param payload the received message payload
+     * @param publishTimestamp the publish timestamp in milliseconds
      */
     void messageReceived(byte[] payload, long publishTimestamp);
 
     /**
-     * Driver should invoke this method (or the byte[] variant) once for each message received
+     * Driver should invoke this method (or the byte[] variant) once for each message received.
      *
-     * @param payload
-     *            the received message payload
-     * @param publishTimestamp
-     *            the publish timestamp in milliseconds
+     * @param payload the received message payload
+     * @param publishTimestamp the publish timestamp in milliseconds
      */
     void messageReceived(ByteBuffer payload, long publishTimestamp);
 }

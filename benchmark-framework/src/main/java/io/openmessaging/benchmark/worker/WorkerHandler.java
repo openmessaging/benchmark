@@ -13,19 +13,11 @@
  */
 package io.openmessaging.benchmark.worker;
 
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.util.List;
-
-import org.apache.bookkeeper.stats.StatsLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
-
 import io.javalin.Context;
 import io.javalin.Javalin;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
@@ -33,6 +25,12 @@ import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.List;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unchecked")
 public class WorkerHandler {
@@ -87,7 +85,8 @@ public class WorkerHandler {
     private void handleCreateConsumers(Context ctx) throws Exception {
         ConsumerAssignment consumerAssignment = mapper.readValue(ctx.body(), ConsumerAssignment.class);
 
-        log.info("Received create consumers request for topics: {}", consumerAssignment.topicsSubscriptions);
+        log.info(
+                "Received create consumers request for topics: {}", consumerAssignment.topicsSubscriptions);
         localWorker.createConsumers(consumerAssignment);
     }
 
@@ -100,9 +99,12 @@ public class WorkerHandler {
     }
 
     private void handleStartLoad(Context ctx) throws Exception {
-        ProducerWorkAssignment producerWorkAssignment = mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
+        ProducerWorkAssignment producerWorkAssignment =
+                mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
 
-        log.info("Start load publish-rate: {} msg/s -- payload-size: {}", producerWorkAssignment.publishRate,
+        log.info(
+                "Start load publish-rate: {} msg/s -- payload-size: {}",
+                producerWorkAssignment.publishRate,
                 producerWorkAssignment.payloadData.get(0).length);
 
         localWorker.startLoad(producerWorkAssignment);
@@ -186,13 +188,12 @@ public class WorkerHandler {
 
     private static final Logger log = LoggerFactory.getLogger(WorkerHandler.class);
 
-    private static final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
         mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
-
 }

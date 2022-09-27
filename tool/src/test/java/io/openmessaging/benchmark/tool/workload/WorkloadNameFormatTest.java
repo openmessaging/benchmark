@@ -20,8 +20,9 @@ import org.junit.jupiter.api.Test;
 
 class WorkloadNameFormatTest {
 
-    public String nameFormat = "${topics}-topics-${partitionsPerTopic}-partitions-${messageSize}b"
-            + "-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}";
+    public String nameFormat =
+            "${topics}-topics-${partitionsPerTopic}-partitions-${messageSize}b"
+                    + "-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}";
 
     @Test
     void nameOverride() {

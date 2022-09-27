@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 
 class PaddingDecimalFormatTest {
@@ -25,5 +26,4 @@ class PaddingDecimalFormatTest {
         assertThat(format.format(1000L)).isEqualTo(" 1000.0");
         assertThat(format.format(10000000L)).isEqualTo("10000000.0");
     }
-
 }

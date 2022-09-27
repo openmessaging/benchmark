@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.tool.workload;
 
+
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
 import java.util.Collections;
 import java.util.List;
@@ -20,27 +21,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * A template that defines a set of workload definitions. This is much like the
- * {@link io.openmessaging.benchmark.Workload} entity, except that for many values that typically change in a benchmark,
- * one can specify a sequence of values.
+ * A template that defines a set of workload definitions. This is much like the {@link
+ * io.openmessaging.benchmark.Workload} entity, except that for many values that typically change in
+ * a benchmark, one can specify a sequence of values.
  */
 @Data
 @NoArgsConstructor
 public class WorkloadSetTemplate {
     public static final String DEFAULT_NAME_TEMPLATE =
             "${topics}-topics-${partitionsPerTopic}-partitions-${messageSize}b"
-            + "-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}";
+                    + "-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}";
     public String nameFormat = DEFAULT_NAME_TEMPLATE;
 
-    /** Number of topics to create in the test */
+    /** Number of topics to create in the test. */
     public List<Integer> topics = Collections.emptyList();
-    /** Number of partitions each topic will contain */
-    public List<Integer> partitionsPerTopic= Collections.emptyList();
-    public List<Integer> messageSize= Collections.emptyList();
-    public List<Integer> subscriptionsPerTopic= Collections.emptyList();
-    public List<Integer> producersPerTopic= Collections.emptyList();
-    public List<Integer> consumerPerSubscription= Collections.emptyList();
-    public List<Integer> producerRate= Collections.emptyList();
+    /** Number of partitions each topic will contain. */
+    public List<Integer> partitionsPerTopic = Collections.emptyList();
+
+    public List<Integer> messageSize = Collections.emptyList();
+    public List<Integer> subscriptionsPerTopic = Collections.emptyList();
+    public List<Integer> producersPerTopic = Collections.emptyList();
+    public List<Integer> consumerPerSubscription = Collections.emptyList();
+    public List<Integer> producerRate = Collections.emptyList();
 
     public KeyDistributorType keyDistributor = KeyDistributorType.NO_KEY;
     public String payloadFile = null;

@@ -26,14 +26,12 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
@@ -51,13 +49,15 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        producer.send(record, (metadata, exception) -> {
-            if (exception != null) {
-                future.completeExceptionally(exception);
-            } else {
-                future.complete(null);
-            }
-        });
+        producer.send(
+                record,
+                (metadata, exception) -> {
+                    if (exception != null) {
+                        future.completeExceptionally(exception);
+                    } else {
+                        future.complete(null);
+                    }
+                });
 
         return future;
     }
@@ -66,5 +66,4 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
     public void close() throws Exception {
         producer.close();
     }
-
 }

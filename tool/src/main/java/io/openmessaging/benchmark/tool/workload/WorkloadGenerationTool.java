@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.tool.workload;
 
+
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
@@ -26,14 +27,13 @@ import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Generates a set of {@link Workload} definition files from a {@link WorkloadSetTemplate} file.
- */
+/** Generates a set of {@link Workload} definition files from a {@link WorkloadSetTemplate} file. */
 @Slf4j
 public class WorkloadGenerationTool {
 
     private static final ObjectMapper mapper =
-            new ObjectMapper(new YAMLFactory().configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false))
+            new ObjectMapper(
+                            new YAMLFactory().configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false))
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
@@ -61,7 +61,8 @@ public class WorkloadGenerationTool {
         // Dump configuration variables
         log.info("Starting benchmark with config: {}", mapper.writeValueAsString(arguments));
 
-        WorkloadSetTemplate template = mapper.readValue(arguments.templateFile, WorkloadSetTemplate.class);
+        WorkloadSetTemplate template =
+                mapper.readValue(arguments.templateFile, WorkloadSetTemplate.class);
         List<Workload> workloads = new WorkloadGenerator(template).generate();
         for (Workload w : workloads) {
             File outputFile = null;
@@ -75,14 +76,22 @@ public class WorkloadGenerationTool {
     }
 
     static class Arguments {
-        @Parameter(names = {"-t", "--template-file"},
-                description = "Path to a YAML file containing the workload template", required = true)
+        @Parameter(
+                names = {"-t", "--template-file"},
+                description = "Path to a YAML file containing the workload template",
+                required = true)
         public File templateFile;
 
-        @Parameter(names = {"-o", "--output-folder"}, description = "Output", required = true)
+        @Parameter(
+                names = {"-o", "--output-folder"},
+                description = "Output",
+                required = true)
         public File outputFolder;
 
-        @Parameter(names = {"-h", "--help"}, description = "Help message", help = true)
+        @Parameter(
+                names = {"-h", "--help"},
+                description = "Help message",
+                help = true)
         boolean help;
     }
 }
