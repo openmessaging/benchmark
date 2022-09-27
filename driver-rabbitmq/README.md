@@ -112,3 +112,12 @@ You can also run specific workloads in the `workloads` folder. Here's an example
 ```bash
 $ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-1-partitions-1kb.yaml
 ```
+
+## Monitoring
+
+The `rabbitmq_management` plugin is installed, and the HTTP endpoint is exposed on all RabbitMQ instances on port
+`15672`. This allows access to the management UI which provides some basic status metrics. It should also be possible
+to access the management REST API at this endpoint.
+
+Note that the connection is authenticated but not currently encrypted and so passwords will be passed in plain text. Use
+the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.tf) file to log in. 
