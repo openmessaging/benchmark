@@ -14,12 +14,19 @@
 package io.openmessaging.benchmark.utils;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public class Timer {
     private final long startTime;
+    private final Supplier<Long> nanoClock;
+
+    Timer(Supplier<Long> nanoClock) {
+        this.nanoClock = nanoClock;
+        startTime = this.nanoClock.get();
+    }
 
     public Timer() {
-        startTime = System.nanoTime();
+        this(() -> System.nanoTime());
     }
 
     public double elapsedMillis() {
@@ -31,7 +38,7 @@ public class Timer {
     }
 
     private double elapsed(TimeUnit unit) {
-        long now = System.nanoTime();
+        long now = nanoClock.get();
         return (now - startTime) / (double) unit.toNanos(1);
     }
 }
