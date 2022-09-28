@@ -246,7 +246,7 @@ public class DistributedWorkersEnsemble implements Worker {
         for (Worker w : workers) {
             try {
                 w.close();
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
     }
 
