@@ -204,7 +204,7 @@ public class DistributedWorkersEnsemble implements Worker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).reduce(new PeriodStats(), (ensemble, worker) -> ensemble.plus(worker));
+        }).reduce(new PeriodStats(), PeriodStats::plus);
     }
 
     @Override
