@@ -44,7 +44,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.asynchttpclient.Dsl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,14 +57,16 @@ public class HttpWorkerClient implements Worker {
     private final String host;
 
     public HttpWorkerClient(String host) {
-        this.host = host;
-        DefaultAsyncHttpClientConfig.Builder clientBuilder = Dsl.config()
-                .setReadTimeout(600000)
-                .setRequestTimeout(600000);
-        httpClient = asyncHttpClient(clientBuilder);
+        this(
+                asyncHttpClient(Dsl.config()
+                        .setReadTimeout(600000)
+                        .setRequestTimeout(600000)
+                ),
+                host
+        );
     }
 
-    public HttpWorkerClient(AsyncHttpClient httpClient, String host) {
+    HttpWorkerClient(AsyncHttpClient httpClient, String host) {
         this.httpClient = httpClient;
         this.host = host;
     }
