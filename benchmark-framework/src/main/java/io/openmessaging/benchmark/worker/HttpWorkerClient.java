@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 
 public class HttpWorkerClient implements Worker {
 
-    private static final byte[] NO_BODY = new byte[0];
+    private static final byte[] EMPTY_RESPONSE = new byte[0];
     private static final int HTTP_OK = 200;
 
     private final AsyncHttpClient httpClient;
@@ -94,7 +94,7 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void probeProducers() throws IOException {
-        sendPost(PROBE_PRODUCERS, NO_BODY);
+        sendPost(PROBE_PRODUCERS, EMPTY_RESPONSE);
     }
 
     @Override
@@ -111,12 +111,12 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void pauseConsumers() throws IOException {
-        sendPost(PAUSE_CONSUMERS, NO_BODY);
+        sendPost(PAUSE_CONSUMERS, EMPTY_RESPONSE);
     }
 
     @Override
     public void resumeConsumers() throws IOException {
-        sendPost(RESUME_CONSUMERS, NO_BODY);
+        sendPost(RESUME_CONSUMERS, EMPTY_RESPONSE);
     }
 
     @Override
@@ -136,12 +136,12 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void resetStats() throws IOException {
-        sendPost(RESET_STATS, NO_BODY);
+        sendPost(RESET_STATS, EMPTY_RESPONSE);
     }
 
     @Override
     public void stopAll() {
-        sendPost(STOP_ALL, NO_BODY);
+        sendPost(STOP_ALL, EMPTY_RESPONSE);
     }
 
     @Override
