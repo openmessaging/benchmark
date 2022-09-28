@@ -13,6 +13,20 @@
  */
 package io.openmessaging.benchmark.worker;
 
+import static io.openmessaging.benchmark.worker.WorkerHandler.ADJUST_PUBLISH_RATE;
+import static io.openmessaging.benchmark.worker.WorkerHandler.COUNTERS_STATS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.CREATE_CONSUMERS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.CREATE_PRODUCERS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.CREATE_TOPICS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.CUMULATIVE_LATENCIES;
+import static io.openmessaging.benchmark.worker.WorkerHandler.INITIALIZE_DRIVER;
+import static io.openmessaging.benchmark.worker.WorkerHandler.PAUSE_CONSUMERS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.PERIOD_STATS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.PROBE_PRODUCERS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.RESET_STATS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.RESUME_CONSUMERS;
+import static io.openmessaging.benchmark.worker.WorkerHandler.START_LOAD;
+import static io.openmessaging.benchmark.worker.WorkerHandler.STOP_ALL;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +43,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.asynchttpclient.Dsl;
@@ -57,76 +70,75 @@ public class HttpWorkerClient implements Worker {
     @Override
     public void initializeDriver(File configurationFile) throws IOException {
         byte[] confFileContent = Files.readAllBytes(Paths.get(configurationFile.toString()));
-        sendPost("/initialize-driver", confFileContent).join();
+        sendPost(INITIALIZE_DRIVER, confFileContent);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public List<String> createTopics(TopicsInfo topicsInfo) throws IOException {
-        return (List<String>) post( "/create-topics", writer.writeValueAsBytes(topicsInfo), List.class)
-                .join();
+        return (List<String>) post(CREATE_TOPICS, writer.writeValueAsBytes(topicsInfo), List.class);
     }
 
     @Override
     public void createProducers(List<String> topics) throws IOException {
-        sendPost("/create-producers", writer.writeValueAsBytes(topics)).join();
+        sendPost(CREATE_PRODUCERS, writer.writeValueAsBytes(topics));
     }
 
     @Override
     public void createConsumers(ConsumerAssignment consumerAssignment) throws IOException {
-        sendPost("/create-consumers", writer.writeValueAsBytes(consumerAssignment));
+        sendPost(CREATE_CONSUMERS, writer.writeValueAsBytes(consumerAssignment));
     }
 
     @Override
     public void probeProducers() throws IOException {
-        sendPost("/probe-producers", new byte[0]).join();
+        sendPost(PROBE_PRODUCERS, new byte[0]);
     }
 
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         log.debug("Setting worker assigned publish rate to {} msgs/sec", producerWorkAssignment.publishRate);
-        sendPost("/start-load", writer.writeValueAsBytes(producerWorkAssignment)).join();
+        sendPost(START_LOAD, writer.writeValueAsBytes(producerWorkAssignment));
     }
 
     @Override
     public void adjustPublishRate(double publishRate) throws IOException {
         log.debug("Adjusting worker publish rate to {} msgs/sec", publishRate);
-        sendPost("/adjust-publish-rate", writer.writeValueAsBytes(publishRate)).join();
+        sendPost(ADJUST_PUBLISH_RATE, writer.writeValueAsBytes(publishRate));
     }
 
     @Override
     public void pauseConsumers() throws IOException {
-        sendPost("/pause-consumers", new byte[0]).join();
+        sendPost(PAUSE_CONSUMERS, new byte[0]);
     }
 
     @Override
     public void resumeConsumers() throws IOException {
-        sendPost("/resume-consumers", new byte[0]).join();
+        sendPost(RESUME_CONSUMERS, new byte[0]);
     }
 
     @Override
     public CountersStats getCountersStats() throws IOException {
-        return get("/counters-stats", CountersStats.class).join();
+        return get(COUNTERS_STATS, CountersStats.class);
     }
 
     @Override
     public PeriodStats getPeriodStats() throws IOException {
-        return get("/period-stats", PeriodStats.class).join();
+        return get(PERIOD_STATS, PeriodStats.class);
     }
 
     @Override
     public CumulativeLatencies getCumulativeLatencies() throws IOException {
-        return get("/cumulative-latencies", CumulativeLatencies.class).join();
+        return get(CUMULATIVE_LATENCIES, CumulativeLatencies.class);
     }
 
     @Override
     public void resetStats() throws IOException {
-        sendPost("/reset-stats", new byte[0]).join();
+        sendPost(RESET_STATS, new byte[0]);
     }
 
     @Override
     public void stopAll() {
-        sendPost("/stop-all", new byte[0]).join();
+        sendPost(STOP_ALL, new byte[0]);
     }
 
     @Override
@@ -139,17 +151,17 @@ public class HttpWorkerClient implements Worker {
         httpClient.close();
     }
 
-    private CompletableFuture<Void> sendPost(String path, byte[] body) {
-        return httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(x -> {
+    private void sendPost(String path, byte[] body) {
+        httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(x -> {
             if (x.getStatusCode() != 200) {
                 log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, x.getStatusCode());
             }
             Preconditions.checkArgument(x.getStatusCode() == 200);
             return (Void) null;
-        });
+        }).join();
     }
 
-    private <T> CompletableFuture<T> get(String path, Class<T> clazz) {
+    private <T> T get(String path, Class<T> clazz) {
         return httpClient.prepareGet(host + path).execute().toCompletableFuture().thenApply(response -> {
             try {
                 if (response.getStatusCode() != 200) {
@@ -160,10 +172,10 @@ public class HttpWorkerClient implements Worker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }).join();
     }
 
-    private <T> CompletableFuture<T> post(String path, byte[] body, Class<T> clazz) {
+    private <T> T post(String path, byte[] body, Class<T> clazz) {
         return httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(response -> {
             try {
                 if (response.getStatusCode() != 200) {
@@ -174,7 +186,7 @@ public class HttpWorkerClient implements Worker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }).join();
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
