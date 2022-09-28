@@ -17,7 +17,6 @@ import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.nio.ByteBuffer;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.DataFormatException;
 import org.HdrHistogram.Histogram;
 
@@ -34,16 +33,16 @@ public class PeriodStats {
     public long totalMessagesReceived = 0;
 
     @JsonIgnore
-    public Histogram publishLatency = new Histogram(TimeUnit.SECONDS.toMicros(60), 5);
+    public Histogram publishLatency = new Histogram(SECONDS.toMicros(60), 5);
     public byte[] publishLatencyBytes;
 
     @JsonIgnore
-    public Histogram publishDelayLatency = new Histogram(TimeUnit.SECONDS.toMicros(60), 5);
+    public Histogram publishDelayLatency = new Histogram(SECONDS.toMicros(60), 5);
     public byte[] publishDelayLatencyBytes;
 
 
     @JsonIgnore
-    public Histogram endToEndLatency = new Histogram(TimeUnit.HOURS.toMicros(12), 5);
+    public Histogram endToEndLatency = new Histogram(HOURS.toMicros(12), 5);
     public byte[] endToEndLatencyBytes;
 
     public PeriodStats plus(PeriodStats toAdd) {
