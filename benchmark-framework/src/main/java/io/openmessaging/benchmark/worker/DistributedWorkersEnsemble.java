@@ -14,8 +14,11 @@
 package io.openmessaging.benchmark.worker;
 
 import static java.util.Collections.unmodifiableList;
+import static java.util.concurrent.TimeUnit.HOURS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import com.beust.jcommander.internal.Maps;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBufUtil;
@@ -33,7 +36,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.DataFormatException;
 import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
@@ -55,7 +57,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
         // For driver-jms extra consumers are required.
         // If there is an odd number of workers then allocate the extra to consumption.
-        int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
+        int numberOfProducerWorkers = getNumberOfProducerWorkers(workers, extraConsumerWorkers);
         List<List<Worker>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
         this.producerWorkers = partitions.get(1);
         this.consumerWorkers = partitions.get(0);
@@ -66,13 +68,18 @@ public class DistributedWorkersEnsemble implements Worker {
         Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
+    @VisibleForTesting
+    int getNumberOfProducerWorkers(List<Worker> workers, boolean extraConsumerWorkers) {
+        return extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
+    }
+
     @Override
     public void initializeDriver(File configurationFile) throws IOException {
         workers.parallelStream().forEach(w -> {
             try {
                 w.initializeDriver(configurationFile);
             } catch (IOException e) {
-                // Swallow
+                throw new RuntimeException(e);
             }
         });
     }
@@ -107,17 +114,14 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         // Reduce the publish rate across all the brokers
-        ProducerWorkAssignment newAssignment = new ProducerWorkAssignment();
-        newAssignment.keyDistributorType = producerWorkAssignment.keyDistributorType;
-        newAssignment.payloadData = producerWorkAssignment.payloadData;
-        newAssignment.publishRate = producerWorkAssignment.publishRate / numberOfUsedProducerWorkers;
-        log.debug("Setting worker assigned publish rate to {} msgs/sec", newAssignment.publishRate);
+        double newRate = producerWorkAssignment.publishRate / numberOfUsedProducerWorkers;
+        log.debug("Setting worker assigned publish rate to {} msgs/sec", newRate);
         // Reduce the publish rate across all the brokers
         producerWorkers.parallelStream().forEach(w -> {
             try {
-                w.startLoad(newAssignment);
+                w.startLoad(producerWorkAssignment.withPublishRate(newRate));
             } catch (IOException e) {
-                // Swallow
+                throw new RuntimeException(e);
             }
         });
     }
@@ -128,19 +132,20 @@ public class DistributedWorkersEnsemble implements Worker {
             try {
                 w.probeProducers();
             } catch (IOException e) {
-                // Swallow
+                throw new RuntimeException(e);
             }
         });
     }
 
     @Override
     public void adjustPublishRate(double publishRate) throws IOException {
-        // Reduce the publish rate across all the brokers
+        double newRate = publishRate / numberOfUsedProducerWorkers;
+        log.debug("Adjusting producer publish rate to {} msgs/sec", newRate);
         producerWorkers.parallelStream().forEach(w -> {
             try {
-                w.adjustPublishRate(publishRate / numberOfUsedProducerWorkers);
+                w.adjustPublishRate(newRate);
             } catch (IOException e) {
-                // Swallow
+                throw new RuntimeException(e);
             }
         });
     }
@@ -161,7 +166,7 @@ public class DistributedWorkersEnsemble implements Worker {
             try {
                 w.pauseConsumers();
             } catch (IOException e) {
-                // Swallow
+                throw new RuntimeException(e);
             }
         });
     }
@@ -172,7 +177,7 @@ public class DistributedWorkersEnsemble implements Worker {
             try {
                 w.resumeConsumers();
             } catch (IOException e) {
-                // Swallow
+                throw new RuntimeException(e);
             }
         });
     }
@@ -185,9 +190,9 @@ public class DistributedWorkersEnsemble implements Worker {
         Map<Worker, ConsumerAssignment> topicsPerWorkerMap = Maps.newHashMap();
         int i = 0;
         for (List<TopicSubscription> tsl : subscriptionsPerConsumer) {
-            ConsumerAssignment individualAssignement = new ConsumerAssignment();
-            individualAssignement.topicsSubscriptions = tsl;
-            topicsPerWorkerMap.put(consumerWorkers.get(i++), individualAssignement);
+            ConsumerAssignment individualAssignment = new ConsumerAssignment();
+            individualAssignment.topicsSubscriptions = tsl;
+            topicsPerWorkerMap.put(consumerWorkers.get(i++), individualAssignment);
         }
         topicsPerWorkerMap.entrySet().parallelStream().forEach(e -> {
             try {
@@ -200,95 +205,100 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public PeriodStats getPeriodStats() {
-        PeriodStats stats = new PeriodStats();
-        workers.parallelStream().map(worker -> {
+        return workers.parallelStream().map(w -> {
             try {
-                return worker.getPeriodStats();
+                return w.getPeriodStats();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).forEach(is -> {
-            stats.messagesSent += is.messagesSent;
-            stats.messageSendErrors += is.messageSendErrors;
-            stats.bytesSent += is.bytesSent;
-            stats.messagesReceived += is.messagesReceived;
-            stats.bytesReceived += is.bytesReceived;
-            stats.totalMessagesSent += is.totalMessagesSent;
-            stats.totalMessageSendErrors += is.totalMessageSendErrors;
-            stats.totalMessagesReceived += is.totalMessagesReceived;
+        }).reduce(
+                new PeriodStats(),
+                (ensemble, worker) -> {
+                    ensemble.messagesSent += worker.messagesSent;
+                    ensemble.messageSendErrors += worker.messageSendErrors;
+                    ensemble.bytesSent += worker.bytesSent;
+                    ensemble.messagesReceived += worker.messagesReceived;
+                    ensemble.bytesReceived += worker.bytesReceived;
+                    ensemble.totalMessagesSent += worker.totalMessagesSent;
+                    ensemble.totalMessageSendErrors += worker.totalMessageSendErrors;
+                    ensemble.totalMessagesReceived += worker.totalMessagesReceived;
 
-            try {
-                stats.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                        ByteBuffer.wrap(is.publishLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
+                    try {
+                        ensemble.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                                ByteBuffer.wrap(worker.publishLatencyBytes), SECONDS.toMicros(30)));
 
-                stats.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                        ByteBuffer.wrap(is.publishDelayLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
+                        ensemble.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                                ByteBuffer.wrap(worker.publishDelayLatencyBytes), SECONDS.toMicros(30)));
 
-                stats.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                        ByteBuffer.wrap(is.endToEndLatencyBytes), TimeUnit.HOURS.toMicros(12)));
-            } catch (ArrayIndexOutOfBoundsException | DataFormatException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        return stats;
+                        ensemble.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                                ByteBuffer.wrap(worker.endToEndLatencyBytes), HOURS.toMicros(12)));
+                    } catch (ArrayIndexOutOfBoundsException | DataFormatException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return ensemble;
+                }
+        );
     }
 
     @Override
     public CumulativeLatencies getCumulativeLatencies() {
-        CumulativeLatencies stats = new CumulativeLatencies();
-        workers.parallelStream().map(worker -> {
+        return workers.parallelStream().map(w -> {
             try {
-                return worker.getCumulativeLatencies();
+                return w.getCumulativeLatencies();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).forEach(is -> {
-            try {
-                stats.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                        ByteBuffer.wrap(is.publishLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
-            } catch (Exception e) {
-                log.error("Failed to decode publish latency: {}",
-                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.publishLatencyBytes)));
-                throw new RuntimeException(e);
-            }
+        }).reduce(
+                new CumulativeLatencies(),
+                (ensemble, worker) -> {
+                    try {
+                        ensemble.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                                ByteBuffer.wrap(worker.publishLatencyBytes), SECONDS.toMicros(30)));
+                    } catch (Exception e) {
+                        log.error("Failed to decode publish latency: {}",
+                                ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(worker.publishLatencyBytes)));
+                        throw new RuntimeException(e);
+                    }
 
-            try {
-                stats.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                        ByteBuffer.wrap(is.publishDelayLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
-            } catch (Exception e) {
-                log.error("Failed to decode publish delay latency: {}",
-                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.publishDelayLatencyBytes)));
-                throw new RuntimeException(e);
-            }
+                    try {
+                        ensemble.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                                ByteBuffer.wrap(worker.publishDelayLatencyBytes), SECONDS.toMicros(30)));
+                    } catch (Exception e) {
+                        log.error("Failed to decode publish delay latency: {}",
+                                ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(worker.publishDelayLatencyBytes)));
+                        throw new RuntimeException(e);
+                    }
 
-            try {
-                stats.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                        ByteBuffer.wrap(is.endToEndLatencyBytes), TimeUnit.HOURS.toMicros(12)));
-            } catch (Exception e) {
-                log.error("Failed to decode end-to-end latency: {}",
-                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.endToEndLatencyBytes)));
-                throw new RuntimeException(e);
-            }
-        });
-        return stats;
-
+                    try {
+                        ensemble.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
+                                ByteBuffer.wrap(worker.endToEndLatencyBytes), HOURS.toMicros(12)));
+                    } catch (Exception e) {
+                        log.error("Failed to decode end-to-end latency: {}",
+                                ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(worker.endToEndLatencyBytes)));
+                        throw new RuntimeException(e);
+                    }
+                    return ensemble;
+                }
+        );
     }
 
     @Override
     public CountersStats getCountersStats() throws IOException {
-        CountersStats stats = new CountersStats();
-        workers.parallelStream().map(worker -> {
+        return workers.parallelStream().map(w -> {
             try {
-                return worker.getCountersStats();
+                return w.getCountersStats();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).forEach(is -> {
-            stats.messagesSent += is.messagesSent;
-            stats.messagesReceived += is.messagesReceived;
-            stats.messageSendErrors += is.messageSendErrors;
-        });
-        return stats;
+        }).reduce(
+                new CountersStats(),
+                (ensemble, worker) -> {
+                    ensemble.messagesSent += worker.messagesSent;
+                    ensemble.messagesReceived += worker.messagesReceived;
+                    ensemble.messageSendErrors += worker.messageSendErrors;
+                    return ensemble;
+                }
+        );
     }
 
     @Override
@@ -305,8 +315,10 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void close() throws Exception {
         Runtime.getRuntime().removeShutdownHook(shutdownHook);
-        for (Worker worker : workers) {
-            worker.close();
+        for (Worker w : workers) {
+            try {
+                w.close();
+            } catch (Exception e) {}
         }
     }
 
