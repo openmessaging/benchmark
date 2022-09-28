@@ -13,6 +13,19 @@
  */
 package io.openmessaging.benchmark;
 
+import static java.util.stream.Collectors.toList;
+import io.openmessaging.benchmark.worker.HttpWorkerClient;
+import java.io.File;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -21,62 +34,40 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 import io.openmessaging.benchmark.worker.DistributedWorkersEnsemble;
 import io.openmessaging.benchmark.worker.LocalWorker;
 import io.openmessaging.benchmark.worker.Worker;
-import java.io.File;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Benchmark {
 
     static class Arguments {
 
-        @Parameter(
-                names = {"-c", "--csv"},
-                description = "Print results from this directory to a csv file")
+        @Parameter(names = {"-c", "--csv"}, description = "Print results from this directory to a csv file")
         String resultsDir;
 
-        @Parameter(
-                names = {"-h", "--help"},
-                description = "Help message",
-                help = true)
+        @Parameter(names = { "-h", "--help" }, description = "Help message", help = true)
         boolean help;
 
-        @Parameter(
-                names = {"-d", "--drivers"},
-                description =
-                        "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml") // , required = true)
+        @Parameter(names = { "-d",
+                "--drivers" }, description = "Drivers list. eg.: pulsar/pulsar.yaml,kafka/kafka.yaml")//, required = true)
         public List<String> drivers;
 
-        @Parameter(
-                names = {"-w", "--workers"},
-                description = "List of worker nodes. eg: http://1.2.3.4:8080,http://4.5.6.7:8080")
+        @Parameter(names = { "-w",
+                "--workers" }, description = "List of worker nodes. eg: http://1.2.3.4:8080,http://4.5.6.7:8080")
         public List<String> workers;
 
-        @Parameter(
-                names = {"-wf", "--workers-file"},
-                description = "Path to a YAML file containing the list of workers addresses")
+        @Parameter(names = { "-wf",
+                "--workers-file" }, description = "Path to a YAML file containing the list of workers addresses")
         public File workersFile;
 
-        @Parameter(
-                names = {"-x", "--extra"},
-                description = "Allocate extra consumer workers when your backlog builds.")
+        @Parameter(names = { "-x", "--extra" }, description = "Allocate extra consumer workers when your backlog builds.")
         boolean extraConsumers;
 
-        @Parameter(description = "Workloads") // , required = true)
+        @Parameter(description = "Workloads")//, required = true)
         public List<String> workloads;
 
-        @Parameter(
-                names = {"-o", "--output"},
-                description = "Output",
-                required = false)
+        @Parameter(names = { "-o", "--output" }, description = "Output", required = false)
         public String output;
     }
 
@@ -98,7 +89,7 @@ public class Benchmark {
             System.exit(-1);
         }
 
-        if (arguments.resultsDir != null) {
+        if(arguments.resultsDir != null) {
             ResultsToCsv r = new ResultsToCsv();
             r.writeAllResultFiles(arguments.resultsDir);
             System.exit(0);
@@ -138,73 +129,58 @@ public class Benchmark {
         Worker worker;
 
         if (arguments.workers != null && !arguments.workers.isEmpty()) {
-            worker = new DistributedWorkersEnsemble(arguments.workers, arguments.extraConsumers);
+            List<Worker> workers = arguments.workers.stream().map(w -> new HttpWorkerClient(w)).collect(toList());
+            worker = new DistributedWorkersEnsemble(workers, arguments.extraConsumers);
         } else {
             // Use local worker implementation
             worker = new LocalWorker();
         }
 
-        workloads.forEach(
-                (workloadName, workload) -> {
-                    arguments.drivers.forEach(
-                            driverConfig -> {
-                                try {
-                                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-                                    File driverConfigFile = new File(driverConfig);
-                                    DriverConfiguration driverConfiguration =
-                                            mapper.readValue(driverConfigFile, DriverConfiguration.class);
-                                    log.info(
-                                            "--------------- WORKLOAD : {} --- DRIVER : {}---------------",
-                                            workload.name,
-                                            driverConfiguration.name);
+        workloads.forEach((workloadName, workload) -> {
+            arguments.drivers.forEach(driverConfig -> {
+                try {
+                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                    File driverConfigFile = new File(driverConfig);
+                    DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile,
+                            DriverConfiguration.class);
+                    log.info("--------------- WORKLOAD : {} --- DRIVER : {}---------------", workload.name,
+                            driverConfiguration.name);
 
-                                    // Stop any left over workload
-                                    worker.stopAll();
+                    // Stop any left over workload
+                    worker.stopAll();
 
-                                    worker.initializeDriver(new File(driverConfig));
+                    worker.initializeDriver(new File(driverConfig));
 
-                                    WorkloadGenerator generator =
-                                            new WorkloadGenerator(driverConfiguration.name, workload, worker);
+                    WorkloadGenerator generator = new WorkloadGenerator(driverConfiguration.name, workload, worker);
 
-                                    TestResult result = generator.run();
+                    TestResult result = generator.run();
 
-                                    boolean useOutput = (arguments.output != null) && (arguments.output.length() > 0);
+                    boolean useOutput = (arguments.output != null) && (arguments.output.length() > 0);
 
-                                    String fileName =
-                                            useOutput
-                                                    ? arguments.output
-                                                    : String.format(
-                                                            "%s-%s-%s.json",
-                                                            workloadName,
-                                                            driverConfiguration.name,
-                                                            dateFormat.format(new Date()));
+                    String fileName = useOutput? arguments.output: String.format("%s-%s-%s.json", workloadName,
+                    driverConfiguration.name, dateFormat.format(new Date()));
 
-                                    log.info("Writing test result into {}/{}", workloadName, fileName);
-                                    File folder = new File(workloadName);
-                                    if (!folder.mkdirs()) {
-                                        log.debug("Unable to create folder {}", folder);
-                                    }
-                                    writer.writeValue(new File(folder, fileName), result);
+                    log.info("Writing test result into {}/{}", workloadName, fileName);
+                    File folder = new File(workloadName);
+                    if (!folder.mkdirs()) {
+                        log.debug("Unable to create folder {}", folder);
+                    }
+                    writer.writeValue(new File(folder, fileName), result);
 
-                                    generator.close();
-                                } catch (Exception e) {
-                                    log.error(
-                                            "Failed to run the workload '{}' for driver '{}'",
-                                            workload.name,
-                                            driverConfig,
-                                            e);
-                                } finally {
-                                    worker.stopAll();
-                                }
-                            });
-                });
+                    generator.close();
+                } catch (Exception e) {
+                    log.error("Failed to run the workload '{}' for driver '{}'", workload.name, driverConfig, e);
+                } finally {
+                    worker.stopAll();
+                }
+            });
+        });
 
         worker.close();
     }
 
-    private static final ObjectMapper mapper =
-            new ObjectMapper(new YAMLFactory())
-                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
         mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);

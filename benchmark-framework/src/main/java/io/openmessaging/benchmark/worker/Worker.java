@@ -53,4 +53,6 @@ public interface Worker extends AutoCloseable {
     void resetStats() throws IOException;
 
     void stopAll();
+
+    String id();
 }
