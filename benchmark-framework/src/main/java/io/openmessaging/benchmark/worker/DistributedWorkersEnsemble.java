@@ -14,15 +14,11 @@
 package io.openmessaging.benchmark.worker;
 
 import static java.util.Collections.unmodifiableList;
-import static java.util.concurrent.TimeUnit.HOURS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import com.beust.jcommander.internal.Maps;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.Unpooled;
 import io.openmessaging.benchmark.utils.ListPartition;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.CountersStats;
@@ -33,11 +29,8 @@ import io.openmessaging.benchmark.worker.commands.TopicSubscription;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.DataFormatException;
-import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -211,33 +204,7 @@ public class DistributedWorkersEnsemble implements Worker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).reduce(
-                new PeriodStats(),
-                (ensemble, worker) -> {
-                    ensemble.messagesSent += worker.messagesSent;
-                    ensemble.messageSendErrors += worker.messageSendErrors;
-                    ensemble.bytesSent += worker.bytesSent;
-                    ensemble.messagesReceived += worker.messagesReceived;
-                    ensemble.bytesReceived += worker.bytesReceived;
-                    ensemble.totalMessagesSent += worker.totalMessagesSent;
-                    ensemble.totalMessageSendErrors += worker.totalMessageSendErrors;
-                    ensemble.totalMessagesReceived += worker.totalMessagesReceived;
-
-                    try {
-                        ensemble.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                                ByteBuffer.wrap(worker.publishLatencyBytes), SECONDS.toMicros(30)));
-
-                        ensemble.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                                ByteBuffer.wrap(worker.publishDelayLatencyBytes), SECONDS.toMicros(30)));
-
-                        ensemble.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                                ByteBuffer.wrap(worker.endToEndLatencyBytes), HOURS.toMicros(12)));
-                    } catch (ArrayIndexOutOfBoundsException | DataFormatException e) {
-                        throw new RuntimeException(e);
-                    }
-                    return ensemble;
-                }
-        );
+        }).reduce(new PeriodStats(), (ensemble, worker) -> ensemble.plus(worker));
     }
 
     @Override
@@ -248,38 +215,7 @@ public class DistributedWorkersEnsemble implements Worker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).reduce(
-                new CumulativeLatencies(),
-                (ensemble, worker) -> {
-                    try {
-                        ensemble.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                                ByteBuffer.wrap(worker.publishLatencyBytes), SECONDS.toMicros(30)));
-                    } catch (Exception e) {
-                        log.error("Failed to decode publish latency: {}",
-                                ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(worker.publishLatencyBytes)));
-                        throw new RuntimeException(e);
-                    }
-
-                    try {
-                        ensemble.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                                ByteBuffer.wrap(worker.publishDelayLatencyBytes), SECONDS.toMicros(30)));
-                    } catch (Exception e) {
-                        log.error("Failed to decode publish delay latency: {}",
-                                ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(worker.publishDelayLatencyBytes)));
-                        throw new RuntimeException(e);
-                    }
-
-                    try {
-                        ensemble.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                                ByteBuffer.wrap(worker.endToEndLatencyBytes), HOURS.toMicros(12)));
-                    } catch (Exception e) {
-                        log.error("Failed to decode end-to-end latency: {}",
-                                ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(worker.endToEndLatencyBytes)));
-                        throw new RuntimeException(e);
-                    }
-                    return ensemble;
-                }
-        );
+        }).reduce(new CumulativeLatencies(), CumulativeLatencies::plus);
     }
 
     @Override
@@ -290,15 +226,7 @@ public class DistributedWorkersEnsemble implements Worker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).reduce(
-                new CountersStats(),
-                (ensemble, worker) -> {
-                    ensemble.messagesSent += worker.messagesSent;
-                    ensemble.messagesReceived += worker.messagesReceived;
-                    ensemble.messageSendErrors += worker.messageSendErrors;
-                    return ensemble;
-                }
-        );
+        }).reduce(new CountersStats(), CountersStats::plus);
     }
 
     @Override
