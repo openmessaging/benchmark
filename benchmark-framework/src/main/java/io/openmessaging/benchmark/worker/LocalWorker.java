@@ -446,6 +446,11 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
+    public String id() {
+        return "local";
+    }
+
+    @Override
     public void close() throws Exception {
         executor.shutdown();
     }
