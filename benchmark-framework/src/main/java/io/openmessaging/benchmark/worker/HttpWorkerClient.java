@@ -51,6 +51,9 @@ import org.slf4j.LoggerFactory;
 
 public class HttpWorkerClient implements Worker {
 
+    private static final byte[] NO_BODY = new byte[0];
+    private static final int HTTP_OK = 200;
+
     private final AsyncHttpClient httpClient;
     private final String host;
 
@@ -91,7 +94,7 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void probeProducers() throws IOException {
-        sendPost(PROBE_PRODUCERS, new byte[0]);
+        sendPost(PROBE_PRODUCERS, NO_BODY);
     }
 
     @Override
@@ -108,12 +111,12 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void pauseConsumers() throws IOException {
-        sendPost(PAUSE_CONSUMERS, new byte[0]);
+        sendPost(PAUSE_CONSUMERS, NO_BODY);
     }
 
     @Override
     public void resumeConsumers() throws IOException {
-        sendPost(RESUME_CONSUMERS, new byte[0]);
+        sendPost(RESUME_CONSUMERS, NO_BODY);
     }
 
     @Override
@@ -133,12 +136,12 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void resetStats() throws IOException {
-        sendPost(RESET_STATS, new byte[0]);
+        sendPost(RESET_STATS, NO_BODY);
     }
 
     @Override
     public void stopAll() {
-        sendPost(STOP_ALL, new byte[0]);
+        sendPost(STOP_ALL, NO_BODY);
     }
 
     @Override
@@ -156,7 +159,7 @@ public class HttpWorkerClient implements Worker {
             if (x.getStatusCode() != 200) {
                 log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, x.getStatusCode());
             }
-            Preconditions.checkArgument(x.getStatusCode() == 200);
+            Preconditions.checkArgument(x.getStatusCode() == HTTP_OK);
             return (Void) null;
         }).join();
     }
@@ -167,7 +170,7 @@ public class HttpWorkerClient implements Worker {
                 if (response.getStatusCode() != 200) {
                     log.error("Failed to do HTTP get request to {}{} -- code: {}", host, path, response.getStatusCode());
                 }
-                Preconditions.checkArgument(response.getStatusCode() == 200);
+                Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
                 return mapper.readValue(response.getResponseBody(), clazz);
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -181,7 +184,7 @@ public class HttpWorkerClient implements Worker {
                 if (response.getStatusCode() != 200) {
                     log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
                 }
-                Preconditions.checkArgument(response.getStatusCode() == 200);
+                Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
                 return mapper.readValue(response.getResponseBody(), clazz);
             } catch (IOException e) {
                 throw new RuntimeException(e);
