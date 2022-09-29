@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.kop;
 
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -61,8 +62,9 @@ import org.apache.pulsar.common.util.FutureUtil;
 
 public class KopBenchmarkDriver implements BenchmarkDriver {
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private final List<BenchmarkProducer> producers = new CopyOnWriteArrayList<>();
     private final List<BenchmarkConsumer> consumers = new CopyOnWriteArrayList<>();
@@ -93,23 +95,30 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
         consumerProperties = new Properties();
         commonProperties.forEach(consumerProperties::put);
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+        consumerProperties.put(
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 
         final PulsarConfig pulsarConfig = config.pulsarConfig;
         if (config.producerType.equals(ClientType.PULSAR)) {
-            producerBuilder = getPulsarClient(pulsarConfig.serviceUrl).newProducer()
-                    .enableBatching(pulsarConfig.batchingEnabled)
-                    .blockIfQueueFull(pulsarConfig.blockIfQueueFull)
-                    .batchingMaxPublishDelay(pulsarConfig.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
-                    .batchingMaxBytes(pulsarConfig.batchingMaxBytes)
-                    .maxPendingMessages(pulsarConfig.pendingQueueSize)
-                    .maxPendingMessagesAcrossPartitions(pulsarConfig.maxPendingMessagesAcrossPartitions);
+            producerBuilder =
+                    getPulsarClient(pulsarConfig.serviceUrl)
+                            .newProducer()
+                            .enableBatching(pulsarConfig.batchingEnabled)
+                            .blockIfQueueFull(pulsarConfig.blockIfQueueFull)
+                            .batchingMaxPublishDelay(
+                                    pulsarConfig.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
+                            .batchingMaxBytes(pulsarConfig.batchingMaxBytes)
+                            .maxPendingMessages(pulsarConfig.pendingQueueSize)
+                            .maxPendingMessagesAcrossPartitions(pulsarConfig.maxPendingMessagesAcrossPartitions);
         }
         if (config.consumerType.equals(ClientType.PULSAR)) {
-            consumerBuilder = getPulsarClient(pulsarConfig.serviceUrl).newConsumer(Schema.BYTEBUFFER)
-                    .subscriptionType(SubscriptionType.Failover)
-                    .receiverQueueSize(pulsarConfig.receiverQueueSize)
-                    .maxTotalReceiverQueueSizeAcrossPartitions(pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions);
+            consumerBuilder =
+                    getPulsarClient(pulsarConfig.serviceUrl)
+                            .newConsumer(Schema.BYTEBUFFER)
+                            .subscriptionType(SubscriptionType.Failover)
+                            .receiverQueueSize(pulsarConfig.receiverQueueSize)
+                            .maxTotalReceiverQueueSizeAcrossPartitions(
+                                    pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions);
         }
     }
 
@@ -123,13 +132,17 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
         // replicationFactor is meaningless in KoP
         final NewTopic newTopic = new NewTopic(topic, partitions, (short) 1L);
         final CompletableFuture<Void> future = new CompletableFuture<>();
-        admin.createTopics(Collections.singletonList(newTopic)).all().whenComplete((result, throwable) -> {
-            if (throwable == null) {
-                future.complete(result);
-            } else {
-                future.completeExceptionally(throwable);
-            }
-        });
+        admin
+                .createTopics(Collections.singletonList(newTopic))
+                .all()
+                .whenComplete(
+                        (result, throwable) -> {
+                            if (throwable == null) {
+                                future.complete(result);
+                            } else {
+                                future.completeExceptionally(throwable);
+                            }
+                        });
         return future;
     }
 
@@ -141,12 +154,17 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
             producers.add(producer);
             return CompletableFuture.completedFuture(producer);
         } else if (config.consumerType.equals(ClientType.PULSAR)) {
-            return producerBuilder.clone().topic(topic).createAsync().thenApply(PulsarBenchmarkProducer::new);
+            return producerBuilder
+                    .clone()
+                    .topic(topic)
+                    .createAsync()
+                    .thenApply(PulsarBenchmarkProducer::new);
         } else {
             throw new IllegalArgumentException("producerType " + config.producerType + " is invalid");
         }
     }
 
+    @SuppressWarnings("checkstyle:LineLength")
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             String topic, String subscriptionName, ConsumerCallback consumerCallback) {
@@ -157,19 +175,27 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
             properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
             final KafkaConsumer<String, byte[]> kafkaConsumer = new KafkaConsumer<>(properties);
             kafkaConsumer.subscribe(Collections.singleton(topic));
-            final BenchmarkConsumer consumer = new KafkaBenchmarkConsumer(
-                    kafkaConsumer, properties, consumerCallback, config.pollTimeoutMs);
+            final BenchmarkConsumer consumer =
+                    new KafkaBenchmarkConsumer(
+                            kafkaConsumer, properties, consumerCallback, config.pollTimeoutMs);
             consumers.add(consumer);
             return CompletableFuture.completedFuture(consumer);
         } else if (config.consumerType.equals(ClientType.PULSAR)) {
             final List<CompletableFuture<Consumer<ByteBuffer>>> futures = new ArrayList<>();
-            return client.getPartitionsForTopic(topic)
-                    .thenCompose(partitions -> {
-                        partitions.forEach(p -> futures.add(
-                                createInternalPulsarConsumer(p, subscriptionName, consumerCallback)));
-                        return FutureUtil.waitForAll(futures);
-                    }).thenApply(__ -> new PulsarBenchmarkConsumer(futures.stream().map(CompletableFuture::join)
-                            .collect(Collectors.toList())));
+            return client
+                    .getPartitionsForTopic(topic)
+                    .thenCompose(
+                            partitions -> {
+                                partitions.forEach(
+                                        p ->
+                                                futures.add(
+                                                        createInternalPulsarConsumer(p, subscriptionName, consumerCallback)));
+                                return FutureUtil.waitForAll(futures);
+                            })
+                    .thenApply(
+                            __ ->
+                                    new PulsarBenchmarkConsumer(
+                                            futures.stream().map(CompletableFuture::join).collect(Collectors.toList())));
         } else {
             throw new IllegalArgumentException("consumerType " + config.consumerType + " is invalid");
         }
@@ -198,19 +224,22 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
 
     private CompletableFuture<Consumer<ByteBuffer>> createInternalPulsarConsumer(
             String topic, String subscriptionName, ConsumerCallback callback) {
-        return consumerBuilder.clone()
+        return consumerBuilder
+                .clone()
                 .topic(topic)
                 .subscriptionName(subscriptionName)
-                .messagePayloadProcessor(new KafkaPayloadProcessor()) // support consuming Kafka format messages
+                .messagePayloadProcessor(
+                        new KafkaPayloadProcessor()) // support consuming Kafka format messages
                 .poolMessages(true)
-                .messageListener((c, msg) -> {
-                    try {
-                        callback.messageReceived(msg.getValue(), msg.getPublishTime());
-                        c.acknowledgeAsync(msg);
-                    } finally {
-                        msg.release();
-                    }
-                })
+                .messageListener(
+                        (c, msg) -> {
+                            try {
+                                callback.messageReceived(msg.getValue(), msg.getPublishTime());
+                                c.acknowledgeAsync(msg);
+                            } finally {
+                                msg.release();
+                            }
+                        })
                 .subscribeAsync();
     }
 }

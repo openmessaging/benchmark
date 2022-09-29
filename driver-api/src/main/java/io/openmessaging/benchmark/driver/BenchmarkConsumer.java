@@ -13,6 +13,4 @@
  */
 package io.openmessaging.benchmark.driver;
 
-public interface BenchmarkConsumer extends AutoCloseable {
-
-}
+public interface BenchmarkConsumer extends AutoCloseable {}

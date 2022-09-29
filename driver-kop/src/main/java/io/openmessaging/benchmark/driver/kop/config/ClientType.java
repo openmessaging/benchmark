@@ -13,9 +13,12 @@
  */
 package io.openmessaging.benchmark.driver.kop.config;
 
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public enum ClientType {
-    @JsonProperty("kafka") KAFKA,
-    @JsonProperty("pulsar") PULSAR
+    @JsonProperty("kafka")
+    KAFKA,
+    @JsonProperty("pulsar")
+    PULSAR
 }

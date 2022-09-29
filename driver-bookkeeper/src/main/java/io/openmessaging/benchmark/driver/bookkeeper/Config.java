@@ -18,5 +18,4 @@ public class Config {
     public String dlogUri;
 
     public String dlogConf;
-
 }

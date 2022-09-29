@@ -13,17 +13,17 @@
  */
 package io.openmessaging.benchmark.driver.nats;
 
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.ErrorListener;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamManagement;
-import io.nats.client.JetStreamOptions;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
-import io.nats.client.MessageHandler;
 import io.nats.client.Nats;
 import io.nats.client.Options;
 import io.nats.client.PushSubscribeOptions;
@@ -31,7 +31,6 @@ import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.support.JsonUtils;
-import java.time.Duration;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
@@ -42,8 +41,6 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.nats.client.Connection;
-
 
 public class NatsBenchmarkDriver implements BenchmarkDriver {
     private NatsConfig config;
@@ -52,24 +49,28 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     private JetStream jetStream;
 
     @Override
-    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException, InterruptedException {
+    public void initialize(File configurationFile, StatsLogger statsLogger)
+            throws IOException, InterruptedException {
         config = mapper.readValue(configurationFile, NatsConfig.class);
         log.info("read config file," + config.toString());
-        this.connection = Nats.connect(new Options.Builder()
-                .server(config.natsHostUrl)
-                .maxReconnects(5)
-                .errorListener(new ErrorListener() {
-                    @Override
-                    public void errorOccurred(Connection conn, String error) {
-                        log.error("Error on connection {}: {}", conn, error);
-                    }
+        this.connection =
+                Nats.connect(
+                        new Options.Builder()
+                                .server(config.natsHostUrl)
+                                .maxReconnects(5)
+                                .errorListener(
+                                        new ErrorListener() {
+                                            @Override
+                                            public void errorOccurred(Connection conn, String error) {
+                                                log.error("Error on connection {}: {}", conn, error);
+                                            }
 
-                    @Override
-                    public void exceptionOccurred(Connection conn, Exception exp) {
-                        log.error("Exception on connection {}", conn, exp);
-                    }
-                })
-                .build());
+                                            @Override
+                                            public void exceptionOccurred(Connection conn, Exception exp) {
+                                                log.error("Exception on connection {}", conn, exp);
+                                            }
+                                        })
+                                .build());
         this.jetStream = connection.jetStream();
     }
 
@@ -82,12 +83,14 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<Void> createTopic(String topic, int partitions) {
         try {
             JetStreamManagement jsm = connection.jetStreamManagement();
-            StreamInfo streamInfo = jsm.addStream(StreamConfiguration.builder()
-                    .name(topic)
-                    .subjects(topic)
-                    .storageType(StorageType.File)
-                    .replicas(config.replicationFactor)
-                    .build());
+            StreamInfo streamInfo =
+                    jsm.addStream(
+                            StreamConfiguration.builder()
+                                    .name(topic)
+                                    .subjects(topic)
+                                    .storageType(StorageType.File)
+                                    .replicas(config.replicationFactor)
+                                    .build());
             log.info("Created stream {} -- {}", topic, JsonUtils.getFormatted(streamInfo));
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
@@ -103,18 +106,23 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-                                                               ConsumerCallback consumerCallback) {
-
+    public CompletableFuture<BenchmarkConsumer> createConsumer(
+            String topic, String subscriptionName, ConsumerCallback consumerCallback) {
 
         Dispatcher dispatcher = connection.createDispatcher();
 
         try {
-            JetStreamSubscription sub = jetStream.subscribe(topic, dispatcher, (Message msg) -> {
-                long publishTimestamp = readLongFromBytes(msg.getData());
-                consumerCallback.messageReceived(msg.getData(), publishTimestamp);
-                msg.ack();
-            }, false, new PushSubscribeOptions.Builder().build());
+            JetStreamSubscription sub =
+                    jetStream.subscribe(
+                            topic,
+                            dispatcher,
+                            (Message msg) -> {
+                                long publishTimestamp = readLongFromBytes(msg.getData());
+                                consumerCallback.messageReceived(msg.getData(), publishTimestamp);
+                                msg.ack();
+                            },
+                            false,
+                            new PushSubscribeOptions.Builder().build());
             return CompletableFuture.completedFuture(new NatsBenchmarkConsumer());
         } catch (Exception e) {
             CompletableFuture<BenchmarkConsumer> f = new CompletableFuture<>();
@@ -129,8 +137,9 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     }
 
     private static final Logger log = LoggerFactory.getLogger(NatsBenchmarkDriver.class);
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private static long readLongFromBytes(final byte[] b) {
         long result = 0;
@@ -140,5 +149,4 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
         }
         return result;
     }
-
 }

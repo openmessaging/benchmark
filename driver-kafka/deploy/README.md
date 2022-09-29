@@ -9,8 +9,8 @@ Customize the instance types in the terraform.tfvars.
 
 If you choose larger instances, they come with more drives. To include those in the benchmarks you must:
 
- - update the Ansible script to include them in the mount and filesystem tasks
- - update the server.properties to include them in the logs.dir config
+- update the Ansible script to include them in the mount and filesystem tasks
+- update the server.properties to include them in the logs.dir config
 
 NOTE: When using d2 instances, the instance stores are not automatically generated. You must add them to the provision-kafka-aws.tf file.
 

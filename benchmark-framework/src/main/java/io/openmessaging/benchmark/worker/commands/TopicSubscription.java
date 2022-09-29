@@ -17,8 +17,7 @@ public class TopicSubscription {
     public String topic;
     public String subscription;
 
-    public TopicSubscription() {
-    }
+    public TopicSubscription() {}
 
     public TopicSubscription(String topic, String subscription) {
         this.topic = topic;
@@ -27,9 +26,13 @@ public class TopicSubscription {
 
     @Override
     public String toString() {
-        return "TopicSubscription{" +
-            "topic='" + topic + '\'' +
-            ", subscription='" + subscription + '\'' +
-            '}';
+        return "TopicSubscription{"
+                + "topic='"
+                + topic
+                + '\''
+                + ", subscription='"
+                + subscription
+                + '\''
+                + '}';
     }
 }

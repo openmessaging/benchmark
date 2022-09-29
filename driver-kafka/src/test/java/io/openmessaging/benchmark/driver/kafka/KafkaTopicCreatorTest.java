@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import java.util.HashMap;
 import java.util.List;
@@ -46,12 +47,9 @@ class KafkaTopicCreatorTest {
     private final int partitions = 1;
     private final short replicationFactor = 1;
     private final TopicInfo topicInfo = new TopicInfo(topic, partitions);
-    @Mock
-    private AdminClient admin;
-    @Mock
-    private CreateTopicsResult createTopicsResult;
-    @Captor
-    private ArgumentCaptor<List<NewTopic>> captor;
+    @Mock private AdminClient admin;
+    @Mock private CreateTopicsResult createTopicsResult;
+    @Captor private ArgumentCaptor<List<NewTopic>> captor;
     private KafkaTopicCreator topicCreator;
 
     @BeforeEach

@@ -13,17 +13,23 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
+
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.jms.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import javax.jms.BytesMessage;
+import javax.jms.CompletionListener;
+import javax.jms.Connection;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
 
@@ -31,7 +37,13 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
     private final boolean useAsyncSend;
     private final Connection connection;
     private final List<JMSConfig.AddProperty> properties;
-    public JMSBenchmarkTransactionProducer(Connection connection, String destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
+
+    public JMSBenchmarkTransactionProducer(
+            Connection connection,
+            String destination,
+            boolean useAsyncSend,
+            List<JMSConfig.AddProperty> properties)
+            throws Exception {
         this.destination = destination;
         this.useAsyncSend = useAsyncSend;
         this.connection = connection;
@@ -39,57 +51,54 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
     }
 
     @Override
-    public void close() {
-    }
+    public void close() {}
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        try
-        {
+        try {
             // start a new Session every time, we cannot share the same Session
             // among the Producers because we want to have control over the commit operation
             Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
             MessageProducer producer = session.createProducer(session.createTopic(destination));
             BytesMessage bytesMessage = session.createBytesMessage();
             bytesMessage.writeBytes(payload);
-            if (key.isPresent())
-            {
+            if (key.isPresent()) {
                 // a behaviour similar to https://activemq.apache.org/message-groups
                 bytesMessage.setStringProperty("JMSXGroupID", key.get());
             }
             for (JMSConfig.AddProperty prop : properties) {
                 bytesMessage.setStringProperty(prop.name, prop.value);
             }
-	    // Add a timer property for end to end
-	    bytesMessage.setLongProperty("E2EStartMillis",System.currentTimeMillis());
+            // Add a timer property for end to end
+            bytesMessage.setLongProperty("E2EStartMillis", System.currentTimeMillis());
             if (useAsyncSend) {
                 CompletableFuture<Void> res = new CompletableFuture<>();
-                producer.send(bytesMessage, new CompletionListener()
-                {
-                    @Override
-                    public void onCompletion(Message message)
-                    {
-                        res.complete(null);
-                    }
+                producer.send(
+                        bytesMessage,
+                        new CompletionListener() {
+                            @Override
+                            public void onCompletion(Message message) {
+                                res.complete(null);
+                            }
 
-                    @Override
-                    public void onException(Message message, Exception exception)
-                    {
-                        log.info("send completed with error", exception);
-                        res.completeExceptionally(exception);
-                    }
-                });
-                return res.whenCompleteAsync((msg, error) -> {
-                    if (error == null) {
-                        // you cannot close the producer and session inside the CompletionListener
-                        try {
-                            session.commit();
-                        } catch (JMSException err) {
-                            throw new CompletionException(err);
-                        }
-                    }
-                    ensureClosed(producer, session);;
-                });
+                            @Override
+                            public void onException(Message message, Exception exception) {
+                                log.info("send completed with error", exception);
+                                res.completeExceptionally(exception);
+                            }
+                        });
+                return res.whenCompleteAsync(
+                        (msg, error) -> {
+                            if (error == null) {
+                                // you cannot close the producer and session inside the CompletionListener
+                                try {
+                                    session.commit();
+                                } catch (JMSException err) {
+                                    throw new CompletionException(err);
+                                }
+                            }
+                            ensureClosed(producer, session);
+                        });
             } else {
 
                 try {
@@ -107,10 +116,9 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
             res.completeExceptionally(err);
             return res;
         }
-
     }
 
-    private void ensureClosed(MessageProducer producer, Session session)  {
+    private void ensureClosed(MessageProducer producer, Session session) {
         try {
             producer.close();
         } catch (Throwable err) {

@@ -14,9 +14,9 @@
 package io.openmessaging.benchmark.driver.pulsar;
 
 import static java.util.Collections.unmodifiableList;
+
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import org.apache.pulsar.client.api.Consumer;
 

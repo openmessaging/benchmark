@@ -13,11 +13,10 @@
  */
 package io.openmessaging.benchmark.worker.commands;
 
-import java.util.concurrent.TimeUnit;
-
-import org.HdrHistogram.Histogram;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.concurrent.TimeUnit;
+import org.HdrHistogram.Histogram;
 
 public class PeriodStats {
     public long messagesSent = 0;
@@ -31,16 +30,14 @@ public class PeriodStats {
     public long totalMessageSendErrors = 0;
     public long totalMessagesReceived = 0;
 
-    @JsonIgnore
-    public Histogram publishLatency = new Histogram(TimeUnit.SECONDS.toMicros(60), 5);
+    @JsonIgnore public Histogram publishLatency = new Histogram(TimeUnit.SECONDS.toMicros(60), 5);
     public byte[] publishLatencyBytes;
 
     @JsonIgnore
     public Histogram publishDelayLatency = new Histogram(TimeUnit.SECONDS.toMicros(60), 5);
+
     public byte[] publishDelayLatencyBytes;
 
-
-    @JsonIgnore
-    public Histogram endToEndLatency = new Histogram(TimeUnit.HOURS.toMicros(12), 5);
+    @JsonIgnore public Histogram endToEndLatency = new Histogram(TimeUnit.HOURS.toMicros(12), 5);
     public byte[] endToEndLatencyBytes;
 }

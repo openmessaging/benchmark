@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.driver.natsStreaming;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -37,7 +38,6 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.LoggerFactory;
 
-
 public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
     private final String defaultClusterId = "test-cluster";
     private String clusterId;
@@ -45,7 +45,9 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
     private StreamingConnection natsStreamingPublisher;
     private SubscriptionOptions.Builder subBuilder = new SubscriptionOptions.Builder();
     private Options.Builder optsBuilder = new Options.Builder();
-    @Override public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
+
+    @Override
+    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, NatsStreamingClientConfig.class);
         log.info("read config file," + config.toString());
         if (config.clusterId != null) {
@@ -62,11 +64,13 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
         subBuilder.maxInFlight(config.maxInFlight);
     }
 
-    @Override public String getTopicNamePrefix() {
+    @Override
+    public String getTopicNamePrefix() {
         return "Nats-streaming-benchmark";
     }
 
-    @Override public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    @Override
+    public CompletableFuture<Void> createTopic(String topic, int partitions) {
         log.info("nats streaming create a topic" + topic);
         log.info("ignore partitions");
         CompletableFuture<Void> future = new CompletableFuture<>();
@@ -74,7 +78,8 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
         return future;
     }
 
-    @Override public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
+    @Override
+    public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         if (natsStreamingPublisher == null) {
             String clientId = "ProducerInstance" + getRandomString();
             try {
@@ -85,43 +90,54 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
             }
         }
 
-        return CompletableFuture.completedFuture(new NatsStreamingBenchmarkProducer(natsStreamingPublisher, topic));
+        return CompletableFuture.completedFuture(
+                new NatsStreamingBenchmarkProducer(natsStreamingPublisher, topic));
     }
 
-    @Override public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-        ConsumerCallback consumerCallback) {
+    @Override
+    public CompletableFuture<BenchmarkConsumer> createConsumer(
+            String topic, String subscriptionName, ConsumerCallback consumerCallback) {
         Subscription sub;
         StreamingConnection streamingConnection;
         String clientId = "ConsumerInstance" + getRandomString();
         try {
             streamingConnection = NatsStreaming.connect(clusterId, clientId, optsBuilder.build());
-            streamingConnection.subscribe(topic, subscriptionName, new MessageHandler() {
-                @Override public void onMessage(Message message) {
-                    consumerCallback.messageReceived(message.getData(), message.getTimestamp());
-                }
-            }, subBuilder.build());
+            streamingConnection.subscribe(
+                    topic,
+                    subscriptionName,
+                    new MessageHandler() {
+                        @Override
+                        public void onMessage(Message message) {
+                            consumerCallback.messageReceived(message.getData(), message.getTimestamp());
+                        }
+                    },
+                    subBuilder.build());
         } catch (Exception e) {
             log.warn("nats streaming create consumer exception", e);
             return null;
         }
-        return CompletableFuture.completedFuture(new NatsStreamingBenchmarkConsumer(streamingConnection));
+        return CompletableFuture.completedFuture(
+                new NatsStreamingBenchmarkConsumer(streamingConnection));
     }
 
-    @Override public void close() throws Exception {
+    @Override
+    public void close() throws Exception {
         if (natsStreamingPublisher != null) {
             natsStreamingPublisher.close();
             natsStreamingPublisher = null;
         }
     }
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(NatsStreamingBenchmarkDriver.class);
+    private static final org.slf4j.Logger log =
+            LoggerFactory.getLogger(NatsStreamingBenchmarkDriver.class);
 
     private static final Random random = new Random();
 
-    private static final String getRandomString() {
+    private static String getRandomString() {
         byte[] buffer = new byte[5];
         random.nextBytes(buffer);
         return BaseEncoding.base64Url().omitPadding().encode(buffer);
@@ -131,24 +147,34 @@ public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
         try {
             Options opts = new Options.Builder().natsUrl("nats://0.0.0.0:4222").build();
             SubscriptionOptions.Builder builder = new SubscriptionOptions.Builder();
-            StreamingConnection streamingConnection = NatsStreaming.connect("mycluster", "benchmark-sub", opts);
-            Subscription sub = streamingConnection.subscribe("topicTest", "subscription", new MessageHandler() {
-                @Override public void onMessage(Message message) {
-                    System.out.println(message.toString());
-                }
-            }, builder.build());
-            StreamingConnection natsStreamingPublisher = NatsStreaming.connect("mycluster", "benchmark-pub", opts);
+            StreamingConnection streamingConnection =
+                    NatsStreaming.connect("mycluster", "benchmark-sub", opts);
+            Subscription sub =
+                    streamingConnection.subscribe(
+                            "topicTest",
+                            "subscription",
+                            new MessageHandler() {
+                                @Override
+                                public void onMessage(Message message) {
+                                    System.out.println(message.toString());
+                                }
+                            },
+                            builder.build());
+            StreamingConnection natsStreamingPublisher =
+                    NatsStreaming.connect("mycluster", "benchmark-pub", opts);
 
             final String[] guid = new String[1];
-            AckHandler acb = new AckHandler() {
-                @Override public void onAck(String s, Exception e) {
-                    if ((e != null) || !guid[0].equals(s)) {
-                        System.out.println("pub error");
-                    } else {
-                        System.out.println("pub success");
-                    }
-                }
-            };
+            AckHandler acb =
+                    new AckHandler() {
+                        @Override
+                        public void onAck(String s, Exception e) {
+                            if ((e != null) || !guid[0].equals(s)) {
+                                System.out.println("pub error");
+                            } else {
+                                System.out.println("pub success");
+                            }
+                        }
+                    };
 
             guid[0] = natsStreamingPublisher.publish("topicTest", "HelloStreaming".getBytes(UTF_8), acb);
 

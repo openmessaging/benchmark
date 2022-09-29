@@ -13,11 +13,13 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
+
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-
 import javax.jms.BytesMessage;
 import javax.jms.CompletionListener;
 import javax.jms.Destination;
@@ -25,12 +27,8 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
-
-import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
 
 public class JMSBenchmarkProducer implements BenchmarkProducer {
 
@@ -39,7 +37,13 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     private final MessageProducer producer;
     private final boolean useAsyncSend;
     private final List<JMSConfig.AddProperty> properties;
-    public JMSBenchmarkProducer(Session session, Destination destination, boolean useAsyncSend, List<JMSConfig.AddProperty> properties) throws Exception {
+
+    public JMSBenchmarkProducer(
+            Session session,
+            Destination destination,
+            boolean useAsyncSend,
+            List<JMSConfig.AddProperty> properties)
+            throws Exception {
         this.session = session;
         this.destination = destination;
         this.useAsyncSend = useAsyncSend;
@@ -55,36 +59,33 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
         CompletableFuture<Void> res = new CompletableFuture<>();
-        try
-        {
+        try {
             BytesMessage bytesMessage = session.createBytesMessage();
             bytesMessage.writeBytes(payload);
-            if (key.isPresent())
-            {
+            if (key.isPresent()) {
                 // a behaviour similar to https://activemq.apache.org/message-groups
                 bytesMessage.setStringProperty("JMSXGroupID", key.get());
             }
             for (JMSConfig.AddProperty prop : properties) {
                 bytesMessage.setStringProperty(prop.name, prop.value);
             }
-	    // Add a timer property for end to end
-	    bytesMessage.setLongProperty("E2EStartMillis",System.currentTimeMillis());
+            // Add a timer property for end to end
+            bytesMessage.setLongProperty("E2EStartMillis", System.currentTimeMillis());
             if (useAsyncSend) {
-                producer.send(bytesMessage, new CompletionListener()
-                {
-                    @Override
-                    public void onCompletion(Message message)
-                    {
-                        res.complete(null);
-                    }
+                producer.send(
+                        bytesMessage,
+                        new CompletionListener() {
+                            @Override
+                            public void onCompletion(Message message) {
+                                res.complete(null);
+                            }
 
-                    @Override
-                    public void onException(Message message, Exception exception)
-                    {
-                        log.error("send completed with error", exception);
-                        res.completeExceptionally(exception);
-                    }
-                });
+                            @Override
+                            public void onException(Message message, Exception exception) {
+                                log.error("send completed with error", exception);
+                                res.completeExceptionally(exception);
+                            }
+                        });
             } else {
                 producer.send(bytesMessage);
                 res.complete(null);
@@ -94,5 +95,6 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
         }
         return res;
     }
+
     private static final Logger log = LoggerFactory.getLogger(JMSBenchmarkProducer.class);
 }

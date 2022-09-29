@@ -17,8 +17,7 @@ public class TopicsInfo {
     public int numberOfTopics;
     public int numberOfPartitionsPerTopic;
 
-    public TopicsInfo() {
-    }
+    public TopicsInfo() {}
 
     public TopicsInfo(int numberOfTopics, int numberOfPartitionsPerTopic) {
         this.numberOfTopics = numberOfTopics;

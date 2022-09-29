@@ -13,13 +13,12 @@
  */
 package io.openmessaging.benchmark.driver.pulsar;
 
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
-import org.apache.pulsar.client.api.Producer;
-import org.apache.pulsar.client.api.TypedMessageBuilder;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 
 public class PulsarBenchmarkProducer implements BenchmarkProducer {
 
@@ -43,5 +42,4 @@ public class PulsarBenchmarkProducer implements BenchmarkProducer {
 
         return msgBuilder.sendAsync().thenApply(msgId -> null);
     }
-
 }

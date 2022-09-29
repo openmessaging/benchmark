@@ -13,8 +13,16 @@
  */
 package io.openmessaging.benchmark.driver.redis;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -22,14 +30,6 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.StreamEntry;
 import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.params.XReadGroupParams;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     private final JedisPool pool;
@@ -40,7 +40,12 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
 
-    public RedisBenchmarkConsumer(final String consumerId, final String topic, final String subscriptionName, final JedisPool pool, ConsumerCallback consumerCallback) {
+    public RedisBenchmarkConsumer(
+            final String consumerId,
+            final String topic,
+            final String subscriptionName,
+            final JedisPool pool,
+            ConsumerCallback consumerCallback) {
         this.pool = pool;
         this.topic = topic;
         this.subscriptionName = subscriptionName;
@@ -48,31 +53,34 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
         this.executor = Executors.newSingleThreadExecutor();
         Jedis jedis = this.pool.getResource();
 
+        this.consumerTask =
+                this.executor.submit(
+                        () -> {
+                            while (!closing) {
+                                try {
+                                    Map<String, StreamEntryID> streamQuery =
+                                            Collections.singletonMap(this.topic, StreamEntryID.UNRECEIVED_ENTRY);
+                                    List<Map.Entry<String, List<StreamEntry>>> range =
+                                            jedis.xreadGroup(
+                                                    this.subscriptionName,
+                                                    this.consumerId,
+                                                    XReadGroupParams.xReadGroupParams().block(0),
+                                                    streamQuery);
+                                    if (range != null) {
+                                        for (Map.Entry<String, List<StreamEntry>> streamEntries : range) {
+                                            for (StreamEntry entry : streamEntries.getValue()) {
+                                                long timestamp = entry.getID().getTime();
+                                                byte[] payload = entry.getFields().get("payload").getBytes(UTF_8);
+                                                consumerCallback.messageReceived(payload, timestamp);
+                                            }
+                                        }
+                                    }
 
-        this.consumerTask = this.executor.submit(() -> {
-            while (!closing) {
-                try {
-                    Map<String, StreamEntryID> streamQuery = Collections.singletonMap(this.topic, StreamEntryID.UNRECEIVED_ENTRY);
-                    List<Map.Entry<String, List<StreamEntry>>> range = jedis.xreadGroup(this.subscriptionName, this.consumerId,
-                            XReadGroupParams.xReadGroupParams().block(0), streamQuery);
-                    if (range!=null){
-                        for (Map.Entry<String, List<StreamEntry>> streamEntries:
-                                range) {
-                            for (StreamEntry entry:
-                                    streamEntries.getValue()) {
-                                long timestamp = entry.getID().getTime();
-                                byte[]payload = entry.getFields().get("payload").getBytes(StandardCharsets.UTF_8);
-                                consumerCallback.messageReceived(payload, timestamp);
+                                } catch (Exception e) {
+                                    log.error("Failed to read from consumer instance.", e);
+                                }
                             }
-                        }
-                    }
-
-                } catch (Exception e) {
-                    log.error("Failed to read from consumer instance.", e);
-                }
-            }
-        });
-
+                        });
     }
 
     @Override
@@ -82,6 +90,6 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
         consumerTask.get();
         pool.close();
     }
-    private static final Logger log = LoggerFactory.getLogger(RedisBenchmarkDriver.class);
 
+    private static final Logger log = LoggerFactory.getLogger(RedisBenchmarkDriver.class);
 }

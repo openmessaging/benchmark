@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.tool.workload;
 
+
 import io.openmessaging.benchmark.Workload;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,9 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang.text.StrSubstitutor;
 
 /**
- * Generates {@link Workload} names based on a template. Substitutes template  place-holders of the form
- * {@code ${variableName}}, where {@code variableName} is the name of a public member in {@link Workload}. Note that the
- * set of variables is statically assigned. Numeric values will typically be in a form that includes an SI suffix.
+ * Generates {@link Workload} names based on a template. Substitutes template place-holders of the
+ * form {@code ${variableName}}, where {@code variableName} is the name of a public member in {@link
+ * Workload}. Note that the set of variables is statically assigned. Numeric values will typically
+ * be in a form that includes an SI suffix.
  */
 @RequiredArgsConstructor
 class WorkloadNameFormat {
@@ -42,8 +44,11 @@ class WorkloadNameFormat {
         params.put("subscriptionsPerTopic", countToDisplaySize(workload.subscriptionsPerTopic));
         params.put("producersPerTopic", countToDisplaySize(workload.producersPerTopic));
         params.put("consumerPerSubscription", countToDisplaySize(workload.consumerPerSubscription));
-        params.put("producerRate",
-                (workload.producerRate >= MAX_PRODUCER_RATE) ? "max-rate" : countToDisplaySize(workload.producerRate));
+        params.put(
+                "producerRate",
+                (workload.producerRate >= MAX_PRODUCER_RATE)
+                        ? "max-rate"
+                        : countToDisplaySize(workload.producerRate));
         params.put("keyDistributor", workload.keyDistributor);
         params.put("payloadFile", workload.payloadFile);
         params.put("useRandomizedPayloads", workload.useRandomizedPayloads);

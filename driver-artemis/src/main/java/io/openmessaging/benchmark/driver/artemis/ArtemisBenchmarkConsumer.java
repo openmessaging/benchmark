@@ -13,6 +13,9 @@
  */
 package io.openmessaging.benchmark.driver.artemis;
 
+
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
 import org.apache.activemq.artemis.api.core.RoutingType;
 import org.apache.activemq.artemis.api.core.SimpleString;
@@ -22,31 +25,36 @@ import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
-
 public class ArtemisBenchmarkConsumer implements BenchmarkConsumer {
 
     private final ClientSession session;
     private final ClientConsumer consumer;
 
-    public ArtemisBenchmarkConsumer(String topic, String queueName, ClientSessionFactory sessionFactory, ConsumerCallback callback)
+    public ArtemisBenchmarkConsumer(
+            String topic,
+            String queueName,
+            ClientSessionFactory sessionFactory,
+            ConsumerCallback callback)
             throws ActiveMQException {
         session = sessionFactory.createSession();
-        session.createQueue(SimpleString.toSimpleString(topic), RoutingType.MULTICAST,
-                SimpleString.toSimpleString(queueName), true /* durable */);
+        session.createQueue(
+                SimpleString.toSimpleString(topic),
+                RoutingType.MULTICAST,
+                SimpleString.toSimpleString(queueName),
+                true /* durable */);
         consumer = session.createConsumer(queueName);
-        consumer.setMessageHandler(message -> {
-            byte[] payload = new byte[message.getBodyBuffer().readableBytes()];
-            message.getBodyBuffer().readBytes(payload);
-            callback.messageReceived(payload, message.getTimestamp());
-            try {
-                message.acknowledge();
-            } catch (ActiveMQException e) {
-                log.warn("Failed to acknowledge message", e);
-            }
-        });
-        
+        consumer.setMessageHandler(
+                message -> {
+                    byte[] payload = new byte[message.getBodyBuffer().readableBytes()];
+                    message.getBodyBuffer().readBytes(payload);
+                    callback.messageReceived(payload, message.getTimestamp());
+                    try {
+                        message.acknowledge();
+                    } catch (ActiveMQException e) {
+                        log.warn("Failed to acknowledge message", e);
+                    }
+                });
+
         session.start();
     }
 

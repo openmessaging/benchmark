@@ -13,7 +13,20 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.rabbitmq.client.AlreadyClosedException;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import io.netty.handler.codec.http.QueryStringDecoder;
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.BenchmarkDriver;
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -25,20 +38,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-
-import io.netty.handler.codec.http.QueryStringDecoder;
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.BenchmarkDriver;
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +55,8 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() {
-        for(Iterator<Map.Entry<String, Connection>> it = connections.entrySet().iterator(); it.hasNext(); ) {
+        for (Iterator<Map.Entry<String, Connection>> it = connections.entrySet().iterator();
+                it.hasNext(); ) {
             Connection connection = it.next().getValue();
             try {
                 connection.close();
@@ -67,13 +67,13 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
             }
             it.remove();
         }
-
     }
 
     @Override
     public String getTopicNamePrefix() {
         // Do a round-robin on AMQP URIs
-        URI configUri = URI.create(config.amqpUris.get(uriIndex.getAndIncrement() % config.amqpUris.size()));
+        URI configUri =
+                URI.create(config.amqpUris.get(uriIndex.getAndIncrement() % config.amqpUris.size()));
         URI topicUri = configUri.resolve(configUri.getRawPath() + "?exchange=test-exchange");
         return topicUri.toString();
     }
@@ -93,43 +93,54 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         CompletableFuture<BenchmarkProducer> future = new CompletableFuture<>();
-        ForkJoinPool.commonPool().execute(() -> {
-            try {
-                String uri = topic.split("\\?")[0];
-                Connection connection = getOrCreateConnection(uri);
-                Channel channel = connection.createChannel();
-                String exchange = getExchangeName(topic);
-                channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
-                channel.confirmSelect();
-                future.complete(new RabbitMqBenchmarkProducer(channel, exchange, config.messagePersistence));
-            } catch (Exception e) {
-                future.completeExceptionally(e);
-            }
-        });
+        ForkJoinPool.commonPool()
+                .execute(
+                        () -> {
+                            try {
+                                String uri = topic.split("\\?")[0];
+                                Connection connection = getOrCreateConnection(uri);
+                                Channel channel = connection.createChannel();
+                                String exchange = getExchangeName(topic);
+                                channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
+                                channel.confirmSelect();
+                                future.complete(
+                                        new RabbitMqBenchmarkProducer(channel, exchange, config.messagePersistence));
+                            } catch (Exception e) {
+                                future.completeExceptionally(e);
+                            }
+                        });
         return future;
     }
 
     @Override
-    public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-            ConsumerCallback consumerCallback) {
+    public CompletableFuture<BenchmarkConsumer> createConsumer(
+            String topic, String subscriptionName, ConsumerCallback consumerCallback) {
 
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
-        ForkJoinPool.commonPool().execute(() -> {
-            try {
-                String uri = topic.split("\\?")[0];
-                Connection connection = getOrCreateConnection(uri);
-                Channel channel = connection.createChannel();
-                String exchange = getExchangeName(topic);
-                String queueName = exchange + "-" + subscriptionName;
-                channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
-                // Create the queue
-                channel.queueDeclare(queueName, true, false, false, Collections.singletonMap("x-queue-type", "quorum"));
-                channel.queueBind(queueName, exchange, "");
-                future.complete(new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
-            } catch (IOException e) {
-                future.completeExceptionally(e);
-            }
-        });
+        ForkJoinPool.commonPool()
+                .execute(
+                        () -> {
+                            try {
+                                String uri = topic.split("\\?")[0];
+                                Connection connection = getOrCreateConnection(uri);
+                                Channel channel = connection.createChannel();
+                                String exchange = getExchangeName(topic);
+                                String queueName = exchange + "-" + subscriptionName;
+                                channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
+                                // Create the queue
+                                channel.queueDeclare(
+                                        queueName,
+                                        true,
+                                        false,
+                                        false,
+                                        Collections.singletonMap("x-queue-type", "quorum"));
+                                channel.queueBind(queueName, exchange, "");
+                                future.complete(
+                                        new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
+                            } catch (IOException e) {
+                                future.completeExceptionally(e);
+                            }
+                        });
 
         return future;
     }
@@ -138,27 +149,30 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         QueryStringDecoder decoder = new QueryStringDecoder(uri);
         Map<String, List<String>> parameters = decoder.parameters();
 
-        if(!parameters.containsKey("exchange")) {
+        if (!parameters.containsKey("exchange")) {
             throw new IllegalArgumentException("Missing exchange param");
         }
         return parameters.get("exchange").get(0);
     }
 
     private Connection getOrCreateConnection(String uri) {
-        return connections.computeIfAbsent(uri, uriKey -> {
-            try {
-                ConnectionFactory connectionFactory = new ConnectionFactory();
-                connectionFactory.setAutomaticRecoveryEnabled(true);
-                connectionFactory.setUri(uri);
-                return connectionFactory.newConnection();
-            } catch (Exception e) {
-                throw new RuntimeException("Couldn't establish connection", e);
-            }
-        });
+        return connections.computeIfAbsent(
+                uri,
+                uriKey -> {
+                    try {
+                        ConnectionFactory connectionFactory = new ConnectionFactory();
+                        connectionFactory.setAutomaticRecoveryEnabled(true);
+                        connectionFactory.setUri(uri);
+                        return connectionFactory.newConnection();
+                    } catch (Exception e) {
+                        throw new RuntimeException("Couldn't establish connection", e);
+                    }
+                });
     }
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkDriver.class);
 }
