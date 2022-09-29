@@ -13,20 +13,17 @@
  */
 package io.openmessaging.benchmark.worker;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.io.Files;
 import io.javalin.Context;
 import io.javalin.Javalin;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
-import io.openmessaging.benchmark.worker.jackson.HistogramSerializer;
+import io.openmessaging.benchmark.worker.jackson.ObjectMappers;
 import java.io.File;
 import java.util.List;
-import org.HdrHistogram.Histogram;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,16 +146,7 @@ public class WorkerHandler {
 
     private static final Logger log = LoggerFactory.getLogger(WorkerHandler.class);
 
-    private static final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    static {
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
-        SimpleModule module = new SimpleModule();
-        module.addSerializer(Histogram.class, new HistogramSerializer());
-        mapper.registerModule(module);
-    }
-
-    private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
+    private static final ObjectMapper mapper = ObjectMappers.DEFAULT.mapper();
+    private static final ObjectWriter writer = ObjectMappers.DEFAULT.writer();
 
 }

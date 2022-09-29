@@ -28,10 +28,8 @@ import static io.openmessaging.benchmark.worker.WorkerHandler.RESUME_CONSUMERS;
 import static io.openmessaging.benchmark.worker.WorkerHandler.START_LOAD;
 import static io.openmessaging.benchmark.worker.WorkerHandler.STOP_ALL;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.Preconditions;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.CountersStats;
@@ -39,13 +37,12 @@ import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
-import io.openmessaging.benchmark.worker.jackson.HistogramDeserializer;
+import io.openmessaging.benchmark.worker.jackson.ObjectMappers;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import org.HdrHistogram.Histogram;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Dsl;
 import org.slf4j.Logger;
@@ -200,17 +197,7 @@ public class HttpWorkerClient implements Worker {
         }).join();
     }
 
-    private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
-
-    private static final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    static {
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
-        SimpleModule module = new SimpleModule();
-        module.addDeserializer(Histogram.class, new HistogramDeserializer());
-        mapper.registerModule(module);
-    }
-
+    private static final ObjectMapper mapper = ObjectMappers.DEFAULT.mapper();
+    private static final ObjectWriter writer = ObjectMappers.DEFAULT.writer();
     private static final Logger log = LoggerFactory.getLogger(HttpWorkerClient.class);
 }
