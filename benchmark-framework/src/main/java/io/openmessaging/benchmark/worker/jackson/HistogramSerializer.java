@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.worker.jackson;
 
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
@@ -30,7 +31,8 @@ public class HistogramSerializer extends StdSerializer<Histogram> {
     }
 
     @Override
-    public void serialize(Histogram histogram, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+    public void serialize(
+            Histogram histogram, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
             throws IOException {
         ByteBuffer buffer = threadBuffer.get();
         buffer.clear();
@@ -40,5 +42,4 @@ public class HistogramSerializer extends StdSerializer<Histogram> {
         buffer.get(arr);
         jsonGenerator.writeBinary(arr);
     }
-
 }

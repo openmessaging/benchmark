@@ -29,5 +29,4 @@ public class CountersStats {
         result.messageSendErrors += toAdd.messageSendErrors;
         return result;
     }
-
 }

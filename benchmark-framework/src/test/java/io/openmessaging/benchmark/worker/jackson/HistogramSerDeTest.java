@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.worker.jackson;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;

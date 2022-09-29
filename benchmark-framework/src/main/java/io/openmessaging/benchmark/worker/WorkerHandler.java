@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.worker;
 
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
@@ -95,7 +96,8 @@ public class WorkerHandler {
     private void handleCreateConsumers(Context ctx) throws Exception {
         ConsumerAssignment consumerAssignment = mapper.readValue(ctx.body(), ConsumerAssignment.class);
 
-        log.info("Received create consumers request for topics: {}", consumerAssignment.topicsSubscriptions);
+        log.info(
+                "Received create consumers request for topics: {}", consumerAssignment.topicsSubscriptions);
         localWorker.createConsumers(consumerAssignment);
     }
 
@@ -108,9 +110,12 @@ public class WorkerHandler {
     }
 
     private void handleStartLoad(Context ctx) throws Exception {
-        ProducerWorkAssignment producerWorkAssignment = mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
+        ProducerWorkAssignment producerWorkAssignment =
+                mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
 
-        log.info("Start load publish-rate: {} msg/s -- payload-size: {}", producerWorkAssignment.publishRate,
+        log.info(
+                "Start load publish-rate: {} msg/s -- payload-size: {}",
+                producerWorkAssignment.publishRate,
                 producerWorkAssignment.payloadData.get(0).length);
 
         localWorker.startLoad(producerWorkAssignment);
@@ -148,5 +153,4 @@ public class WorkerHandler {
 
     private static final ObjectMapper mapper = ObjectMappers.DEFAULT.mapper();
     private static final ObjectWriter writer = ObjectMappers.DEFAULT.writer();
-
 }

@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.worker.jackson;
 
+
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -44,12 +45,15 @@ public class HistogramDeserializer extends StdDeserializer<Histogram> {
         try (OutputStream os = new ByteBufferBackedOutputStream(buffer)) {
             jsonParser.readBinaryValue(os);
             buffer.flip();
-            // Long.MIN_VALUE used so that Histogram will defer to the value encoded in the histogram value. This
-            // assumes that it is acceptable for the deserialized value we create to share the same parameters of the
+            // Long.MIN_VALUE used so that Histogram will defer to the value encoded in the histogram
+            // value. This
+            // assumes that it is acceptable for the deserialized value we create to share the same
+            // parameters of the
             // source histogram that was serialized.
             return Histogram.decodeFromCompressedByteBuffer(buffer, Long.MIN_VALUE);
         } catch (Exception e) {
-            log.error("Failed to decode publish delay latency: {}",
+            log.error(
+                    "Failed to decode publish delay latency: {}",
                     ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(buffer)));
             throw new RuntimeException(e);
         }

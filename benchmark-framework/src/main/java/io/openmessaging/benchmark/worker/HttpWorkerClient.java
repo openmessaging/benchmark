@@ -28,6 +28,7 @@ import static io.openmessaging.benchmark.worker.WorkerHandler.RESUME_CONSUMERS;
 import static io.openmessaging.benchmark.worker.WorkerHandler.START_LOAD;
 import static io.openmessaging.benchmark.worker.WorkerHandler.STOP_ALL;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.base.Preconditions;
@@ -57,13 +58,7 @@ public class HttpWorkerClient implements Worker {
     private final String host;
 
     public HttpWorkerClient(String host) {
-        this(
-                asyncHttpClient(Dsl.config()
-                        .setReadTimeout(600000)
-                        .setRequestTimeout(600000)
-                ),
-                host
-        );
+        this(asyncHttpClient(Dsl.config().setReadTimeout(600000).setRequestTimeout(600000)), host);
     }
 
     HttpWorkerClient(AsyncHttpClient httpClient, String host) {
@@ -100,7 +95,8 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
-        log.debug("Setting worker assigned publish rate to {} msgs/sec", producerWorkAssignment.publishRate);
+        log.debug(
+                "Setting worker assigned publish rate to {} msgs/sec", producerWorkAssignment.publishRate);
         sendPost(START_LOAD, writer.writeValueAsBytes(producerWorkAssignment));
     }
 
@@ -160,41 +156,73 @@ public class HttpWorkerClient implements Worker {
     }
 
     private void sendPost(String path, byte[] body) {
-        httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(response -> {
-            if (response.getStatusCode() != HTTP_OK) {
-                log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
-            }
-            Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
-            return (Void) null;
-        }).join();
+        httpClient
+                .preparePost(host + path)
+                .setBody(body)
+                .execute()
+                .toCompletableFuture()
+                .thenApply(
+                        response -> {
+                            if (response.getStatusCode() != HTTP_OK) {
+                                log.error(
+                                        "Failed to do HTTP post request to {}{} -- code: {}",
+                                        host,
+                                        path,
+                                        response.getStatusCode());
+                            }
+                            Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
+                            return (Void) null;
+                        })
+                .join();
     }
 
     private <T> T get(String path, Class<T> clazz) {
-        return httpClient.prepareGet(host + path).execute().toCompletableFuture().thenApply(response -> {
-            try {
-                if (response.getStatusCode() != HTTP_OK) {
-                    log.error("Failed to do HTTP get request to {}{} -- code: {}", host, path, response.getStatusCode());
-                }
-                Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
-                return mapper.readValue(response.getResponseBody(), clazz);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).join();
+        return httpClient
+                .prepareGet(host + path)
+                .execute()
+                .toCompletableFuture()
+                .thenApply(
+                        response -> {
+                            try {
+                                if (response.getStatusCode() != HTTP_OK) {
+                                    log.error(
+                                            "Failed to do HTTP get request to {}{} -- code: {}",
+                                            host,
+                                            path,
+                                            response.getStatusCode());
+                                }
+                                Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
+                                return mapper.readValue(response.getResponseBody(), clazz);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        })
+                .join();
     }
 
     private <T> T post(String path, byte[] body, Class<T> clazz) {
-        return httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(response -> {
-            try {
-                if (response.getStatusCode() != HTTP_OK) {
-                    log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
-                }
-                Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
-                return mapper.readValue(response.getResponseBody(), clazz);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).join();
+        return httpClient
+                .preparePost(host + path)
+                .setBody(body)
+                .execute()
+                .toCompletableFuture()
+                .thenApply(
+                        response -> {
+                            try {
+                                if (response.getStatusCode() != HTTP_OK) {
+                                    log.error(
+                                            "Failed to do HTTP post request to {}{} -- code: {}",
+                                            host,
+                                            path,
+                                            response.getStatusCode());
+                                }
+                                Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
+                                return mapper.readValue(response.getResponseBody(), clazz);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        })
+                .join();
     }
 
     private static final ObjectMapper mapper = ObjectMappers.DEFAULT.mapper();

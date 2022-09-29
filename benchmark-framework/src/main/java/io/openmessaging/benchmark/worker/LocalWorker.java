@@ -16,7 +16,28 @@ package io.openmessaging.benchmark.worker;
 import static io.openmessaging.benchmark.utils.UniformRateLimiter.*;
 import static java.util.stream.Collectors.toList;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.common.base.Preconditions;
+import io.netty.util.concurrent.DefaultThreadFactory;
+import io.openmessaging.benchmark.DriverConfiguration;
+import io.openmessaging.benchmark.driver.BenchmarkConsumer;
+import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
+import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.utils.RandomGenerator;
+import io.openmessaging.benchmark.utils.Timer;
+import io.openmessaging.benchmark.utils.UniformRateLimiter;
+import io.openmessaging.benchmark.utils.distributor.KeyDistributor;
+import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
+import io.openmessaging.benchmark.worker.commands.CountersStats;
+import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
+import io.openmessaging.benchmark.worker.commands.PeriodStats;
+import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
+import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,8 +48,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
-
-import io.openmessaging.benchmark.utils.UniformRateLimiter;
 import java.util.stream.IntStream;
 import org.HdrHistogram.Recorder;
 import org.apache.bookkeeper.stats.Counter;
@@ -37,28 +56,6 @@ import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.google.common.base.Preconditions;
-
-import io.netty.util.concurrent.DefaultThreadFactory;
-import io.openmessaging.benchmark.DriverConfiguration;
-import io.openmessaging.benchmark.driver.BenchmarkConsumer;
-import io.openmessaging.benchmark.driver.BenchmarkDriver;
-import io.openmessaging.benchmark.driver.BenchmarkProducer;
-import io.openmessaging.benchmark.driver.ConsumerCallback;
-import io.openmessaging.benchmark.utils.RandomGenerator;
-import io.openmessaging.benchmark.utils.Timer;
-import io.openmessaging.benchmark.utils.distributor.KeyDistributor;
-import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
-import io.openmessaging.benchmark.worker.commands.CountersStats;
-import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
-import io.openmessaging.benchmark.worker.commands.PeriodStats;
-import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
-import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 
 public class LocalWorker implements Worker, ConsumerCallback {
 
@@ -69,7 +66,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private volatile UniformRateLimiter rateLimiter = new UniformRateLimiter(1.0);
 
-    private final ExecutorService executor = Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
+    private final ExecutorService executor =
+            Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
 
     // stats
 
@@ -91,17 +89,19 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final LongAdder totalMessageSendErrors = new LongAdder();
     private final LongAdder totalMessagesReceived = new LongAdder();
 
-    private final static long highestTrackableValue = TimeUnit.SECONDS.toMicros(60);
+    private static final long highestTrackableValue = TimeUnit.SECONDS.toMicros(60);
     private final Recorder publishLatencyRecorder = new Recorder(highestTrackableValue, 5);
     private final Recorder cumulativePublishLatencyRecorder = new Recorder(highestTrackableValue, 5);
     private final OpStatsLogger publishLatencyStats;
 
     private final Recorder publishDelayLatencyRecorder = new Recorder(highestTrackableValue, 5);
-    private final Recorder cumulativePublishDelayLatencyRecorder = new Recorder(highestTrackableValue, 5);
+    private final Recorder cumulativePublishDelayLatencyRecorder =
+            new Recorder(highestTrackableValue, 5);
     private final OpStatsLogger publishDelayLatencyStats;
 
     private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
-    private final Recorder endToEndCumulativeLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+    private final Recorder endToEndCumulativeLatencyRecorder =
+            new Recorder(TimeUnit.HOURS.toMicros(12), 5);
     private final OpStatsLogger endToEndLatencyStats;
 
     private boolean testCompleted = false;
@@ -133,14 +133,19 @@ public class LocalWorker implements Worker, ConsumerCallback {
         Preconditions.checkArgument(benchmarkDriver == null);
         testCompleted = false;
 
-        DriverConfiguration driverConfiguration = mapper.readValue(driverConfigFile, DriverConfiguration.class);
+        DriverConfiguration driverConfiguration =
+                mapper.readValue(driverConfigFile, DriverConfiguration.class);
 
         log.info("Driver: {}", writer.writeValueAsString(driverConfiguration));
 
         try {
-            benchmarkDriver = (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
+            benchmarkDriver =
+                    (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
             benchmarkDriver.initialize(driverConfigFile, statsLogger);
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | InterruptedException e) {
+        } catch (InstantiationException
+                | IllegalAccessException
+                | ClassNotFoundException
+                | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
@@ -149,9 +154,11 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public List<String> createTopics(TopicsInfo topicsInfo) {
         Timer timer = new Timer();
 
-        List<TopicInfo> topicInfos = IntStream.range(0, topicsInfo.numberOfTopics)
-                .mapToObj(i -> new TopicInfo(generateTopicName(i), topicsInfo.numberOfPartitionsPerTopic))
-                .collect(toList());
+        List<TopicInfo> topicInfos =
+                IntStream.range(0, topicsInfo.numberOfTopics)
+                        .mapToObj(
+                                i -> new TopicInfo(generateTopicName(i), topicsInfo.numberOfPartitionsPerTopic))
+                        .collect(toList());
 
         benchmarkDriver.createTopics(topicInfos).join();
 
@@ -162,15 +169,16 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     private String generateTopicName(int i) {
-        return String.format("%s-%07d-%s", benchmarkDriver.getTopicNamePrefix(), i, RandomGenerator.getRandomString());
+        return String.format(
+                "%s-%07d-%s", benchmarkDriver.getTopicNamePrefix(), i, RandomGenerator.getRandomString());
     }
 
     @Override
     public void createProducers(List<String> topics) {
         Timer timer = new Timer();
 
-        List<CompletableFuture<BenchmarkProducer>> futures = topics.stream()
-                .map(topic -> benchmarkDriver.createProducer(topic)).collect(toList());
+        List<CompletableFuture<BenchmarkProducer>> futures =
+                topics.stream().map(topic -> benchmarkDriver.createProducer(topic)).collect(toList());
 
         futures.forEach(f -> producers.add(f.join()));
         log.info("Created {} producers in {} ms", producers.size(), timer.elapsedMillis());
@@ -180,8 +188,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void createConsumers(ConsumerAssignment consumerAssignment) {
         Timer timer = new Timer();
 
-        List<CompletableFuture<BenchmarkConsumer>> futures = consumerAssignment.topicsSubscriptions.stream()
-                .map(ts -> benchmarkDriver.createConsumer(ts.topic, ts.subscription, this)).collect(toList());
+        List<CompletableFuture<BenchmarkConsumer>> futures =
+                consumerAssignment.topicsSubscriptions.stream()
+                        .map(ts -> benchmarkDriver.createConsumer(ts.topic, ts.subscription, this))
+                        .collect(toList());
 
         futures.forEach(f -> consumers.add(f.join()));
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
@@ -197,71 +207,96 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         int processorIdx = 0;
         for (BenchmarkProducer p : producers) {
-            processorAssignment.computeIfAbsent(processorIdx, x -> new ArrayList<BenchmarkProducer>()).add(p);
+            processorAssignment
+                    .computeIfAbsent(processorIdx, x -> new ArrayList<BenchmarkProducer>())
+                    .add(p);
 
             processorIdx = (processorIdx + 1) % processors;
         }
 
-        processorAssignment.values().forEach(producers -> submitProducersToExecutor(producers,
-                KeyDistributor.build(producerWorkAssignment.keyDistributorType), producerWorkAssignment.payloadData));
+        processorAssignment
+                .values()
+                .forEach(
+                        producers ->
+                                submitProducersToExecutor(
+                                        producers,
+                                        KeyDistributor.build(producerWorkAssignment.keyDistributorType),
+                                        producerWorkAssignment.payloadData));
     }
 
     @Override
     public void probeProducers() throws IOException {
-        producers.forEach(producer -> producer.sendAsync(Optional.of("key"), new byte[10])
-                .thenRun(totalMessagesSent::increment));
+        producers.forEach(
+                producer ->
+                        producer
+                                .sendAsync(Optional.of("key"), new byte[10])
+                                .thenRun(totalMessagesSent::increment));
     }
 
-    private void submitProducersToExecutor(List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
-        executor.submit(() -> {
-            int payloadCount = payloads.size();
-            ThreadLocalRandom r = ThreadLocalRandom.current();
-            byte[] firstPayload = payloads.get(0);
+    private void submitProducersToExecutor(
+            List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
+        executor.submit(
+                () -> {
+                    int payloadCount = payloads.size();
+                    ThreadLocalRandom r = ThreadLocalRandom.current();
+                    byte[] firstPayload = payloads.get(0);
 
-            try {
-                while (!testCompleted) {
-                    producers.forEach(producer -> {
-                        byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
-                        final long intendedSendTime = rateLimiter.acquire();
-                        uninterruptibleSleepNs(intendedSendTime);
-                        final long sendTime = System.nanoTime();
-                        producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
-                                .thenRun(() -> {
-                            messagesSent.increment();
-                            totalMessagesSent.increment();
-                            messagesSentCounter.inc();
-                            bytesSent.add(payloadData.length);
-                            bytesSentCounter.add(payloadData.length);
+                    try {
+                        while (!testCompleted) {
+                            producers.forEach(
+                                    producer -> {
+                                        byte[] payloadData =
+                                                payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
+                                        final long intendedSendTime = rateLimiter.acquire();
+                                        uninterruptibleSleepNs(intendedSendTime);
+                                        final long sendTime = System.nanoTime();
+                                        producer
+                                                .sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
+                                                .thenRun(
+                                                        () -> {
+                                                            messagesSent.increment();
+                                                            totalMessagesSent.increment();
+                                                            messagesSentCounter.inc();
+                                                            bytesSent.add(payloadData.length);
+                                                            bytesSentCounter.add(payloadData.length);
 
-                            final long latencyMicros = Math.min(highestTrackableValue,
-                                    TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime));
-                            publishLatencyRecorder.recordValue(latencyMicros);
-                            cumulativePublishLatencyRecorder.recordValue(latencyMicros);
-                            publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
+                                                            final long latencyMicros =
+                                                                    Math.min(
+                                                                            highestTrackableValue,
+                                                                            TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime));
+                                                            publishLatencyRecorder.recordValue(latencyMicros);
+                                                            cumulativePublishLatencyRecorder.recordValue(latencyMicros);
+                                                            publishLatencyStats.registerSuccessfulEvent(
+                                                                    latencyMicros, TimeUnit.MICROSECONDS);
 
-                            final long sendDelayMicros = Math.min(highestTrackableValue,
-                                    TimeUnit.NANOSECONDS.toMicros(sendTime - intendedSendTime));
-                            publishDelayLatencyRecorder.recordValue(sendDelayMicros);
-                            cumulativePublishDelayLatencyRecorder.recordValue(sendDelayMicros);
-                            publishDelayLatencyStats.registerSuccessfulEvent(sendDelayMicros, TimeUnit.MICROSECONDS);
-                        }).exceptionally(ex -> {
-                            messageSendErrors.increment();
-                            messageSendErrorCounter.inc();
-                            totalMessageSendErrors.increment();
-                            log.warn("Write error on message", ex);
-                            return null;
-                        });
-                    });
-                }
-            } catch (Throwable t) {
-                log.error("Got error", t);
-            }
-        });
+                                                            final long sendDelayMicros =
+                                                                    Math.min(
+                                                                            highestTrackableValue,
+                                                                            TimeUnit.NANOSECONDS.toMicros(sendTime - intendedSendTime));
+                                                            publishDelayLatencyRecorder.recordValue(sendDelayMicros);
+                                                            cumulativePublishDelayLatencyRecorder.recordValue(sendDelayMicros);
+                                                            publishDelayLatencyStats.registerSuccessfulEvent(
+                                                                    sendDelayMicros, TimeUnit.MICROSECONDS);
+                                                        })
+                                                .exceptionally(
+                                                        ex -> {
+                                                            messageSendErrors.increment();
+                                                            messageSendErrorCounter.inc();
+                                                            totalMessageSendErrors.increment();
+                                                            log.warn("Write error on message", ex);
+                                                            return null;
+                                                        });
+                                    });
+                        }
+                    } catch (Throwable t) {
+                        log.error("Got error", t);
+                    }
+                });
     }
 
     @Override
     public void adjustPublishRate(double publishRate) {
-        if(publishRate < 1.0) {
+        if (publishRate < 1.0) {
             rateLimiter = new UniformRateLimiter(1.0);
             return;
         }
@@ -417,8 +452,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
 
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
         mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);

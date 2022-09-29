@@ -15,6 +15,7 @@ package io.openmessaging.benchmark.worker.commands;
 
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+
 import org.HdrHistogram.Histogram;
 
 public class PeriodStats {

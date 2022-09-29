@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.worker.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 
 class CountersStatsTest {
@@ -21,35 +22,39 @@ class CountersStatsTest {
     @Test
     void plus() {
         CountersStats one = new CountersStats();
-        one.messagesSent=1;
-        one.messageSendErrors=10;
-        one.messagesReceived=100;
+        one.messagesSent = 1;
+        one.messageSendErrors = 10;
+        one.messagesReceived = 100;
         CountersStats two = new CountersStats();
-        two.messagesSent=2;
-        two.messageSendErrors=20;
-        two.messagesReceived=200;
+        two.messagesSent = 2;
+        two.messageSendErrors = 20;
+        two.messagesReceived = 200;
 
         CountersStats result = one.plus(two);
-        assertThat(result).satisfies(r -> {
-           assertThat(r.messagesSent).isEqualTo(3);
-           assertThat(r.messageSendErrors).isEqualTo(30);
-           assertThat(r.messagesReceived).isEqualTo(300);
-        });
+        assertThat(result)
+                .satisfies(
+                        r -> {
+                            assertThat(r.messagesSent).isEqualTo(3);
+                            assertThat(r.messageSendErrors).isEqualTo(30);
+                            assertThat(r.messagesReceived).isEqualTo(300);
+                        });
     }
 
     @Test
     void zeroPlus() {
         CountersStats zero = new CountersStats();
         CountersStats two = new CountersStats();
-        two.messagesSent=2;
-        two.messageSendErrors=20;
-        two.messagesReceived=200;
+        two.messagesSent = 2;
+        two.messageSendErrors = 20;
+        two.messagesReceived = 200;
 
         CountersStats result = zero.plus(two);
-        assertThat(result).satisfies(r -> {
-            assertThat(r.messagesSent).isEqualTo(2);
-            assertThat(r.messageSendErrors).isEqualTo(20);
-            assertThat(r.messagesReceived).isEqualTo(200);
-        });
+        assertThat(result)
+                .satisfies(
+                        r -> {
+                            assertThat(r.messagesSent).isEqualTo(2);
+                            assertThat(r.messageSendErrors).isEqualTo(20);
+                            assertThat(r.messagesReceived).isEqualTo(200);
+                        });
     }
 }

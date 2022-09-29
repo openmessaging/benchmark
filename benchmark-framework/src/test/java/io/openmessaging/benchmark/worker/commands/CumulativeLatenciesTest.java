@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.worker.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 
 class CumulativeLatenciesTest {
@@ -23,10 +24,12 @@ class CumulativeLatenciesTest {
         CumulativeLatencies one = new CumulativeLatencies();
         CumulativeLatencies two = new CumulativeLatencies();
         CumulativeLatencies result = one.plus(two);
-        assertThat(result).satisfies(r -> {
-            assertThat(r.publishLatency).isEqualTo(two.publishLatency);
-            assertThat(r.publishDelayLatency).isEqualTo(two.publishDelayLatency);
-            assertThat(r.endToEndLatency).isEqualTo(two.endToEndLatency);
-        });
+        assertThat(result)
+                .satisfies(
+                        r -> {
+                            assertThat(r.publishLatency).isEqualTo(two.publishLatency);
+                            assertThat(r.publishDelayLatency).isEqualTo(two.publishDelayLatency);
+                            assertThat(r.endToEndLatency).isEqualTo(two.endToEndLatency);
+                        });
     }
 }
