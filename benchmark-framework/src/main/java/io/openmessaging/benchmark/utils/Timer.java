@@ -27,7 +27,7 @@ public class Timer {
     }
 
     public Timer() {
-        this(() -> System.nanoTime());
+        this(System::nanoTime);
     }
 
     public double elapsedMillis() {

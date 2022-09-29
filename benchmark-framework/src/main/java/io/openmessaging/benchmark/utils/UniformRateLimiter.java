@@ -13,8 +13,7 @@
  */
 package io.openmessaging.benchmark.utils;
 
-
-import java.util.concurrent.TimeUnit;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
@@ -29,7 +28,7 @@ public final class UniformRateLimiter {
             AtomicLongFieldUpdater.newUpdater(UniformRateLimiter.class, "virtualTime");
     private static final AtomicLongFieldUpdater<UniformRateLimiter> START_UPDATER =
             AtomicLongFieldUpdater.newUpdater(UniformRateLimiter.class, "start");
-    private static final double ONE_SEC_IN_NS = TimeUnit.SECONDS.toNanos(1);
+    private static final double ONE_SEC_IN_NS = SECONDS.toNanos(1);
     private volatile long start = Long.MIN_VALUE;
     private volatile long virtualTime;
     private final double opsPerSec;
@@ -46,10 +45,10 @@ public final class UniformRateLimiter {
         this.opsPerSec = opsPerSec;
         intervalNs = Math.round(ONE_SEC_IN_NS / opsPerSec);
         this.nanoClock = nanoClock;
-    }
 
+    }
     public UniformRateLimiter(final double opsPerSec) {
-        this(opsPerSec, () -> System.nanoTime());
+        this(opsPerSec, System::nanoTime);
     }
 
     public double getOpsPerSec() {
