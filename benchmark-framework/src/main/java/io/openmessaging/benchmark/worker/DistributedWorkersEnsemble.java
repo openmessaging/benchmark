@@ -47,11 +47,9 @@ public class DistributedWorkersEnsemble implements Worker {
         Preconditions.checkArgument(workers.size() > 1);
         this.workers = unmodifiableList(workers);
         leader = workers.get(0);
-
-        // For driver-jms extra consumers are required.
-        // If there is an odd number of workers then allocate the extra to consumption.
         int numberOfProducerWorkers = getNumberOfProducerWorkers(workers, extraConsumerWorkers);
-        List<List<Worker>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
+        List<List<Worker>> partitions =
+                Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
         this.producerWorkers = partitions.get(1);
         this.consumerWorkers = partitions.get(0);
 
@@ -61,8 +59,12 @@ public class DistributedWorkersEnsemble implements Worker {
         Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
+    /*
+     * For driver-jms extra consumers are required. If there is an odd number of workers then allocate the extra
+     * to consumption.
+     */
     @VisibleForTesting
-    int getNumberOfProducerWorkers(List<Worker> workers, boolean extraConsumerWorkers) {
+    static int getNumberOfProducerWorkers(List<Worker> workers, boolean extraConsumerWorkers) {
         return extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
     }
 
