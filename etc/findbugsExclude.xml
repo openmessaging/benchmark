@@ -116,6 +116,6 @@
   </Match>
   <Match>
     <Class name="io.openmessaging.benchmark.worker.jackson.ObjectMappers" />
-    <Bug pattern="EI_EXPOSE_REP2" />
+    <Bug pattern="EI_EXPOSE_REP" />
   </Match>
 </FindBugsFilter>
