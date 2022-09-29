@@ -16,7 +16,6 @@ package io.openmessaging.benchmark.worker.jackson;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedOutputStream;
 import io.netty.buffer.ByteBufUtil;
