@@ -156,11 +156,11 @@ public class HttpWorkerClient implements Worker {
     }
 
     private void sendPost(String path, byte[] body) {
-        httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(x -> {
-            if (x.getStatusCode() != 200) {
-                log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, x.getStatusCode());
+        httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(response -> {
+            if (response.getStatusCode() != HTTP_OK) {
+                log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
             }
-            Preconditions.checkArgument(x.getStatusCode() == HTTP_OK);
+            Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
             return (Void) null;
         }).join();
     }
@@ -168,7 +168,7 @@ public class HttpWorkerClient implements Worker {
     private <T> T get(String path, Class<T> clazz) {
         return httpClient.prepareGet(host + path).execute().toCompletableFuture().thenApply(response -> {
             try {
-                if (response.getStatusCode() != 200) {
+                if (response.getStatusCode() != HTTP_OK) {
                     log.error("Failed to do HTTP get request to {}{} -- code: {}", host, path, response.getStatusCode());
                 }
                 Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
@@ -182,7 +182,7 @@ public class HttpWorkerClient implements Worker {
     private <T> T post(String path, byte[] body, Class<T> clazz) {
         return httpClient.preparePost(host + path).setBody(body).execute().toCompletableFuture().thenApply(response -> {
             try {
-                if (response.getStatusCode() != 200) {
+                if (response.getStatusCode() != HTTP_OK) {
                     log.error("Failed to do HTTP post request to {}{} -- code: {}", host, path, response.getStatusCode());
                 }
                 Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
