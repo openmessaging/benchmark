@@ -25,12 +25,8 @@ public class HistogramSerializer extends StdSerializer<Histogram> {
     private final ThreadLocal<ByteBuffer> threadBuffer =
             ThreadLocal.withInitial(() -> ByteBuffer.allocate(1024 * 1024));
 
-    public HistogramSerializer(Class<Histogram> t) {
-        super(t);
-    }
-
     public HistogramSerializer() {
-        this(null);
+        super(Histogram.class);
     }
 
     @Override

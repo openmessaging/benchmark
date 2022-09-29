@@ -43,6 +43,7 @@ public class HistogramDeserializer extends StdDeserializer<Histogram> {
         buffer.clear();
         try (OutputStream os = new ByteBufferBackedOutputStream(buffer)) {
             jsonParser.readBinaryValue(os);
+            buffer.flip();
             return Histogram.decodeFromCompressedByteBuffer(buffer, Long.MIN_VALUE);
         } catch (Exception e) {
             log.error("Failed to decode publish delay latency: {}",
