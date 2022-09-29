@@ -95,7 +95,7 @@ public class DistributedWorkersEnsemble implements Worker {
         // Number of actually used workers might be less than available workers
         numberOfUsedProducerWorkers = (int) topicsPerProducerMap.values().stream().filter(t -> !t.isEmpty()).count();
         log.debug("Producing worker count: {} of {}", numberOfUsedProducerWorkers, producerWorkers.size());
-        topicsPerProducerMap.entrySet().stream().forEach(e -> {
+        topicsPerProducerMap.entrySet().parallelStream().forEach(e -> {
             try {
                 e.getKey().createProducers(e.getValue());
             } catch (IOException ex) {
