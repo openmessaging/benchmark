@@ -114,4 +114,8 @@
     <Class name="io.openmessaging.benchmark.worker.jackson.HistogramSerializer" />
     <Bug pattern="SE_BAD_FIELD" />
   </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.jackson.ObjectMappers" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
 </FindBugsFilter>
