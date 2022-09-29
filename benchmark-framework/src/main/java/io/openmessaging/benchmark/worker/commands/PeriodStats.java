@@ -15,9 +15,6 @@ package io.openmessaging.benchmark.worker.commands;
 
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.nio.ByteBuffer;
-import java.util.zip.DataFormatException;
 import org.HdrHistogram.Histogram;
 
 public class PeriodStats {
@@ -32,18 +29,9 @@ public class PeriodStats {
     public long totalMessageSendErrors = 0;
     public long totalMessagesReceived = 0;
 
-    @JsonIgnore
     public Histogram publishLatency = new Histogram(SECONDS.toMicros(60), 5);
-    public byte[] publishLatencyBytes;
-
-    @JsonIgnore
     public Histogram publishDelayLatency = new Histogram(SECONDS.toMicros(60), 5);
-    public byte[] publishDelayLatencyBytes;
-
-
-    @JsonIgnore
     public Histogram endToEndLatency = new Histogram(HOURS.toMicros(12), 5);
-    public byte[] endToEndLatencyBytes;
 
     public PeriodStats plus(PeriodStats toAdd) {
         PeriodStats result = new PeriodStats();
@@ -56,19 +44,9 @@ public class PeriodStats {
         result.totalMessagesSent += this.totalMessagesSent;
         result.totalMessageSendErrors += this.totalMessageSendErrors;
         result.totalMessagesReceived += this.totalMessagesReceived;
-
-        try {
-            result.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                    ByteBuffer.wrap(this.publishLatencyBytes), SECONDS.toMicros(30)));
-
-            result.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                    ByteBuffer.wrap(this.publishDelayLatencyBytes), SECONDS.toMicros(30)));
-
-            result.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                    ByteBuffer.wrap(this.endToEndLatencyBytes), HOURS.toMicros(12)));
-        } catch (ArrayIndexOutOfBoundsException | DataFormatException e) {
-            throw new RuntimeException(e);
-        }
+        result.publishLatency.add(this.publishLatency);
+        result.publishDelayLatency.add(this.publishDelayLatency);
+        result.endToEndLatency.add(this.endToEndLatency);
 
         result.messagesSent += toAdd.messagesSent;
         result.messageSendErrors += toAdd.messageSendErrors;
@@ -78,19 +56,9 @@ public class PeriodStats {
         result.totalMessagesSent += toAdd.totalMessagesSent;
         result.totalMessageSendErrors += toAdd.totalMessageSendErrors;
         result.totalMessagesReceived += toAdd.totalMessagesReceived;
-
-        try {
-            result.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                    ByteBuffer.wrap(toAdd.publishLatencyBytes), SECONDS.toMicros(30)));
-
-            result.publishDelayLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                    ByteBuffer.wrap(toAdd.publishDelayLatencyBytes), SECONDS.toMicros(30)));
-
-            result.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
-                    ByteBuffer.wrap(toAdd.endToEndLatencyBytes), HOURS.toMicros(12)));
-        } catch (ArrayIndexOutOfBoundsException | DataFormatException e) {
-            throw new RuntimeException(e);
-        }
+        result.publishLatency.add(toAdd.publishLatency);
+        result.publishDelayLatency.add(toAdd.publishDelayLatency);
+        result.endToEndLatency.add(toAdd.endToEndLatency);
 
         return result;
     }

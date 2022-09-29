@@ -13,21 +13,20 @@
  */
 package io.openmessaging.benchmark.worker;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.io.Files;
 import io.javalin.Context;
 import io.javalin.Javalin;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
-import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
-import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
+import io.openmessaging.benchmark.worker.jackson.HistogramSerializer;
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.List;
+import org.HdrHistogram.Histogram;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,8 +98,7 @@ public class WorkerHandler {
     private void handleCreateConsumers(Context ctx) throws Exception {
         ConsumerAssignment consumerAssignment = mapper.readValue(ctx.body(), ConsumerAssignment.class);
 
-        log.info(
-                "Received create consumers request for topics: {}", consumerAssignment.topicsSubscriptions);
+        log.info("Received create consumers request for topics: {}", consumerAssignment.topicsSubscriptions);
         localWorker.createConsumers(consumerAssignment);
     }
 
@@ -113,12 +111,9 @@ public class WorkerHandler {
     }
 
     private void handleStartLoad(Context ctx) throws Exception {
-        ProducerWorkAssignment producerWorkAssignment =
-                mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
+        ProducerWorkAssignment producerWorkAssignment = mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
 
-        log.info(
-                "Start load publish-rate: {} msg/s -- payload-size: {}",
-                producerWorkAssignment.publishRate,
+        log.info("Start load publish-rate: {} msg/s -- payload-size: {}", producerWorkAssignment.publishRate,
                 producerWorkAssignment.payloadData.get(0).length);
 
         localWorker.startLoad(producerWorkAssignment);
@@ -136,57 +131,11 @@ public class WorkerHandler {
     }
 
     private void handlePeriodStats(Context ctx) throws Exception {
-        PeriodStats stats = localWorker.getPeriodStats();
-
-        // Serialize histograms
-        synchronized (histogramSerializationBuffer) {
-            histogramSerializationBuffer.clear();
-            stats.publishLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.publishDelayLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishDelayLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishDelayLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.endToEndLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.endToEndLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.endToEndLatencyBytes);
-        }
-
-        ctx.result(writer.writeValueAsString(stats));
+        ctx.result(writer.writeValueAsString(localWorker.getPeriodStats()));
     }
 
     private void handleCumulativeLatencies(Context ctx) throws Exception {
-        CumulativeLatencies stats = localWorker.getCumulativeLatencies();
-
-        // Serialize histograms
-        synchronized (histogramSerializationBuffer) {
-            histogramSerializationBuffer.clear();
-            stats.publishLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.publishDelayLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishDelayLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishDelayLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.endToEndLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.endToEndLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.endToEndLatencyBytes);
-        }
-
-        ctx.result(writer.writeValueAsString(stats));
+        ctx.result(writer.writeValueAsString(localWorker.getCumulativeLatencies()));
     }
 
     private void handleCountersStats(Context ctx) throws Exception {
@@ -198,16 +147,18 @@ public class WorkerHandler {
         localWorker.resetStats();
     }
 
-    private final ByteBuffer histogramSerializationBuffer = ByteBuffer.allocate(1024 * 1024);
-
     private static final Logger log = LoggerFactory.getLogger(WorkerHandler.class);
 
-    private static final ObjectMapper mapper =
-            new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     static {
         mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(Histogram.class, new HistogramSerializer());
+        mapper.registerModule(module);
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
+
 }
