@@ -95,7 +95,7 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void probeProducers() throws IOException {
-        sendPost(PROBE_PRODUCERS, EMPTY_BODY);
+        sendPost(PROBE_PRODUCERS);
     }
 
     @Override
@@ -112,12 +112,12 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void pauseConsumers() throws IOException {
-        sendPost(PAUSE_CONSUMERS, EMPTY_BODY);
+        sendPost(PAUSE_CONSUMERS);
     }
 
     @Override
     public void resumeConsumers() throws IOException {
-        sendPost(RESUME_CONSUMERS, EMPTY_BODY);
+        sendPost(RESUME_CONSUMERS);
     }
 
     @Override
@@ -137,12 +137,12 @@ public class HttpWorkerClient implements Worker {
 
     @Override
     public void resetStats() throws IOException {
-        sendPost(RESET_STATS, EMPTY_BODY);
+        sendPost(RESET_STATS);
     }
 
     @Override
     public void stopAll() {
-        sendPost(STOP_ALL, EMPTY_BODY);
+        sendPost(STOP_ALL);
     }
 
     @Override
@@ -153,6 +153,10 @@ public class HttpWorkerClient implements Worker {
     @Override
     public void close() throws Exception {
         httpClient.close();
+    }
+
+    private void sendPost(String path) {
+        sendPost(path, EMPTY_BODY);
     }
 
     private void sendPost(String path, byte[] body) {
