@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark;
 
+import static java.util.stream.Collectors.toList;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.openmessaging.benchmark.worker.DistributedWorkersEnsemble;
+import io.openmessaging.benchmark.worker.HttpWorkerClient;
 import io.openmessaging.benchmark.worker.LocalWorker;
 import io.openmessaging.benchmark.worker.Worker;
 import java.io.File;
@@ -138,7 +140,9 @@ public class Benchmark {
         Worker worker;
 
         if (arguments.workers != null && !arguments.workers.isEmpty()) {
-            worker = new DistributedWorkersEnsemble(arguments.workers, arguments.extraConsumers);
+            List<Worker> workers =
+                    arguments.workers.stream().map(w -> new HttpWorkerClient(w)).collect(toList());
+            worker = new DistributedWorkersEnsemble(workers, arguments.extraConsumers);
         } else {
             // Use local worker implementation
             worker = new LocalWorker();

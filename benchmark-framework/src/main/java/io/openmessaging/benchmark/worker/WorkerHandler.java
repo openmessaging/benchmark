@@ -14,19 +14,16 @@
 package io.openmessaging.benchmark.worker;
 
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
 import io.javalin.Context;
 import io.javalin.Javalin;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
-import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
-import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
+import io.openmessaging.benchmark.worker.jackson.ObjectMappers;
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
@@ -35,25 +32,39 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("unchecked")
 public class WorkerHandler {
 
+    public static final String INITIALIZE_DRIVER = "/initialize-driver";
+    public static final String CREATE_TOPICS = "/create-topics";
+    public static final String CREATE_PRODUCERS = "/create-producers";
+    public static final String PROBE_PRODUCERS = "/probe-producers";
+    public static final String CREATE_CONSUMERS = "/create-consumers";
+    public static final String PAUSE_CONSUMERS = "/pause-consumers";
+    public static final String RESUME_CONSUMERS = "/resume-consumers";
+    public static final String START_LOAD = "/start-load";
+    public static final String ADJUST_PUBLISH_RATE = "/adjust-publish-rate";
+    public static final String STOP_ALL = "/stop-all";
+    public static final String PERIOD_STATS = "/period-stats";
+    public static final String CUMULATIVE_LATENCIES = "/cumulative-latencies";
+    public static final String COUNTERS_STATS = "/counters-stats";
+    public static final String RESET_STATS = "/reset-stats";
     private final Worker localWorker;
 
     public WorkerHandler(Javalin app, StatsLogger statsLogger) {
         this.localWorker = new LocalWorker(statsLogger);
 
-        app.post("/initialize-driver", this::handleInitializeDriver);
-        app.post("/create-topics", this::handleCreateTopics);
-        app.post("/create-producers", this::handleCreateProducers);
-        app.post("/probe-producers", this::handleProbeProducers);
-        app.post("/create-consumers", this::handleCreateConsumers);
-        app.post("/pause-consumers", this::handlePauseConsumers);
-        app.post("/resume-consumers", this::handleResumeConsumers);
-        app.post("/start-load", this::handleStartLoad);
-        app.post("/adjust-publish-rate", this::handleAdjustPublishRate);
-        app.post("/stop-all", this::handleStopAll);
-        app.get("/period-stats", this::handlePeriodStats);
-        app.get("/cumulative-latencies", this::handleCumulativeLatencies);
-        app.get("/counters-stats", this::handleCountersStats);
-        app.post("/reset-stats", this::handleResetStats);
+        app.post(INITIALIZE_DRIVER, this::handleInitializeDriver);
+        app.post(CREATE_TOPICS, this::handleCreateTopics);
+        app.post(CREATE_PRODUCERS, this::handleCreateProducers);
+        app.post(PROBE_PRODUCERS, this::handleProbeProducers);
+        app.post(CREATE_CONSUMERS, this::handleCreateConsumers);
+        app.post(PAUSE_CONSUMERS, this::handlePauseConsumers);
+        app.post(RESUME_CONSUMERS, this::handleResumeConsumers);
+        app.post(START_LOAD, this::handleStartLoad);
+        app.post(ADJUST_PUBLISH_RATE, this::handleAdjustPublishRate);
+        app.post(STOP_ALL, this::handleStopAll);
+        app.get(PERIOD_STATS, this::handlePeriodStats);
+        app.get(CUMULATIVE_LATENCIES, this::handleCumulativeLatencies);
+        app.get(COUNTERS_STATS, this::handleCountersStats);
+        app.post(RESET_STATS, this::handleResetStats);
     }
 
     private void handleInitializeDriver(Context ctx) throws Exception {
@@ -122,57 +133,11 @@ public class WorkerHandler {
     }
 
     private void handlePeriodStats(Context ctx) throws Exception {
-        PeriodStats stats = localWorker.getPeriodStats();
-
-        // Serialize histograms
-        synchronized (histogramSerializationBuffer) {
-            histogramSerializationBuffer.clear();
-            stats.publishLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.publishDelayLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishDelayLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishDelayLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.endToEndLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.endToEndLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.endToEndLatencyBytes);
-        }
-
-        ctx.result(writer.writeValueAsString(stats));
+        ctx.result(writer.writeValueAsString(localWorker.getPeriodStats()));
     }
 
     private void handleCumulativeLatencies(Context ctx) throws Exception {
-        CumulativeLatencies stats = localWorker.getCumulativeLatencies();
-
-        // Serialize histograms
-        synchronized (histogramSerializationBuffer) {
-            histogramSerializationBuffer.clear();
-            stats.publishLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.publishDelayLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.publishDelayLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.publishDelayLatencyBytes);
-
-            histogramSerializationBuffer.clear();
-            stats.endToEndLatency.encodeIntoCompressedByteBuffer(histogramSerializationBuffer);
-            stats.endToEndLatencyBytes = new byte[histogramSerializationBuffer.position()];
-            histogramSerializationBuffer.flip();
-            histogramSerializationBuffer.get(stats.endToEndLatencyBytes);
-        }
-
-        ctx.result(writer.writeValueAsString(stats));
+        ctx.result(writer.writeValueAsString(localWorker.getCumulativeLatencies()));
     }
 
     private void handleCountersStats(Context ctx) throws Exception {
@@ -184,16 +149,8 @@ public class WorkerHandler {
         localWorker.resetStats();
     }
 
-    private final ByteBuffer histogramSerializationBuffer = ByteBuffer.allocate(1024 * 1024);
-
     private static final Logger log = LoggerFactory.getLogger(WorkerHandler.class);
 
-    private static final ObjectMapper mapper =
-            new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    static {
-        mapper.enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
-    }
-
-    private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
+    private static final ObjectMapper mapper = ObjectMappers.DEFAULT.mapper();
+    private static final ObjectWriter writer = ObjectMappers.DEFAULT.writer();
 }

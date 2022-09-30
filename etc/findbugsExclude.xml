@@ -106,4 +106,24 @@
     <Class name="io.openmessaging.benchmark.worker.WorkerHandler" />
     <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE" />
   </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.jackson.HistogramDeserializer" />
+    <Bug pattern="SE_BAD_FIELD" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.jackson.HistogramSerializer" />
+    <Bug pattern="SE_BAD_FIELD" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.jackson.ObjectMappers" />
+    <Bug pattern="EI_EXPOSE_REP" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.WorkerStats" />
+    <Bug pattern="EI_EXPOSE_REP" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.worker.WorkerStats" />
+    <Bug pattern="EI_EXPOSE_REP" />
+  </Match>
 </FindBugsFilter>

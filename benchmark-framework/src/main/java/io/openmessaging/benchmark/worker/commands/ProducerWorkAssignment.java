@@ -24,4 +24,12 @@ public class ProducerWorkAssignment {
     public double publishRate;
 
     public KeyDistributorType keyDistributorType;
+
+    public ProducerWorkAssignment withPublishRate(double publishRate) {
+        ProducerWorkAssignment copy = new ProducerWorkAssignment();
+        copy.keyDistributorType = this.keyDistributorType;
+        copy.payloadData = this.payloadData;
+        copy.publishRate = publishRate;
+        return copy;
+    }
 }
