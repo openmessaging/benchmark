@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.openmessaging.benchmark.utils.PaddingDecimalFormat;
@@ -129,7 +130,7 @@ public class WorkloadGenerator implements AutoCloseable {
             executor.execute(
                     () -> {
                         try {
-                            buildAndDrainBacklog(topics);
+                            buildAndDrainBacklog(workload.testDurationMinutes);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -358,7 +359,7 @@ public class WorkloadGenerator implements AutoCloseable {
         log.info("Created {} producers in {} ms", fullListOfTopics.size(), timer.elapsedMillis());
     }
 
-    private void buildAndDrainBacklog(List<String> topics) throws IOException {
+    private void buildAndDrainBacklog(int testDurationMinutes) throws IOException {
         Timer timer = new Timer();
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
@@ -398,6 +399,13 @@ public class WorkloadGenerator implements AutoCloseable {
                     workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
             if (currentBacklog <= minBacklog) {
                 log.info("--- Completed backlog draining in {} s ---", timer.elapsedSeconds());
+
+                try {
+                    Thread.sleep(MINUTES.toMillis(testDurationMinutes));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
                 needToWaitForBacklogDraining = false;
                 return;
             }
