@@ -145,7 +145,7 @@ public class WorkerStats {
     }
 
     public void reset() {
-        reset();
+        resetLatencies();
 
         messagesSent.reset();
         messageSendErrors.reset();
