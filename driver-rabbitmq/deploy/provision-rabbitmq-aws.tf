@@ -148,7 +148,7 @@ resource "aws_instance" "prometheus" {
   count = var.num_instances["prometheus"]
 
   tags = {
-    Name = "prometheus-${count.index}"
+    Name = "prometheus_${count.index}"
   }
 }
 
