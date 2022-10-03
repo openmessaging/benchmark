@@ -117,6 +117,7 @@ $ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-1
 ## Monitoring
 
 ### Native
+
 The `rabbitmq_management` plugin is installed, and the HTTP endpoint is **publicly** exposed on all RabbitMQ instances
 on port `15672`. This allows access to the management UI which provides some basic status metrics. It should also be
 possible to access the management REST API at this endpoint.
@@ -125,11 +126,13 @@ Note that the connection is authenticated but not currently encrypted and so pas
 the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.tf) file to log in.
 
 ### Prometheus
+
 The `rabbitmq_prometheus` plugin is installed and Prometheus is installed on a standalone instance. This exposes a
 public endpoint `http://${prometheus_host}:9090`. See
 '[RabbitMQ.com — Monitoring with Prometheus & Grafana](https://www.rabbitmq.com/prometheus.html)' for more information.
 
 ### Grafana
+
 Grafana and [RabbitMQ's standard dashboards](https://grafana.com/rabbitmq) are installed alongside Prometheus. These
-are exposed on a public endpoint `http://${prometheus_host}:3000`. 
+are exposed on a public endpoint `http://${prometheus_host}:3000`.
 
