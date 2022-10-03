@@ -53,10 +53,11 @@ $ terraform apply
 
 That will install the following [EC2](https://aws.amazon.com/ec2) instances (plus some other resources, such as a [Virtual Private Cloud](https://aws.amazon.com/vpc/) (VPC)):
 
-| Resource           | Description                                                 | Count |
-|:-------------------|:------------------------------------------------------------|:------|
-| RabbitMQ instances | The VMs on which RabbitMQ brokers will run                  | 3     |
-| Client instance    | The VM from which the benchmarking suite itself will be run | 1     |
+| Resource            | Description                                                 | Count |
+|:--------------------|:------------------------------------------------------------|:------|
+| RabbitMQ instances  | The VMs on which RabbitMQ brokers will run                  | 3     |
+| Client instance     | The VM from which the benchmarking suite itself will be run | 1     |
+| Prometheus instance | The VM on which metrics services will be run                | 1     |
 
 When you run `terraform apply`, you will be prompted to type `yes`. Type `yes` to continue with the installation or anything else to quit.
 
@@ -115,10 +116,18 @@ $ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-1
 
 ## Monitoring
 
-The `rabbitmq_management` plugin is installed, and the HTTP endpoint is exposed on all RabbitMQ instances on port
-`15672`. This allows access to the management UI which provides some basic status metrics. It should also be possible
-to access the management REST API at this endpoint.
+### Native
+The `rabbitmq_management` plugin is installed, and the HTTP endpoint is **publicly** exposed on all RabbitMQ instances
+on port `15672`. This allows access to the management UI which provides some basic status metrics. It should also be
+possible to access the management REST API at this endpoint.
 
 Note that the connection is authenticated but not currently encrypted and so passwords will be passed in plain text. Use
 the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.tf) file to log in.
+
+### Prometheus
+The `rabbitmq_prometheus` plugin is installed and Prometheus is installed on a standalone instance. This exposes a
+public endpoint `http://${prometheus_host}:9090`.
+
+See 
+'[RabbitMQ.com — Monitoring with Prometheus & Grafana](https://www.rabbitmq.com/prometheus.html)' for more information.
 
