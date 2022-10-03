@@ -78,6 +78,14 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Prometheus/Dashboard access
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # All ports open within the VPC
   ingress {
     from_port   = 0
@@ -130,6 +138,24 @@ resource "aws_instance" "client" {
   }
 }
 
+resource "aws_instance" "prometheus" {
+  ami                    = var.ami
+  instance_type          = var.instance_types["prometheus"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [
+    aws_security_group.benchmark_security_group.id]
+  count = var.num_instances["prometheus"]
+
+  tags = {
+    Name = "prometheus-${count.index}"
+  }
+}
+
+output "prometheus_host" {
+  value = aws_instance.prometheus.0.public_ip
+}
+
 output "client_ssh_host" {
-  value = "${aws_instance.client.0.public_ip}"
+  value = aws_instance.client[0].public_ip
 }
