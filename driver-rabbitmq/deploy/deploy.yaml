@@ -362,6 +362,9 @@
     - file: path=/opt/rabbitmq state=absent
     - file: path=/opt/rabbitmq state=directory
     - template:
+        src: "templates/grafana-datasource.yml"
+        dest: "/opt/rabbitmq/grafana-datasource.yml"
+    - template:
         src: "templates/rabbitmq-dashboard.service"
         dest: "/etc/systemd/system/rabbitmq-dashboard.service"
     - systemd:
