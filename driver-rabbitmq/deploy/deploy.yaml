@@ -79,6 +79,12 @@
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
+  - name: Install Prometheus monitoring
+    shell: rabbitmq-plugins enable rabbitmq_prometheus
+  - systemd:
+      state: restarted
+      daemon_reload: yes
+      name: "rabbitmq-server"
 
   - name: Clear servers' Erlang cookie
     file:
@@ -146,6 +152,69 @@
         daemon_reload: yes
         name: "chronyd"
 
+- name: Install RabbitMQ Prometheus node exporters
+  hosts: rabbitmq
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        nodeExporterVersion: 1.2.2
+    - set_fact:
+        nodeExporterBinary:
+          src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+          remote: yes
+      when: nodeExporterBinary is not defined
+    - name: Add user node_exporter
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+    - name: Download and extract
+      unarchive:
+        src: "{{ nodeExporterBinary.src }}"
+        dest: /tmp
+        remote_src: "{{ nodeExporterBinary.remote }}"
+
+    - name: Copy bin node_exporter to /usr/local/bin
+      copy:
+        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes
+    - name: Check whether port 9100 is available
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
+
 - name: RabbitMQ benchmarking client setup
   hosts: client
   connection: ssh
@@ -201,6 +270,70 @@
         name: "benchmark-worker"
       tags: [client-code]
 
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        prometheusVersion: 2.31.1
+    - set_fact:
+        prometheusBinary:
+          src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+          remote: yes
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+    - name: Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Installing docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - file: path=/opt/prometheus state=absent
+    - file: path=/opt/prometheus state=directory
+    - name: Download Prometheus Binary Package
+      unarchive:
+        src: "{{ prometheusBinary.src }}"
+        remote_src: "{{ prometheusBinary.remote }}"
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+
+- name: Prometheus setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
+    - file:
+        path: "/opt/prometheus/{{ item }}"
+        state: directory
+      with_items:
+        - data
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+
 - name: List host addresses
   hosts: localhost
   become: false
@@ -211,4 +344,7 @@
     - debug:
         msg: "Benchmark client {{ item }}"
       with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"
   
