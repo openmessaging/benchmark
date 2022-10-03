@@ -341,12 +341,16 @@
         enabled: yes
     - file: path=/opt/grafana state=absent
     - file: path=/opt/grafana state=directory
-    - file: path=/repos state=absent
-    - file: path=/repos state=directory
+    - file: path=/repos/rabbitmq-server state=absent
+    - file: path=/repos/rabbitmq-server state=directory
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - git
     - name: Clone a RabbitMQ repository
       git:
         repo: https://github.com/rabbitmq/rabbitmq-server.git
-        dest: /repos
+        dest: /repos/rabbitmq-server
         clone: yes
         update: yes
 
