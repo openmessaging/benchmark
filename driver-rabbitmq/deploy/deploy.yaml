@@ -286,22 +286,6 @@
       when:
         - ansible_facts['distribution'] == 'RedHat'
         - ansible_facts['distribution_major_version'] | int <= 7
-    - name: Docker repo
-      yum_repository:
-        name: docker
-        description: repo for docker
-        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
-        gpgcheck: no
-      when: ansible_facts['distribution'] == 'RedHat'
-    - name: Installing docker
-      yum:
-        state: latest
-        pkg: ['docker-ce']
-    - name: Start docker
-      service:
-        name: docker
-        state: started
-        enabled: yes
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package
@@ -316,8 +300,8 @@
   connection: ssh
   become: true
   tasks:
-    - file: path=/opt/pulsar state=absent
-    - file: path=/opt/pulsar state=directory
+    - file: path=/opt/rabbitmq state=absent
+    - file: path=/opt/rabbitmq state=directory
     - file:
         path: "/opt/prometheus/{{ item }}"
         state: directory
@@ -334,6 +318,53 @@
         daemon_reload: yes
         name: "prometheus"
 
+- name: Grafana installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Installing docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - file: path=/opt/grafana state=absent
+    - file: path=/opt/grafana state=directory
+    - file: path=/repos state=absent
+    - file: path=/repos state=directory
+    - name: Clone a RabbitMQ repository
+      git:
+        repo: https://github.com/rabbitmq/rabbitmq-server.git
+        dest: /repos
+        clone: yes
+        update: yes
+
+- name: Grafana setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/rabbitmq state=absent
+    - file: path=/opt/rabbitmq state=directory
+    - template:
+        src: "templates/rabbitmq-dashboard.service"
+        dest: "/etc/systemd/system/rabbitmq-dashboard.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "rabbitmq-dashboard.service"
+
 - name: List host addresses
   hosts: localhost
   become: false
@@ -347,4 +378,3 @@
     - debug:
         msg: "Prometheus servers {{ item }}"
       with_items: "{{ groups['prometheus'] }}"
-  
