@@ -134,5 +134,5 @@ public endpoint `http://${prometheus_host}:9090`. See
 ### Grafana
 
 Grafana and [RabbitMQ's standard dashboards](https://grafana.com/rabbitmq) are installed alongside Prometheus. These
-are exposed on a public endpoint `http://${prometheus_host}:3000`.
+are exposed on a public endpoint `http://${prometheus_host}:3000`. Credentials are `admin`/`admin`.
 
