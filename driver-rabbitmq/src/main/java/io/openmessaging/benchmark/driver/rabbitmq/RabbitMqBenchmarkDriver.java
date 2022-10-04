@@ -30,7 +30,6 @@ import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -129,11 +128,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                                 channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
                                 // Create the queue
                                 channel.queueDeclare(
-                                        queueName,
-                                        true,
-                                        false,
-                                        false,
-                                        Collections.singletonMap("x-queue-type", "quorum"));
+                                        queueName, true, false, false, config.queueType.queueOptions());
                                 channel.queueBind(queueName, exchange, "");
                                 future.complete(
                                         new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
