@@ -104,13 +104,13 @@ Once you've successfully SSHed into the client host, you can run all [available 
 
 ```bash
 $ cd /opt/benchmark
-$ sudo bin/benchmark --drivers driver-rabbitmq/rabbitmq.yaml workloads/*.yaml
+$ sudo bin/benchmark --drivers driver-rabbitmq/rabbitmq-classic.yaml workloads/*.yaml
 ```
 
 You can also run specific workloads in the `workloads` folder. Here's an example:
 
 ```bash
-$ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq.yaml workloads/1-topic-1-partitions-1kb.yaml
+$ sudo bin/benchmark --drivers driver-rabbotmq/rabbitmq-classic.yaml workloads/1-topic-1-partitions-1kb.yaml
 ```
 
 ## Monitoring

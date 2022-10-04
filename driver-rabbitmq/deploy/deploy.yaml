@@ -167,15 +167,17 @@
     - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
       tags: [client-code]
     - shell: tuned-adm profile latency-performance
-
     - template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
       tags: [client-code]
-
     - template:
-        src: "templates/rabbitmq.yaml"
-        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq.yaml"
+        src: "templates/rabbitmq-classic.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-classic.yaml"
+      tags: [client-code]
+    - template:
+        src: "templates/rabbitmq-quorum.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-quorum.yaml"
       tags: [client-code]
 
     - name: Configure benchmark-worker memory

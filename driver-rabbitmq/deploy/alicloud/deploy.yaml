@@ -197,7 +197,7 @@
         mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
     - name: Configure service URL
       lineinfile:
-        dest: /opt/benchmark/driver-rabbitmq/rabbitmq.yaml
+        dest: /opt/benchmark/driver-rabbitmq/rabbitmq-classic.yaml
         regexp: '^brokerAddress\: '
         line: 'brokerAddress: rabbitmaster'
     - template:
