@@ -20,4 +20,4 @@ driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
 
 amqpUris:
   - amqp://localhost
-messagePersistence: false
+messagePersistence: true
