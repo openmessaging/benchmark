@@ -45,6 +45,8 @@ public class PulsarClientConfig {
         public boolean deduplicationEnabled = false;
     }
 
+    public boolean astraStreaming = false;
+
     public boolean tlsAllowInsecureConnection = false;
 
     public boolean tlsEnableHostnameVerification = false;
