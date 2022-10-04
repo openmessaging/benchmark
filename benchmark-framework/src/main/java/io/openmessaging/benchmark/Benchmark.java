@@ -141,7 +141,7 @@ public class Benchmark {
 
         if (arguments.workers != null && !arguments.workers.isEmpty()) {
             List<Worker> workers =
-                    arguments.workers.stream().map(w -> new HttpWorkerClient(w)).collect(toList());
+                    arguments.workers.stream().map(HttpWorkerClient::new).collect(toList());
             worker = new DistributedWorkersEnsemble(workers, arguments.extraConsumers);
         } else {
             // Use local worker implementation
@@ -183,12 +183,8 @@ public class Benchmark {
                                                             driverConfiguration.name,
                                                             dateFormat.format(new Date()));
 
-                                    log.info("Writing test result into {}/{}", workloadName, fileName);
-                                    File folder = new File(workloadName);
-                                    if (!folder.mkdirs()) {
-                                        log.debug("Unable to create folder {}", folder);
-                                    }
-                                    writer.writeValue(new File(folder, fileName), result);
+                                    log.info("Writing test result into {}", fileName);
+                                    writer.writeValue(new File(fileName), result);
 
                                     generator.close();
                                 } catch (Exception e) {
