@@ -112,6 +112,10 @@
     shell: rabbitmqctl join_cluster rabbit@{{ hostvars[groups['rabbitmq'][0]].private_ip }}
     when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
 
+  - name: Rabbit set cluster name
+    shell: rabbitmqctl set_cluster_name benchmark_rabbitmq
+    when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
+
   - name: Start RabbitMQ cluster slaves
     shell: rabbitmqctl start_app
     when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
