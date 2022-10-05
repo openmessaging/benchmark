@@ -343,16 +343,26 @@
     - file: path=/opt/grafana state=directory
     - file: path=/repos/rabbitmq-server state=absent
     - file: path=/repos/rabbitmq-server state=directory
+    - file: path=/repos/grafana-dashboard state=absent
+    - file: path=/repos/grafana-dashboard state=directory
     - name: Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
         - git
-    - name: Clone a RabbitMQ repository
+    - name: Clone RabbitMQ repository
       git:
         repo: https://github.com/rabbitmq/rabbitmq-server.git
         dest: /repos/rabbitmq-server
         clone: yes
         update: yes
+    - name: Clone rfmoz/grafana-dashboard repository
+      git:
+        repo: https://github.com/rfmoz/grafana-dashboards.git
+        dest: /repos/grafana-dashboard
+        clone: yes
+        update: yes
+    - name: Copy node_exporter dashboard
+      copy: remote_src=True src=/repos/grafana-dashboard/prometheus/node-exporter-full.json dest=/repos/rabbitmq-server/deps/rabbitmq_prometheus/docker/grafana/dashboards/
 
 - name: Grafana setup
   hosts: prometheus
