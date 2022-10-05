@@ -127,12 +127,15 @@ the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.
 
 ### Prometheus
 
-The `rabbitmq_prometheus` plugin is installed and Prometheus is installed on a standalone instance. This exposes a
-public endpoint `http://${prometheus_host}:9090`. See
+The `rabbitmq_prometheus` plugin is installed and Prometheus is installed on a standalone instance, along with
+[Node Exporter](https://github.com/prometheus/node_exporter) on all brokers to allow the collection of system metrics.
+Prometheus exposes a public endpoint `http://${prometheus_host}:9090`. See
 '[RabbitMQ.com — Monitoring with Prometheus & Grafana](https://www.rabbitmq.com/prometheus.html)' for more information.
 
 ### Grafana
 
-Grafana and [RabbitMQ's standard dashboards](https://grafana.com/rabbitmq) are installed alongside Prometheus. These
-are exposed on a public endpoint `http://${prometheus_host}:3000`. Credentials are `admin`/`admin`.
+Grafana and a set of standard dashboards are installed alongside Prometheus. These are exposed on a public endpoint
+`http://${prometheus_host}:3000`. Credentials are `admin`/`admin`. Dashboards included:
+* [RabbitMQ's standard dashboards](https://grafana.com/rabbitmq)
+* [Node Exporter dashboard](https://grafana.com/grafana/dashboards/1860-node-exporter-full/)
 
