@@ -127,8 +127,9 @@ the `admin` account configured in the [Terraform](deploy/provision-rabbitmq-aws.
 
 ### Prometheus
 
-The `rabbitmq_prometheus` plugin is installed and Prometheus is installed on a standalone instance. This exposes a
-public endpoint `http://${prometheus_host}:9090`. See
+The `rabbitmq_prometheus` plugin is installed and Prometheus is installed on a standalone instance, along with
+[Node Exporter](https://github.com/prometheus/node_exporter) on all brokers to allow the collection of system metrics.
+Prometheus exposes a public endpoint `http://${prometheus_host}:9090`. See
 '[RabbitMQ.com — Monitoring with Prometheus & Grafana](https://www.rabbitmq.com/prometheus.html)' for more information.
 
 ### Grafana
