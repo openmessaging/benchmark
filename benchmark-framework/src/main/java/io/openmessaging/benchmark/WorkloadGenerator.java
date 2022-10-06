@@ -348,7 +348,7 @@ public class WorkloadGenerator implements AutoCloseable {
 
         // Add the topic multiple times, one for each producer
         for (int i = 0; i < workload.producersPerTopic; i++) {
-            topics.forEach(fullListOfTopics::add);
+            fullListOfTopics.addAll(topics);
         }
 
         Collections.shuffle(fullListOfTopics);
@@ -391,7 +391,9 @@ public class WorkloadGenerator implements AutoCloseable {
 
         worker.resumeConsumers();
 
-        final long minBacklog = 1000;
+        long backlogMessageCapacity = requestedBacklogSize / workload.messageSize;
+        long backlogEmptyLevel = (long) ((1.0 - workload.backlogDrainRatio) * backlogMessageCapacity);
+        final long minBacklog = Math.max(1000L, backlogEmptyLevel);
 
         while (true) {
             CountersStats stats = worker.getCountersStats();
