@@ -13,6 +13,13 @@
  */
 package io.openmessaging.benchmark;
 
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_DRAIN;
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_FILL;
+import static io.openmessaging.benchmark.BenchmarkPhase.IDLE;
+import static io.openmessaging.benchmark.BenchmarkPhase.INITIALIZE;
+import static io.openmessaging.benchmark.BenchmarkPhase.LOAD;
+import static io.openmessaging.benchmark.BenchmarkPhase.READINESS_CHECK;
+import static io.openmessaging.benchmark.BenchmarkPhase.WARM_UP;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -55,6 +62,7 @@ public class WorkloadGenerator implements AutoCloseable {
     private volatile boolean needToWaitForBacklogDraining = false;
 
     private volatile double targetPublishRate;
+    private volatile BenchmarkPhase phase = IDLE;
 
     public WorkloadGenerator(String driverName, Workload workload, Worker worker) {
         this.driverName = driverName;
@@ -68,6 +76,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     public TestResult run() throws Exception {
+        phase = INITIALIZE;
         Timer timer = new Timer();
         List<String> topics =
                 worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
@@ -122,6 +131,7 @@ public class WorkloadGenerator implements AutoCloseable {
         worker.startLoad(producerWorkAssignment);
 
         if (workload.warmupDurationMinutes > 0) {
+            phase = WARM_UP;
             log.info("----- Starting warm-up traffic ({}m) ------", workload.warmupDurationMinutes);
             printAndCollectStats(workload.warmupDurationMinutes, TimeUnit.MINUTES);
         }
@@ -135,6 +145,8 @@ public class WorkloadGenerator implements AutoCloseable {
                             e.printStackTrace();
                         }
                     });
+        } else {
+            phase = LOAD;
         }
 
         worker.resetStats();
@@ -148,6 +160,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     private void ensureTopicsAreReady() throws IOException {
+        phase = READINESS_CHECK;
         log.info("Waiting for consumers to be ready");
         // This is work around the fact that there's no way to have a consumer ready in Kafka without
         // first publishing
@@ -363,6 +376,7 @@ public class WorkloadGenerator implements AutoCloseable {
         Timer timer = new Timer();
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
+        phase = BACKLOG_FILL;
 
         this.needToWaitForBacklogDraining = true;
 
@@ -388,8 +402,8 @@ public class WorkloadGenerator implements AutoCloseable {
         log.info("--- Completed backlog build in {} s ---", timer.elapsedSeconds());
         timer = new Timer();
         log.info("--- Start draining backlog ---");
-
         worker.resumeConsumers();
+        phase = BACKLOG_DRAIN;
 
         long backlogMessageCapacity = requestedBacklogSize / workload.messageSize;
         long backlogEmptyLevel = (long) ((1.0 - workload.backlogDrainRatio) * backlogMessageCapacity);
@@ -409,6 +423,7 @@ public class WorkloadGenerator implements AutoCloseable {
                 }
 
                 needToWaitForBacklogDraining = false;
+                phase = LOAD;
                 return;
             }
 
