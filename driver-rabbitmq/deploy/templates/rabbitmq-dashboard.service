@@ -1,0 +1,23 @@
+[Unit]
+Description=Pulsar Dashboard
+After=prometheus.service
+Requires=prometheus.service
+ 
+[Service]
+WorkingDirectory=/opt/grafana
+ExecStartPre=/usr/bin/docker pull grafana/grafana:8.3.4
+ExecStart=/usr/bin/docker run \
+  --restart=always \
+  --name=systemd_rabbitmq_dashboard \
+  -p3000:3000 \
+  -e GF_INSTALL_PLUGINS="flant-statusmap-panel,grafana-piechart-panel" \
+  -v /opt/rabbitmq/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yaml \
+  -v /repos/rabbitmq-server/deps/rabbitmq_prometheus/docker/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/rabbitmq.yaml \
+  -v /repos/rabbitmq-server/deps/rabbitmq_prometheus/docker/grafana/dashboards:/dashboards \
+  grafana/grafana:8.3.4
+ExecStop=/usr/bin/docker stop systemd_rabbitmq_dashboard
+ExecStopPost=/usr/bin/docker rm -f systemd_rabbitmq_dashboard
+ExecReload=/usr/bin/docker restart systemd_rabbitmq_dashboard
+ 
+[Install]
+WantedBy=multi-user.target
