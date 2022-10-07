@@ -61,7 +61,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private BenchmarkDriver benchmarkDriver = null;
     private final List<BenchmarkProducer> producers = new ArrayList<>();
     private final List<BenchmarkConsumer> consumers = new ArrayList<>();
-    private volatile UniformRateLimiter rateLimiter = new UniformRateLimiter(1.0);
+    private volatile MessageProducer messageProducer;
     private final ExecutorService executor =
             Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
     private final WorkerStats stats;
@@ -74,6 +74,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     public LocalWorker(StatsLogger statsLogger) {
         stats = new WorkerStats(statsLogger);
+        updateMessageProducer(1.0);
     }
 
     @Override
@@ -149,7 +150,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) {
         int processors = Runtime.getRuntime().availableProcessors();
 
-        rateLimiter = new UniformRateLimiter(producerWorkAssignment.publishRate);
+        updateMessageProducer(producerWorkAssignment.publishRate);
 
         Map<Integer, List<BenchmarkProducer>> processorAssignment = new TreeMap<>();
 
@@ -181,7 +182,6 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private void submitProducersToExecutor(
             List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
-        MessageProducer messageProducer = new MessageProducer(rateLimiter, stats);
         ThreadLocalRandom r = ThreadLocalRandom.current();
         int payloadCount = payloads.size();
         executor.submit(
@@ -204,10 +204,14 @@ public class LocalWorker implements Worker, ConsumerCallback {
     @Override
     public void adjustPublishRate(double publishRate) {
         if (publishRate < 1.0) {
-            rateLimiter = new UniformRateLimiter(1.0);
+            updateMessageProducer(1.0);
             return;
         }
-        rateLimiter = new UniformRateLimiter(publishRate);
+        updateMessageProducer(publishRate);
+    }
+
+    private void updateMessageProducer(double publishRate) {
+        messageProducer = new MessageProducer(new UniformRateLimiter(publishRate), stats);
     }
 
     @Override
