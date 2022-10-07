@@ -17,13 +17,13 @@
   connection: ssh
   become: true
   tasks:
-    - name: Format disks
+    - name: RabbitMQ - Format disks
       filesystem:
         fstype: xfs
         dev: '{{ item }}'
       with_items:
         - '/dev/nvme1n1'
-    - name: Mount disks
+    - name: RabbitMQ - Mount disks
       mount:
         path: "{{ item.path }}"
         src: "{{ item.src }}"
@@ -32,7 +32,7 @@
         state: mounted
       with_items:
         - { path: "/mnt/data", src: "/dev/nvme1n1" }
-    - name: Set permissions
+    - name: RabbitMQ - Set filesystem permissions
       file:
         path: "/mnt/data"
         state: touch
@@ -42,93 +42,107 @@
   hosts: rabbitmq
   connection: ssh
   tasks:
-  - set_fact:
+  - name: RabbitMQ - Set software versions
+    set_fact:
       erlangVersion: 24.3.4.5
       rabbitMqVersion: 3.10.7
-  - name: Install RPM packages
+  - name: RabbitMQ - Install RPM packages
     yum: pkg={{ item }} state=latest
     with_items:
       - wget
       - sysstat
       - vim
       - socat
-  - name: Install Erlang
+  - name: RabbitMQ - Install Erlang
     yum:
       name: https://github.com/rabbitmq/erlang-rpm/releases/download/v{{ erlangVersion }}/erlang-{{ erlangVersion }}-1.el8.x86_64.rpm
       state: present
       disable_gpg_check: yes
-  - name: Install Rabbitmq Server
+  - name: RabbitMQ - Install RabbitMQ Server
     yum:
       name: https://github.com/rabbitmq/rabbitmq-server/releases/download/v{{ rabbitMqVersion }}/rabbitmq-server-{{ rabbitMqVersion }}-1.el8.noarch.rpm
       state: present
       disable_gpg_check: yes
 
-  - name: Create rabbitmq-env.conf file
+  - name: RabbitMQ - Create rabbitmq-env.conf file
     template:
       src: "templates/rabbitmq-env.conf"
       dest: "/etc/rabbitmq/rabbitmq-env.conf"
 
-  - systemd:
+  - name: RabbitMQ - Start standalone
+    systemd:
       state: started
       daemon_reload: yes
       name: "rabbitmq-server"
 
-  - name: Install web management
+  - name: RabbitMQ - Install web management plugin
     shell: rabbitmq-plugins enable rabbitmq_management
   - systemd:
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
+  - name: RabbitMQ - Install Prometheus monitoring plugin
+    shell: rabbitmq-plugins enable rabbitmq_prometheus
+  - name: RabbitMQ - Restart standalone
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: "rabbitmq-server"
 
-  - name: Clear servers' Erlang cookie
+  - name: RabbitMQ - Clear Erlang cookie
     file:
       path: /var/lib/rabbitmq/.erlang.cookie
       state: absent
-  - name: Copy Erlang cookie
+  - name: RabbitMQ - Copy Erlang cookie
     copy: src=erlang.cookie  dest=/var/lib/rabbitmq/.erlang.cookie  owner=rabbitmq group=rabbitmq mode=0400
-  - systemd:
+  - name: RabbitMQ - Restart standalone
+    systemd:
       state: restarted
       daemon_reload: yes
       name: "rabbitmq-server"
     tags: [restart-rabbitmq]
 
-  - name: RabbitMQ status
+  - name: RabbitMQ - Check cluster status
     shell: rabbitmqctl cluster_status
     register: result
   - debug:
       msg: '{{ result.stdout }}'
 
-  - name: Rabbit cluster stop slaves
+  - name: RabbitMQ - Stop cluster followers
     shell: rabbitmqctl stop_app
     when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
 
-  - name: Rabbit cluster slaves join master
+  - name: RabbitMQ - Join followers to leader
     shell: rabbitmqctl join_cluster rabbit@{{ hostvars[groups['rabbitmq'][0]].private_ip }}
     when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
 
-  - name: Start RabbitMQ cluster slaves
+  - name: RabbitMQ - Set cluster name
+    shell: rabbitmqctl set_cluster_name benchmark_rabbitmq
+    when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
+
+  - name: RabbitMQ - Start cluster followers
     shell: rabbitmqctl start_app
     when: inventory_hostname != hostvars[groups['rabbitmq'][0]].inventory_hostname
 
-  - name: Show RabbitMQ cluster status
+  - name: RabbitMQ - Show cluster status
     shell: rabbitmqctl cluster_status
     register: result
   - debug:
       msg: '{{ result.stdout }}'
 
-  - name: create admin/admin profile
+  - name: RabbitMQ - Create admin/admin profile
     shell:  rabbitmqctl add_user admin  admin
     when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
 
-  - name: set admin tag
+  - name: RabbitMQ - Set admin tag
     shell: rabbitmqctl set_user_tags admin administrator
     when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
 
-  - name: set admin permission
+  - name: RabbitMQ - Set admin permission
     shell: rabbitmqctl set_permissions -p "/" admin ".*" ".*" ".*"
     when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
 
-  - name: Create high availability policy
+  - name: RabbitMQ - Create high availability policy
     shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
     when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
 
@@ -137,21 +151,87 @@
   connection: ssh
   become: true
   tasks:
-    - name: Set up chronyd
+    - name: Chrony - Configure
       template:
         src: "templates/chrony.conf"
         dest: "/etc/chrony.conf"
-    - systemd:
+    - name: Chrony - Restart
+      systemd:
         state: restarted
         daemon_reload: yes
         name: "chronyd"
+
+- name: Install RabbitMQ Prometheus node exporters
+  hosts: rabbitmq
+  connection: ssh
+  become: true
+  tasks:
+    - name: NodeExporter - Set software versions
+      set_fact:
+        nodeExporterVersion: 1.2.2
+    - name: NodeExporter - Set binary source URL
+      set_fact:
+        nodeExporterBinary:
+          src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+          remote: yes
+      when: nodeExporterBinary is not defined
+    - name: NodeExporter - Add node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+    - name: NodeExporter - Download and extract
+      unarchive:
+        src: "{{ nodeExporterBinary.src }}"
+        dest: /tmp
+        remote_src: "{{ nodeExporterBinary.remote }}"
+    - name: NodeExporter - Install binary
+      copy:
+        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+    - name: NodeExporter - Create service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+    - name: NodeExporter - Reload daemon configuration
+      systemd:
+        daemon_reload: yes
+    - name: NodeExporter - Start and enable service
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes
+    - name: NodeExporter - Check port 9100 availability
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
 
 - name: RabbitMQ benchmarking client setup
   hosts: client
   connection: ssh
   become: true
   tasks:
-    - name: Install RPM packages
+    - name:  Benchmark - Tune kernel
+      shell: tuned-adm profile latency-performance
+    - name: Benchmark - Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
         - wget
@@ -159,49 +239,168 @@
         - java-11-openjdk-devel
         - sysstat
         - vim
-    - name: Copy benchmark code
+    - name: Benchmark - Copy and unpack
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
       tags: [client-code]
-    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+    - name: Benchmark - Install binary
+      shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
       tags: [client-code]
-    - shell: tuned-adm profile latency-performance
-    - template:
+    - name: Benchmark - Configure worker
+      template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
       tags: [client-code]
-    - template:
+    - name: Benchmark - Configure classic driver
+      template:
         src: "templates/rabbitmq-classic.yaml"
         dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-classic.yaml"
       tags: [client-code]
-    - template:
+    - name: Benchmark - Configure quorum driver
+      template:
         src: "templates/rabbitmq-quorum.yaml"
         dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-quorum.yaml"
       tags: [client-code]
-
-    - name: Configure benchmark-worker memory
+    - name: Benchmark - Configure worker JVM memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark-worker
         regexp: '^JVM_MEM='
         line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
       tags: [client-code]
-    - name: Configure benchmark memory
+    - name: Benchmark - Configure client JVM memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark
         regexp: '^JVM_MEM='
         line: 'JVM_MEM="-Xmx4G"'
       tags: [client-code]
-    - name: Install benchmark-worker systemd service
+    - name: Benchmark - Install systemd service
       template:
         src: "templates/benchmark-worker.service"
         dest: "/etc/systemd/system/benchmark-worker.service"
       tags: [client-code]
-    - systemd:
+    - name: Benchmark - Start worker
+      systemd:
         state: restarted
         daemon_reload: yes
         name: "benchmark-worker"
       tags: [client-code]
+
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Prometheus - Set software versions
+      set_fact:
+        prometheusVersion: 2.31.1
+    - name: Prometheus - Set binary source URL
+      set_fact:
+        prometheusBinary:
+          src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+          remote: yes
+    - name: Prometheus - Add RHEL yum repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+    - name: Prometheus - Create install folders
+      file: path=/opt/prometheus/data state=absent
+    - file: path=/opt/prometheus/data state=directory
+    - name: Prometheus - Download and unarchive binary
+      unarchive:
+        src: "{{ prometheusBinary.src }}"
+        remote_src: "{{ prometheusBinary.remote }}"
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+
+- name: Prometheus setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Prometheus - Configure systemd
+      template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - name: Prometheus - Configure service
+      template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - name: Prometheus - Restart service
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+
+- name: Grafana installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Grafana - Configure yum Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Grafana - Install Docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: Grafana - Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - name: Grafana - Create install folders
+      file: path=/opt/grafana state=absent
+    - file: path=/opt/grafana state=directory
+    - file: path=/repos/rabbitmq-server state=absent
+    - file: path=/repos/rabbitmq-server state=directory
+    - file: path=/repos/grafana-dashboard state=absent
+    - file: path=/repos/grafana-dashboard state=directory
+    - name: Grafana - Install Git RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - git
+    - name: Grafana - Clone RabbitMQ repository
+      git:
+        repo: https://github.com/rabbitmq/rabbitmq-server.git
+        dest: /repos/rabbitmq-server
+        clone: yes
+        update: yes
+    - name: Grafana - Clone rfmoz/grafana-dashboard repository
+      git:
+        repo: https://github.com/rfmoz/grafana-dashboards.git
+        dest: /repos/grafana-dashboard
+        clone: yes
+        update: yes
+    - name: Grafana - Copy node_exporter dashboard
+      copy: remote_src=True src=/repos/grafana-dashboard/prometheus/node-exporter-full.json dest=/repos/rabbitmq-server/deps/rabbitmq_prometheus/docker/grafana/dashboards/
+
+- name: Grafana setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Grafana - Create data folders
+      file: path=/opt/rabbitmq state=absent
+    - file: path=/opt/rabbitmq state=directory
+    - name: Grafana - Configure Prometheus datasource
+      template:
+        src: "templates/grafana-datasource.yml"
+        dest: "/opt/rabbitmq/grafana-datasource.yml"
+    - name: Grafana - Configure systemd
+      template:
+        src: "templates/rabbitmq-dashboard.service"
+        dest: "/etc/systemd/system/rabbitmq-dashboard.service"
+    - name: Grafana - Restart Grafana
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "rabbitmq-dashboard.service"
 
 - name: List host addresses
   hosts: localhost
@@ -213,4 +412,6 @@
     - debug:
         msg: "Benchmark client {{ item }}"
       with_items: "{{ groups['client'] }}"
-  
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"

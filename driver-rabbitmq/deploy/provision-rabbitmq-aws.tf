@@ -26,7 +26,7 @@ variable "az" {}
 variable "ami" {}
 
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
 }
 
 # Create a VPC to launch our instances into
@@ -40,27 +40,27 @@ resource "aws_vpc" "benchmark_vpc" {
 
 # Create an internet gateway to give our subnet access to the outside world
 resource "aws_internet_gateway" "default" {
-  vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id = aws_vpc.benchmark_vpc.id
 }
 
 # Grant the VPC internet access on its main route table
 resource "aws_route" "internet_access" {
-  route_table_id         = "${aws_vpc.benchmark_vpc.main_route_table_id}"
+  route_table_id         = aws_vpc.benchmark_vpc.main_route_table_id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.default.id}"
+  gateway_id             = aws_internet_gateway.default.id
 }
 
 # Create a subnet to launch our instances into
 resource "aws_subnet" "benchmark_subnet" {
-  vpc_id                  = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id                  = aws_vpc.benchmark_vpc.id
   cidr_block              = "10.0.0.0/24"
   map_public_ip_on_launch = true
-  availability_zone       = "${var.az}"
+  availability_zone       = var.az
 }
 
 resource "aws_security_group" "benchmark_security_group" {
   name   = "terraform"
-  vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id = aws_vpc.benchmark_vpc.id
 
   # SSH access from anywhere
   ingress {
@@ -74,6 +74,22 @@ resource "aws_security_group" "benchmark_security_group" {
   ingress {
     from_port   = 15672
     to_port     = 15672
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Prometheus access
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Grafana access
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -100,17 +116,17 @@ resource "aws_security_group" "benchmark_security_group" {
 }
 
 resource "aws_key_pair" "auth" {
-  key_name   = "${var.key_name}"
-  public_key = "${file(var.public_key_path)}"
+  key_name   = var.key_name
+  public_key = file(var.public_key_path)
 }
 
 resource "aws_instance" "rabbitmq" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["rabbitmq"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["rabbitmq"]}"
+  ami                    = var.ami
+  instance_type          = var.instance_types["rabbitmq"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [aws_security_group.benchmark_security_group.id]
+  count                  = var.num_instances["rabbitmq"]
 
   tags = {
     Name = "rabbitmq_${count.index}"
@@ -118,18 +134,36 @@ resource "aws_instance" "rabbitmq" {
 }
 
 resource "aws_instance" "client" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["client"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
-  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["client"]}"
+  ami                    = var.ami
+  instance_type          = var.instance_types["client"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [aws_security_group.benchmark_security_group.id]
+  count                  = var.num_instances["client"]
 
   tags = {
     Name = "rabbitmq_client_${count.index}"
   }
 }
 
+resource "aws_instance" "prometheus" {
+  ami                    = var.ami
+  instance_type          = var.instance_types["prometheus"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = [
+    aws_security_group.benchmark_security_group.id]
+  count = var.num_instances["prometheus"]
+
+  tags = {
+    Name = "prometheus_${count.index}"
+  }
+}
+
+output "prometheus_host" {
+  value = aws_instance.prometheus.0.public_ip
+}
+
 output "client_ssh_host" {
-  value = "${aws_instance.client.0.public_ip}"
+  value = aws_instance.client[0].public_ip
 }
