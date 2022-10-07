@@ -23,3 +23,4 @@ amqpUris:
   - amqp://admin:admin@{{ hostvars[pulsar].private_ip }}:5672
 {% endfor %}
 messagePersistence: false
+queueType: QUORUM

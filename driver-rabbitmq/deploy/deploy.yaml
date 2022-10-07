@@ -252,10 +252,15 @@
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
       tags: [client-code]
-    - name: Benchmark - Configure driver
+    - name: Benchmark - Configure classic driver
       template:
-        src: "templates/rabbitmq.yaml"
-        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq.yaml"
+        src: "templates/rabbitmq-classic.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-classic.yaml"
+      tags: [client-code]
+    - name: Benchmark - Configure quorum driver
+      template:
+        src: "templates/rabbitmq-quorum.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-quorum.yaml"
       tags: [client-code]
     - name: Benchmark - Configure worker JVM memory
       lineinfile:

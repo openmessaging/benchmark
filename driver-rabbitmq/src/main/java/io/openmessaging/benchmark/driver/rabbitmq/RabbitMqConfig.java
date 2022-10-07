@@ -13,13 +13,33 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import static io.openmessaging.benchmark.driver.rabbitmq.RabbitMqConfig.QueueType.CLASSIC;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class RabbitMqConfig {
 
     public List<String> amqpUris = new ArrayList<>();
-
     public boolean messagePersistence = false;
+    public QueueType queueType = CLASSIC;
+
+    public enum QueueType {
+        CLASSIC {
+            @Override
+            Map<String, Object> queueOptions() {
+                return Collections.emptyMap();
+            }
+        },
+        QUORUM {
+            @Override
+            Map<String, Object> queueOptions() {
+                return Collections.singletonMap("x-queue-type", "quorum");
+            }
+        };
+
+        abstract Map<String, Object> queueOptions();
+    }
 }
