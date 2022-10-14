@@ -1,0 +1,28 @@
+[Unit]
+Description=NATS Metrics
+After=nats-server.service
+Requires=nats-server.service
+ 
+[Service]
+WorkingDirectory=/opt/nats-metrics
+ExecStartPre=/usr/bin/docker pull natsio/prometheus-nats-exporter:latest
+ExecStart=/usr/bin/docker run \
+  --restart=always \
+  --name=systemd_nats_metrics \
+  -p9090:9090 \
+  natsio/prometheus-nats-exporter:latest \
+  -channelz \
+  -serverz \
+  -varz \
+  -subz \
+  -channelz \
+  -connz \
+  -jsz all \
+  -p 9090 \
+  "http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:8222"
+ExecStop=/usr/bin/docker stop systemd_nats_metrics
+ExecStopPost=/usr/bin/docker rm -f systemd_nats_metrics
+ExecReload=/usr/bin/docker restart systemd_nats_metrics
+ 
+[Install]
+WantedBy=multi-user.target
