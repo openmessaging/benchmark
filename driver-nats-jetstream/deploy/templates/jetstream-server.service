@@ -1,0 +1,14 @@
+[Unit]
+Description=JetStream broker
+After=network.target
+
+[Service]
+ExecStart=/opt/jetstream/nats-streaming-server-v0.25.2-linux-amd64/nats-streaming-server -c /opt/jetstream/cluster.conf
+WorkingDirectory=/opt/jetstream/
+RestartSec=1s
+Restart=on-failure
+Type=simple
+LimitNOFILE=300000
+
+[Install]
+WantedBy=multi-user.target

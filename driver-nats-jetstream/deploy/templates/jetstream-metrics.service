@@ -1,0 +1,27 @@
+[Unit]
+Description=JetStream Metrics
+After=jetstream-server.service
+Requires=jetstream-server.service
+ 
+[Service]
+WorkingDirectory=/opt/jetstream-metrics
+ExecStartPre=/usr/bin/docker pull natsio/prometheus-nats-exporter:latest
+ExecStart=/usr/bin/docker run \
+  --restart=always \
+  --name=systemd_jetstream_metrics \
+  -p9090:9090 \
+  natsio/prometheus-nats-exporter:latest \
+  -channelz \
+  -serverz \
+  -varz \
+  -subz \
+  -channelz \
+  -connz \
+  -p 9090 \
+  "http://localhost:8222"
+ExecStop=/usr/bin/docker stop systemd_jetstream_metrics
+ExecStopPost=/usr/bin/docker rm -f systemd_jetstream_metrics
+ExecReload=/usr/bin/docker restart systemd_jetstream_metrics
+ 
+[Install]
+WantedBy=multi-user.target

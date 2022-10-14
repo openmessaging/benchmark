@@ -51,6 +51,7 @@
         <module>driver-bookkeeper</module>
         <module>driver-rocketmq</module>
         <module>driver-nats</module>
+        <module>driver-nats-jetstream</module>
         <module>driver-nats-streaming</module>
         <module>driver-nsq</module>
         <module>driver-jms</module>
