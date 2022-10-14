@@ -3,7 +3,7 @@ Description=nats broker
 After=network.target
 
 [Service]
-ExecStart=/opt/nats-streaming/nats-streaming-server-v0.11.2-linux-amd64/nats-streaming-server -c /opt/nats-streaming/cluster.conf
+ExecStart=/opt/nats-streaming/nats-streaming-server-v0.25.2-linux-amd64/nats-streaming-server -c /opt/nats-streaming/cluster.conf
 WorkingDirectory=/opt/nats-streaming/
 RestartSec=1s
 Restart=on-failure

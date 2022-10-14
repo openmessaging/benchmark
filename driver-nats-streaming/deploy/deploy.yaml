@@ -12,13 +12,38 @@
 # limitations under the License.
 #
 
+- name: Format and mount disks for NATS hosts
+  hosts: nats
+  connection: ssh
+  become: true
+  tasks:
+    - name: NATS - Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme1n1'
+    - name: NATS - Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/data", src: "/dev/nvme1n1" }
+    - name: NATS - Set filesystem permissions
+      file:
+        path: "/mnt/data"
+        state: touch
+        mode: "0777"
 
-- name: Install NATS-Streaming Cluster
-  hosts: nats-streaming-server
+- name: NATS - Install Cluster
+  hosts: nats
   connection: ssh
   tasks:
   - set_fact:
-      natsHostUrl: "{{ hostvars[groups['nats-streaming-server'][0]].private_ip }}"
+      natsHostUrl: "{{ hostvars[groups['nats'][0]].private_ip }}"
       private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
   - name: Install RPM packages
     yum: pkg={{ item }} state=latest
@@ -28,102 +53,356 @@
 
   - file: path=/opt/nats-streaming state=absent
   - file: path=/opt/nats-streaming state=directory
-  - name: Install Nats-streaming Server
+  - name: NATS - Install server binary
     unarchive:
-      src: "https://github.com/nats-io/nats-streaming-server/releases/download/v0.11.2/nats-streaming-server-v0.11.2-linux-amd64.zip"
+      src: "https://github.com/nats-io/nats-streaming-server/releases/download/v0.25.2/nats-streaming-server-v0.25.2-linux-amd64.zip"
       remote_src: yes
       dest: /opt/nats-streaming
-  - template:
+  - name: NATS - Apply server configuration
+    template:
       src: "templates/cluster.conf"
       dest: "/opt/nats-streaming/cluster.conf"
-  - template:
+  - name: NATS - Configure server systemd service
+    template:
       src: "templates/nats-streaming-server.service"
       dest: "/etc/systemd/system/nats-streaming-server.service"
-
-  - replace:
+  - name: NATS - Inject cluster URL
+    replace:
       dest: /opt/nats-streaming/cluster.conf
       regexp: 'natsHostUrl'
       replace: '{{natsHostUrl}}'
-  - replace:
+  - name: NATS - Inject cluster private IP
+    replace:
       dest: /opt/nats-streaming/cluster.conf
       regexp: 'localhost'
       replace: '{{private_ip}}'
-  - replace:
+  - name: NATS - Inject cluster leader setting
+    replace:
       dest: /opt/nats-streaming/cluster.conf
       regexp: 'false'
       replace: 'true'
-    when:   groups['nats-streaming-server'][0] == inventory_hostname
-  - replace:
+    when:   groups['nats'][0] == inventory_hostname
+  - name: NATS - Inject cluster hostname
+    replace:
       dest: /opt/nats-streaming/cluster.conf
       regexp: 'routes'
       replace: '#routes'
-    when: groups['nats-streaming-server'][0] == inventory_hostname
-
-  - systemd:
+    when: groups['nats'][0] == inventory_hostname
+  - name: NATS - Start service
+    systemd:
       state: started
       daemon_reload: yes
       name: "nats-streaming-server"
 
+- name: Install NATS Prometheus exporters
+  hosts: nats
+  connection: ssh
+  become: true
+  tasks:
+    - name: NATSExporter - Configure yum Docker repo
+      tags: ['nse']
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: NATSExporter - Install Docker
+      tags: ['nse']
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: NATSExporter - Start docker
+      tags: ['nse']
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
-- name:  benchmarking client setup
+- name: Configure NATS Prometheus exporters
+  hosts: nats
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/nats-streaming-metrics state=absent
+      tags: ['nse']
+    - file: path=/opt/nats-streaming-metrics state=directory
+      tags: ['nse']
+    - name: NATSExporter - Configure systemd
+      tags: ['nse']
+      template:
+        src: "templates/nats-streaming-metrics.service"
+        dest: "/etc/systemd/system/nats-streaming-metrics.service"
+    - name: NATSExporter - Restart NATS exporter
+      tags: ['nse']
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "nats-streaming-metrics.service"
+
+- name: Install Node exporters
+  hosts: nats
+  connection: ssh
+  become: true
+  tasks:
+    - name: NodeExporter - Set software versions
+      set_fact:
+        nodeExporterVersion: 1.2.2
+    - name: NodeExporter - Set binary source URL
+      set_fact:
+        nodeExporterBinary:
+          src: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeExporterVersion }}/node_exporter-{{ nodeExporterVersion }}.linux-amd64.tar.gz"
+          remote: yes
+      when: nodeExporterBinary is not defined
+    - name: NodeExporter - Add node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+    - name: NodeExporter - Download and extract
+      unarchive:
+        src: "{{ nodeExporterBinary.src }}"
+        dest: /tmp
+        remote_src: "{{ nodeExporterBinary.remote }}"
+    - name: NodeExporter - Install binary
+      copy:
+        src: "/tmp/node_exporter-{{ nodeExporterVersion }}.linux-amd64/node_exporter"
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+    - name: NodeExporter - Create service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+    - name: NodeExporter - Reload daemon configuration
+      systemd:
+        daemon_reload: yes
+    - name: NodeExporter - Start and enable service
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes
+    - name: NodeExporter - Check port 9100 availability
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
+
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Prometheus - Set software versions
+      set_fact:
+        prometheusVersion: 2.31.1
+    - name: Prometheus - Set binary source URL
+      set_fact:
+        prometheusBinary:
+          src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+          remote: yes
+    - name: Prometheus - Add RHEL yum repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+    - name: Prometheus - Create install folders
+      file: path=/opt/prometheus/data state=absent
+    - file: path=/opt/prometheus/data state=directory
+    - name: Prometheus - Download and unarchive binary
+      unarchive:
+        src: "{{ prometheusBinary.src }}"
+        remote_src: "{{ prometheusBinary.remote }}"
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+
+- name: Prometheus setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Prometheus - Configure systemd
+      template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - name: Prometheus - Configure service
+      template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - name: Prometheus - Restart service
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+
+- name: Grafana installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Grafana - Configure yum Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Grafana - Install Docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+    - name: Grafana - Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - name: Grafana - Create install folders
+      file: path=/opt/grafana state=absent
+    - file: path=/opt/grafana state=directory
+    - file: path=/repos/prometheus-nats-exporter state=absent
+    - file: path=/repos/prometheus-nats-exporter state=directory
+    - file: path=/repos/grafana-dashboards state=absent
+    - file: path=/repos/grafana-dashboards state=directory
+    - name: Grafana - Install Git RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - git
+    - name: Grafana - Clone nats-io/prometheus-nats-exporter repository
+      git:
+        repo: https://github.com/nats-io/prometheus-nats-exporter.git
+        dest: /repos/prometheus-nats-exporter
+        clone: yes
+        update: yes
+    - name: Grafana - Clone rfmoz/grafana-dashboard repository
+      git:
+        repo: https://github.com/rfmoz/grafana-dashboards.git
+        dest: /repos/grafana-dashboards
+        clone: yes
+        update: yes
+    - name: Grafana - Copy node_exporter dashboard
+      copy: remote_src=True src=/repos/grafana-dashboards/prometheus/node-exporter-full.json dest=/repos/prometheus-nats-exporter/walkthrough/
+
+- name: Grafana setup
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Grafana - Create data folders
+      file: path=/opt/nats-streaming state=absent
+    - file: path=/opt/nats-streaming state=directory
+    - name: Grafana - Configure Dashboards
+      template:
+        src: "templates/grafana-dashboards.yml"
+        dest: "/opt/nats-streaming/dashboards.yml"
+    - name: Grafana - Configure Prometheus datasource
+      template:
+        src: "templates/grafana-datasource.yml"
+        dest: "/opt/nats-streaming/grafana-datasource.yml"
+    - name: Grafana - Configure systemd
+      template:
+        src: "templates/nats-streaming-dashboard.service"
+        dest: "/etc/systemd/system/nats-streaming-dashboard.service"
+    - name: Grafana - Restart Grafana
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "nats-streaming-dashboard.service"
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Chrony - Configure
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - name: Chrony - Restart
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
+- name:  Benchmarking client setup
   hosts: client
   connection: ssh
   become: true
   tasks:
     - set_fact:
-        natsHostUrl: "{{ hostvars[groups['nats-streaming-server'][0]].private_ip }}"
-    - name: Install RPM packages
+        natsHostUrl: "{{ hostvars[groups['nats'][0]].private_ip }}"
+    - name: Benchmark - Install RPM packages
       yum: pkg={{ item }} state=latest
       with_items:
         - java
-    - file: path=/opt/benchmark state=absent
+    - name: Benchmark - Create folders
+      file: path=/opt/benchmark state=absent
     - file: path=/opt/benchmark state=directory
-    - name: Copy benchmark code
+    - name: Benchmark - Copy code
       unarchive:
         src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
         dest: /opt
-    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/* /opt/benchmark
-    - shell: tuned-adm profile latency-performance
-    - template:
+    - name: Benchmark - Install code
+      shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT/* /opt/benchmark
+    - name: Benchmark - Tune kernel
+      shell: tuned-adm profile latency-performance
+    - name: Benchmark - Configure workers
+      template:
         src: "templates/workers.yaml"
         dest: "/opt/benchmark/workers.yaml"
-    - name: Get list of driver config files
+    - name: Benchmark - Get list of driver config files
       raw: ls -1 /opt/benchmark/driver-nats-streaming/*.yaml
       register: drivers_list
-
-    - name: Configure natsHost URL
+    - name: Benchmark - Configure natsHost URL
       lineinfile:
         dest: /opt/benchmark/driver-nats-streaming/nats-streaming.yaml
         regexp: '^natsHostUrl\: '
         line: 'natsHostUrl: nats://{{natsHostUrl}}:4222'
-    - name: Configure memory
+    - name: Benchmark - Configure worker memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark-worker
         regexp: '^JVM_MEM='
         line: 'JVM_MEM="-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+ParallelRefProcEnabled -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=32 -XX:ConcGCThreads=32 -XX:G1NewSizePercent=50 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
-    - name: Configure memory
+    - name: Benchmark - Configure client memory
       lineinfile:
         dest: /opt/benchmark/bin/benchmark
         regexp: '^JVM_MEM='
         line: 'JVM_MEM="-Xmx4G"'
-    - name: Install benchmark systemd service
+    - name: Benchmark - Install systemd service
       template:
         src: "templates/benchmark-worker.service"
         dest: "/etc/systemd/system/benchmark-worker.service"
-    - systemd:
+    - name: Benchmark - Start service
+      systemd:
         state: restarted
         daemon_reload: yes
         name: "benchmark-worker"
-
 
 - name: List host addresses
   hosts: localhost
   become: false
   tasks:
     - debug:
-        msg: "nats-streaming brokers {{ item }}"
-      with_items: "{{ groups['nats-streaming-server'] }}"
+        msg: "NATS Streaming brokers {{ item }}"
+      with_items: "{{ groups['nats'] }}"
     - debug:
         msg: "Benchmark client {{ item }}"
       with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"
   
