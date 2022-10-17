@@ -16,12 +16,14 @@ To run OMB on your Astra Streaming Tenant you need the following information fro
 Setup the following environment variables - here is an example
 
 ```
-export astraTenant="njdeluxeaws"
-export astraNamespace="namespace0"
-export astraCluster="staging0"
 export pulsarServiceUrl="pulsar+ssl://pulsar-aws-useast1.staging.streaming.datastax.com:6651"
 export pulsarAdminUrl="https://pulsar-aws-useast1.api.staging.streaming.datastax.com"
-export astraToken="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2NjQ0NzQyMDIsImlzcyI6ImRhdGFzdGF4Iiwic3ViIjoiY2xpZW50O2YyOTMyN2U2LTM0ZGItNDkyNy04ODA4LTFjMTdhZjFkMGJmMTtaMmxuWVc5dDswZWRmYmZlZmY3IiwidG9rZW5pZCI6IjBlZGZiZmVmZjcifQ.TrdCiT-YUn5Q7cQH4ks9d62tVR6PClCAjnurOiXvcG8roTOjFtqh0dZ4CNaYqp5SuXN5Tup5ND5NXmRcxiCCSXMRv8zj0M03UFddAmIiWbQtprRXsofrkmvNP_cdoH8cwvzMQq8UerHSO81ZRTeDsoRG8StwqFQPa--XxQfLgjuFCt-vWLI51_Guh-Y8IMT0dsC8eWsOSTnqe5xweT_d6EGFbnOExV1JS07ubaloePP1yLw5OhkA2BFtPRscf5NjDT3IdDqXvdZkGLUVcQ2ELXpjjiF85RPxu574H5Ow2cXvEnmIn9WrfAadzjM2bsA3XJPtKzz4m7vG_PtYl1inug"
+export kafkaServiceUrl="kafka-aws-useast1.staging.streaming.datastax.com:9093"
+export rabbitmqServiceUrl="rabbitmq-aws-useast1.staging.streaming.datastax.com:5671"
+export astraTenant="omb-performance"
+export astraNamespace="namespace"
+export astraCluster="staging0"
+export astraToken="******"
 ```
 
 ### Astra Streaming Drivers and Workloads
@@ -35,6 +37,8 @@ These drivers use the above environment variables to properly access your Astra 
 
 1. Pulsar: `driver-pulsar/astra.yaml`
 2. Starlight for JMS: `driver-jms/astra-jms.yaml`
+3. Starlight for Kafka: `driver-kafka/astra-s4k.yaml`
+4. Starlight for RabbitMQ: `driver-rabbitmq/astra-s4r.yaml`
 
 Support for Starlight for Kafka and Starlight for RabbitMQ are yet to be done.
 
