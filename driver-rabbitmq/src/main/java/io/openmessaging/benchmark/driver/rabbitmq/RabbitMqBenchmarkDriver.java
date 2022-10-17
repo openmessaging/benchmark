@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.net.ssl.SSLContext;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -156,6 +158,10 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         return connections.computeIfAbsent(uri, uriKey -> {
             try {
                 ConnectionFactory connectionFactory = new ConnectionFactory();
+		SSLContext ctx = SSLContext.getInstance("TLSv1.2");
+		ctx.init(null, null, null);
+		connectionFactory.useSslProtocol(ctx);
+		connectionFactory.enableHostnameVerification();
                 connectionFactory.setAutomaticRecoveryEnabled(true);
                 connectionFactory.setUri(uri);
                 return connectionFactory.newConnection();
