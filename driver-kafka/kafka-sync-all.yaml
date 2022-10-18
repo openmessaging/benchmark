@@ -31,7 +31,7 @@ topicConfig: |
   flush.ms=0
 
 commonConfig: |
-  bootstrap.servers=localhost:9092
+  bootstrap.servers=${kafkaServiceUrl:-localhost:9092}
 
 producerConfig: |
   acks=all

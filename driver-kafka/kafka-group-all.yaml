@@ -29,7 +29,7 @@ topicConfig: |
   min.insync.replicas=2
 
 commonConfig: |
-  bootstrap.servers=localhost:9092
+  bootstrap.servers=${kafkaServiceUrl:-localhost:9092}
   request.timeout.ms=120000
 
 producerConfig: |

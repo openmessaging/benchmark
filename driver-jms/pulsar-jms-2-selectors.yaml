@@ -46,8 +46,8 @@ delegateForAdminOperationsClassName: io.openmessaging.benchmark.driver.pulsar.Pu
 # Pulsar specific configuration
 # the code that handles this configuration is the PulsarBenchmarkDriver
 client:
-  serviceUrl: pulsar://localhost:6650
-  httpUrl: http://localhost:8080
+  serviceUrl: ${pulsarServiceUrl:-pulsar://localhost:6650}
+  httpUrl: ${pulsarAdminUrl:-http://localhost:8080}
   clusterName: local
   namespacePrefix: benchmark/ns
   topicType: persistent

@@ -22,9 +22,9 @@ name: StarlightRabbitMQ
 driverClass: io.openmessaging.benchmark.driver.starlightrabbitmq.StarlightRabbitMqBenchmarkDriver
 
 amqpUris:
-  - amqp://localhost
+  - amqp://${rabbitServiceUrl:-localhost}
 
-pulsarHttpUrl: http://localhost:8080
+pulsarHttpUrl: ${pulsarAdminUrl:-http://localhost:8080}
 
 clusterName: standalone
 namespacePrefix: benchmark/ns
