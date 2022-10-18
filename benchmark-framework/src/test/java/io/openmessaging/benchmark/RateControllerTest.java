@@ -13,6 +13,9 @@
  */
 package io.openmessaging.benchmark;
 
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_DRAIN;
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_FILL;
+import static io.openmessaging.benchmark.BenchmarkPhase.LOAD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,14 +31,56 @@ class RateControllerTest {
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // no backlog
-        rate = rateController.nextRate(rate, periodNanos, 10_000, 10_000);
+        rate = rateController.nextRate(LOAD, rate, periodNanos, 10_000, 10_000);
         assertThat(rate).isEqualTo(20_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // receive backlog
-        rate = rateController.nextRate(rate, periodNanos, 20_000, 15_000);
+        rate = rateController.nextRate(LOAD, rate, periodNanos, 20_000, 15_000);
         assertThat(rate).isEqualTo(5_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
+    }
+
+    @Test
+    void receiveBacklogFill() {
+        assertThat(rateController.getRampingFactor()).isEqualTo(1);
+
+        // no backlog
+        rate = rateController.nextRate(BACKLOG_FILL, rate, periodNanos, 10_000, 10_000);
+        assertThat(rate).isEqualTo(20_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(1);
+
+        // stop consumers to fill backlog
+        rate = rateController.nextRate(BACKLOG_FILL, rate, periodNanos, 20_000, 10_000);
+        assertThat(rate).isEqualTo(10_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
+    }
+
+    @Test
+    void receiveBacklogDrain() {
+        assertThat(rateController.getRampingFactor()).isEqualTo(1);
+
+        // no backlog
+        rate = rateController.nextRate(BACKLOG_DRAIN, rate, periodNanos, 40_000, 10_000);
+        assertThat(rate).isEqualTo(20_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(1);
+
+        // start consumers to drain backlog
+        rate = rateController.nextRate(BACKLOG_DRAIN, rate, periodNanos, 50_000, 10_000);
+        assertThat(rate).isEqualTo(10_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
+
+        rate = rateController.nextRate(BACKLOG_DRAIN, rate, periodNanos, 60_000, 20_000);
+        assertThat(rate).isEqualTo(20_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(1.0);
+
+        rate = rateController.nextRate(BACKLOG_DRAIN, rate, periodNanos, 70_000, 30_000);
+        assertThat(rate).isEqualTo(10_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
+
+        rate = rateController.nextRate(BACKLOG_DRAIN, rate, periodNanos, 80_000, 40_000);
+        assertThat(rate).isEqualTo(20_000);
+        assertThat(rateController.getRampingFactor()).isEqualTo(1.0);
     }
 
     @Test
@@ -43,12 +88,12 @@ class RateControllerTest {
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // no backlog
-        rate = rateController.nextRate(rate, periodNanos, 10_000, 10_000);
+        rate = rateController.nextRate(LOAD, rate, periodNanos, 10_000, 10_000);
         assertThat(rate).isEqualTo(20_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // publish backlog
-        rate = rateController.nextRate(rate, periodNanos, 15_000, 20_000);
+        rate = rateController.nextRate(LOAD, rate, periodNanos, 15_000, 20_000);
         assertThat(rate).isEqualTo(5_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
     }
@@ -58,12 +103,12 @@ class RateControllerTest {
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // receive backlog
-        rate = rateController.nextRate(rate, periodNanos, 10_000, 5_000);
+        rate = rateController.nextRate(LOAD, rate, periodNanos, 10_000, 5_000);
         assertThat(rate).isEqualTo(5_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
 
         // no backlog
-        rate = rateController.nextRate(rate, periodNanos, 20_000, 20_000);
+        rate = rateController.nextRate(LOAD, rate, periodNanos, 20_000, 20_000);
         assertThat(rate).isEqualTo(10_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
     }

@@ -13,6 +13,13 @@
  */
 package io.openmessaging.benchmark;
 
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_DRAIN;
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_FILL;
+import static io.openmessaging.benchmark.BenchmarkPhase.IDLE;
+import static io.openmessaging.benchmark.BenchmarkPhase.INITIALIZE;
+import static io.openmessaging.benchmark.BenchmarkPhase.LOAD;
+import static io.openmessaging.benchmark.BenchmarkPhase.READINESS_CHECK;
+import static io.openmessaging.benchmark.BenchmarkPhase.WARM_UP;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -55,19 +62,16 @@ public class WorkloadGenerator implements AutoCloseable {
     private volatile boolean needToWaitForBacklogDraining = false;
 
     private volatile double targetPublishRate;
+    private volatile BenchmarkPhase phase = IDLE;
 
     public WorkloadGenerator(String driverName, Workload workload, Worker worker) {
         this.driverName = driverName;
         this.workload = workload;
         this.worker = worker;
-
-        if (workload.consumerBacklogSizeGB > 0 && workload.producerRate == 0) {
-            throw new IllegalArgumentException(
-                    "Cannot probe producer sustainable rate when building backlog");
-        }
     }
 
     public TestResult run() throws Exception {
+        phase = INITIALIZE;
         Timer timer = new Timer();
         List<String> topics =
                 worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
@@ -122,6 +126,7 @@ public class WorkloadGenerator implements AutoCloseable {
         worker.startLoad(producerWorkAssignment);
 
         if (workload.warmupDurationMinutes > 0) {
+            phase = WARM_UP;
             log.info("----- Starting warm-up traffic ({}m) ------", workload.warmupDurationMinutes);
             printAndCollectStats(workload.warmupDurationMinutes, TimeUnit.MINUTES);
         }
@@ -135,6 +140,8 @@ public class WorkloadGenerator implements AutoCloseable {
                             e.printStackTrace();
                         }
                     });
+        } else {
+            phase = LOAD;
         }
 
         worker.resetStats();
@@ -148,6 +155,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     private void ensureTopicsAreReady() throws IOException {
+        phase = READINESS_CHECK;
         log.info("Waiting for consumers to be ready");
         // This is work around the fact that there's no way to have a consumer ready in Kafka without
         // first publishing
@@ -216,7 +224,7 @@ public class WorkloadGenerator implements AutoCloseable {
 
             currentRate =
                     rateController.nextRate(
-                            currentRate, periodNanos, stats.messagesSent, stats.messagesReceived);
+                            phase, currentRate, periodNanos, stats.messagesSent, stats.messagesReceived);
             worker.adjustPublishRate(currentRate);
         }
     }
@@ -272,18 +280,16 @@ public class WorkloadGenerator implements AutoCloseable {
         Timer timer = new Timer();
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
+        phase = BACKLOG_FILL;
 
         this.needToWaitForBacklogDraining = true;
 
-        long requestedBacklogSize = workload.consumerBacklogSizeGB * 1024 * 1024 * 1024;
+        long requestedBacklogSizeBytes = workload.consumerBacklogSizeGB * 1024 * 1024 * 1024;
 
         while (true) {
             CountersStats stats = worker.getCountersStats();
-            long currentBacklogSize =
-                    (workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived)
-                            * workload.messageSize;
-
-            if (currentBacklogSize >= requestedBacklogSize) {
+            long currentBacklogSizeBytes = backlogSizeBytes(workload, stats);
+            if (currentBacklogSizeBytes >= requestedBacklogSizeBytes) {
                 break;
             }
 
@@ -296,19 +302,17 @@ public class WorkloadGenerator implements AutoCloseable {
 
         log.info("--- Completed backlog build in {} s ---", timer.elapsedSeconds());
         timer = new Timer();
-        log.info("--- Start draining backlog ---");
 
+        CountersStats stats = worker.getCountersStats();
+        long toDrain = backlogSizeMsgs(workload, stats);
+        long drainCheckpoint = stats.messagesReceived;
+        log.info("--- Start draining backlog of {} K msgs ---", dec.format(toDrain / 1000));
         worker.resumeConsumers();
-
-        long backlogMessageCapacity = requestedBacklogSize / workload.messageSize;
-        long backlogEmptyLevel = (long) ((1.0 - workload.backlogDrainRatio) * backlogMessageCapacity);
-        final long minBacklog = Math.max(1000L, backlogEmptyLevel);
+        phase = BACKLOG_DRAIN;
 
         while (true) {
-            CountersStats stats = worker.getCountersStats();
-            long currentBacklog =
-                    workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
-            if (currentBacklog <= minBacklog) {
+            stats = worker.getCountersStats();
+            if ((stats.messagesReceived - drainCheckpoint) > toDrain) {
                 log.info("--- Completed backlog draining in {} s ---", timer.elapsedSeconds());
 
                 try {
@@ -318,6 +322,7 @@ public class WorkloadGenerator implements AutoCloseable {
                 }
 
                 needToWaitForBacklogDraining = false;
+                phase = LOAD;
                 return;
             }
 
@@ -327,6 +332,14 @@ public class WorkloadGenerator implements AutoCloseable {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    private long backlogSizeMsgs(Workload workload, CountersStats stats) {
+        return workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
+    }
+
+    private long backlogSizeBytes(Workload workload, CountersStats stats) {
+        return backlogSizeMsgs(workload, stats) * workload.messageSize;
     }
 
     @SuppressWarnings({"checkstyle:LineLength", "checkstyle:MethodLength"})

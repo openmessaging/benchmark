@@ -13,6 +13,8 @@
  */
 package io.openmessaging.benchmark;
 
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_DRAIN;
+import static io.openmessaging.benchmark.BenchmarkPhase.BACKLOG_FILL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
@@ -42,7 +44,12 @@ class RateController {
         rampingFactor = maxRampingFactor;
     }
 
-    double nextRate(double rate, long periodNanos, long totalPublished, long totalReceived) {
+    double nextRate(
+            BenchmarkPhase phase,
+            double rate,
+            long periodNanos,
+            long totalPublished,
+            long totalReceived) {
         long expected = (long) ((rate / ONE_SECOND_IN_NANOS) * periodNanos);
         long published = totalPublished - previousTotalPublished;
         long received = totalReceived - previousTotalReceived;
@@ -59,7 +66,7 @@ class RateController {
         }
 
         long receiveBacklog = totalPublished - totalReceived;
-        if (receiveBacklog > receiveBacklogLimit) {
+        if (phase != BACKLOG_FILL && phase != BACKLOG_DRAIN && receiveBacklog > receiveBacklogLimit) {
             return nextRate(periodNanos, received, expected, receiveBacklog, "Receive");
         }
 
