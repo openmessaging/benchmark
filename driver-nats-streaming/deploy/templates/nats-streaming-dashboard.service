@@ -1,0 +1,23 @@
+[Unit]
+Description=NATS Streaming Dashboard
+After=prometheus.service
+Requires=prometheus.service
+ 
+[Service]
+WorkingDirectory=/opt/grafana
+ExecStartPre=/usr/bin/docker pull grafana/grafana:8.3.4
+ExecStart=/usr/bin/docker run \
+  --restart=always \
+  --name=systemd_nats_streaming_dashboard \
+  -p3000:3000 \
+  -e GF_INSTALL_PLUGINS="flant-statusmap-panel,grafana-piechart-panel" \
+  -v /opt/nats-streaming/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yaml \
+  -v /opt/nats-streaming/dashboards.yml:/etc/grafana/provisioning/dashboards/nats-streaming.yaml \
+  -v /repos/prometheus-nats-exporter/walkthrough:/dashboards \
+  grafana/grafana:8.3.4
+ExecStop=/usr/bin/docker stop systemd_nats_streaming_dashboard
+ExecStopPost=/usr/bin/docker rm -f systemd_nats_streaming_dashboard
+ExecReload=/usr/bin/docker restart systemd_nats_streaming_dashboard
+ 
+[Install]
+WantedBy=multi-user.target

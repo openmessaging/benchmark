@@ -224,67 +224,6 @@
         state: started
         timeout: 5
 
-- name: RabbitMQ benchmarking client setup
-  hosts: client
-  connection: ssh
-  become: true
-  tasks:
-    - name:  Benchmark - Tune kernel
-      shell: tuned-adm profile latency-performance
-    - name: Benchmark - Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
-        - wget
-        - java-11-openjdk
-        - java-11-openjdk-devel
-        - sysstat
-        - vim
-    - name: Benchmark - Copy and unpack
-      unarchive:
-        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
-        dest: /opt
-      tags: [client-code]
-    - name: Benchmark - Install binary
-      shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
-      tags: [client-code]
-    - name: Benchmark - Configure worker
-      template:
-        src: "templates/workers.yaml"
-        dest: "/opt/benchmark/workers.yaml"
-      tags: [client-code]
-    - name: Benchmark - Configure classic driver
-      template:
-        src: "templates/rabbitmq-classic.yaml"
-        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-classic.yaml"
-      tags: [client-code]
-    - name: Benchmark - Configure quorum driver
-      template:
-        src: "templates/rabbitmq-quorum.yaml"
-        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-quorum.yaml"
-      tags: [client-code]
-    - name: Benchmark - Configure worker JVM memory
-      lineinfile:
-        dest: /opt/benchmark/bin/benchmark-worker
-        regexp: '^JVM_MEM='
-        line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
-      tags: [client-code]
-    - name: Benchmark - Configure client JVM memory
-      lineinfile:
-        dest: /opt/benchmark/bin/benchmark
-        regexp: '^JVM_MEM='
-        line: 'JVM_MEM="-Xmx4G"'
-      tags: [client-code]
-    - name: Benchmark - Install systemd service
-      template:
-        src: "templates/benchmark-worker.service"
-        dest: "/etc/systemd/system/benchmark-worker.service"
-      tags: [client-code]
-    - name: Benchmark - Start worker
-      systemd:
-        state: restarted
-        daemon_reload: yes
-        name: "benchmark-worker"
-      tags: [client-code]
 
 - name: Prometheus installation
   hosts: prometheus
@@ -401,6 +340,71 @@
         state: restarted
         daemon_reload: yes
         name: "rabbitmq-dashboard.service"
+
+- name: RabbitMQ benchmarking client setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name:  Benchmark - Tune kernel
+      shell: tuned-adm profile latency-performance
+    - name: Benchmark - Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - wget
+        - java-11-openjdk
+        - java-11-openjdk-devel
+        - sysstat
+        - vim
+    - name: Benchmark - Clean folder
+      file: path=/opt/benchmark state=absent
+      tags: [client-code]
+    - name: Benchmark - Copy and unpack
+      unarchive:
+        src: ../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+      tags: [client-code]
+    - name: Benchmark - Install binary
+      shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+      tags: [client-code]
+    - name: Benchmark - Configure worker
+      template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+      tags: [client-code]
+    - name: Benchmark - Configure classic driver
+      template:
+        src: "templates/rabbitmq-classic.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-classic.yaml"
+      tags: [client-code]
+    - name: Benchmark - Configure quorum driver
+      template:
+        src: "templates/rabbitmq-quorum.yaml"
+        dest: "/opt/benchmark/driver-rabbitmq/rabbitmq-quorum.yaml"
+      tags: [client-code]
+    - name: Benchmark - Configure worker JVM memory
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark-worker
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB"'
+      tags: [client-code]
+    - name: Benchmark - Configure client JVM memory
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xmx4G"'
+      tags: [client-code]
+    - name: Benchmark - Install systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+      tags: [client-code]
+    - name: Benchmark - Start worker
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+      tags: [client-code]
 
 - name: List host addresses
   hosts: localhost
