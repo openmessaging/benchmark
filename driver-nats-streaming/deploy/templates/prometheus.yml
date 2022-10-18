@@ -1,0 +1,45 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+---
+global:
+  scrape_interval:     10s # By default, scrape targets every 15 seconds.
+  evaluation_interval: 10s # By default, scrape targets every 15 seconds.
+  # scrape_timeout is set to the global default (10s).
+  external_labels:
+    # TODO: replace `<cluster-name>` with the right cluster name. E.g.
+    #
+    # cluster: test-cluster
+    cluster: local
+
+# Load and evaluate rules in these files every 'evaluation_interval' seconds.
+# rule_files:
+
+scrape_configs:
+
+  - job_name: "broker"
+    honor_labels: true # don't overwrite job & instance labels
+    static_configs:
+      - targets:
+{% for broker in groups['nats'] %}
+          - {{ hostvars[broker].private_ip }}:9090
+{% endfor %}
+
+  - job_name: "node_metrics"
+    honor_labels: true # don't overwrite job & instance labels
+    static_configs:
+      - targets:
+{% for broker in groups['nats'] %}
+          - {{ hostvars[broker].private_ip }}:9100
+{% endfor %}

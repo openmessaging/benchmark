@@ -1,0 +1,27 @@
+[Unit]
+Description=NATS Streaming Metrics
+After=nats-streaming-server.service
+Requires=nats-streaming-server.service
+ 
+[Service]
+WorkingDirectory=/opt/nats-streaming-metrics
+ExecStartPre=/usr/bin/docker pull natsio/prometheus-nats-exporter:latest
+ExecStart=/usr/bin/docker run \
+  --restart=always \
+  --name=systemd_nats_streaming_metrics \
+  -p9090:9090 \
+  natsio/prometheus-nats-exporter:latest \
+  -channelz \
+  -serverz \
+  -varz \
+  -subz \
+  -channelz \
+  -connz \
+  -p 9090 \
+  "http://localhost:8222"
+ExecStop=/usr/bin/docker stop systemd_nats_streaming_metrics
+ExecStopPost=/usr/bin/docker rm -f systemd_nats_streaming_metrics
+ExecReload=/usr/bin/docker restart systemd_nats_streaming_metrics
+ 
+[Install]
+WantedBy=multi-user.target

@@ -13,7 +13,7 @@
 #
 
 
-name: Nats
+name: Nats Streaming
 driverClass: io.openmessaging.benchmark.driver.natsStreaming.NatsStreamingBenchmarkDriver
 
 # RabbitMq client specific configurations

@@ -1,4 +1,3 @@
-
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,22 +12,16 @@
 # limitations under the License.
 #
 
-# Cluster Seed Node
-listen: localhost:4222
-http_port: 8222
-cluster {
-  listen: localhost:6222
-  routes: ["nats://natsHostUrl:6222"]
-}
+apiVersion: 1
 
-# NATS Streaming specific configuration
-streaming {
-  id: mycluster
-  store: file
-  dir: /mnt/data
-  cluster {
-    bootstrap: false
-#    sync: true
-#    log_cache_size: 1024
-  }
-}
+datasources:
+{% for prom in groups['prometheus'] %}
+  - name: {{ hostvars[prom].inventory_hostname }}
+    url: http://{{ hostvars[prom].private_ip }}:9090
+    type: prometheus
+    access: proxy
+    orgId: 1
+    isDefault: true
+    version: 1
+    editable: false
+{% endfor %}
