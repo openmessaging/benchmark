@@ -36,4 +36,4 @@ producerRate: 500000
 acceptableBacklog: 150000
 producerPauseDuringDrain: 0
 consumerBacklogSizeGB: 32
-testDurationMinutes: 15
+testDurationMinutes: ${ombTestDuration:-15}

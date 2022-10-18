@@ -28,4 +28,4 @@ consumerPerSubscription: 1
 producersPerTopic: 1
 producerRate: 50000
 consumerBacklogSizeGB: 0
-testDurationMinutes: 240
+testDurationMinutes: 2${ombTestDuration:-40}
