@@ -12,15 +12,16 @@
 # limitations under the License.
 #
 
+apiVersion: 1
 
-name: NATS
-driverClass: io.openmessaging.benchmark.driver.nats.NatsBenchmarkDriver
-
-# NATS client specific configurations
-
-workers:
-{% for worker in groups['nats'] %}
-  - nats://{{ hostvars[worker].private_ip }}:4222
+datasources:
+{% for prom in groups['prometheus'] %}
+  - name: NATS-Prometheus
+    url: http://{{ hostvars[prom].private_ip }}:9090
+    type: prometheus
+    access: proxy
+    orgId: 1
+    isDefault: true
+    version: 1
+    editable: false
 {% endfor %}
-
-natsHostUrl: nats://localhost:4222

@@ -5,6 +5,7 @@ After=network.target
 [Service]
 ExecStart=/opt/benchmark/bin/benchmark-worker
 WorkingDirectory=/opt/benchmark
+Environment='-Djava.security.egd=file:/dev/./urandom'
 RestartSec=1s
 Restart=on-failure
 Type=simple

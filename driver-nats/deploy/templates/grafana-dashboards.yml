@@ -12,15 +12,13 @@
 # limitations under the License.
 #
 
+apiVersion: 1
 
-name: NATS
-driverClass: io.openmessaging.benchmark.driver.nats.NatsBenchmarkDriver
-
-# NATS client specific configurations
-
-workers:
-{% for worker in groups['nats'] %}
-  - nats://{{ hostvars[worker].private_ip }}:4222
-{% endfor %}
-
-natsHostUrl: nats://localhost:4222
+providers:
+  - name: 'nats'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: true
+    options:
+      path: /dashboards
