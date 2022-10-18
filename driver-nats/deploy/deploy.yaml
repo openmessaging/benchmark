@@ -22,7 +22,7 @@
         fstype: xfs
         dev: '{{ item }}'
       with_items:
-        - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
     - name: NATS - Mount disks
       mount:
         path: "{{ item.path }}"
@@ -31,7 +31,7 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/data", src: "/dev/nvme1n1" }
+        - { path: "/mnt/data", src: "/dev/nvme2n1" }
     - name: NATS - Set filesystem permissions
       file:
         path: "/mnt/data"
