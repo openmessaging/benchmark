@@ -49,7 +49,8 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
         log.info("ActiveMQ Artemis driver configuration: {}", writer.writeValueAsString(config));
         try {
             ServerLocator serverLocator = ActiveMQClient.createServerLocator(config.brokerAddress);
-            serverLocator.setConfirmationWindowSize(1000);
+            // confirmation window size is in bytes, set to 1MB
+            serverLocator.setConfirmationWindowSize(1024 * 1024);
 
             sessionFactory = serverLocator.createSessionFactory();
             session = sessionFactory.createSession();
