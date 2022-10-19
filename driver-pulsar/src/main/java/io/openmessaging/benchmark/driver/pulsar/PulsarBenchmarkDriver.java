@@ -114,53 +114,48 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                         .blockIfQueueFull(config.producer.blockIfQueueFull)
                         .maxPendingMessages(config.producer.pendingQueueSize);
 
-        try {
-            // Create namespace and set the configuration
-            String tenant = config.client.namespacePrefix.split("/")[0];
-            String cluster = config.client.clusterName;
-	    boolean astra = config.client.astraStreaming;
-            PersistenceConfiguration p = config.client.persistence;
-            if (astra) {
-		// Atsra streaming has limitations on the number of namespaces along with more constrained rules for the characters in the string.
-		log.info("Astra Streaming - tenant {} in cluster {}", tenant, cluster);
-		this.namespace = config.client.namespacePrefix;
-		log.info("Created Pulsar namespace {}", namespace);
-		try {
-		    adminClient.namespaces().createNamespace(namespace);
-		} catch (PulsarAdminException e) {
-		    // ignore assuming this means the namespace is already there
-		}
-	    } else {
-		if (!adminClient.tenants().getTenants().contains(tenant)) {
-		    try {
-			adminClient.tenants().createTenant(tenant,
-				    TenantInfo.builder().adminRoles(Collections.emptySet()).allowedClusters(Sets.newHashSet(cluster)).build());
-		    } catch (ConflictException e) {
-			// Ignore. This can happen when multiple workers are initializing at the same time
-		    }
-		}
-		log.info("Pulsar tenant {} with allowed cluster {}", tenant, cluster);
-		this.namespace = config.client.namespacePrefix + "-" + getRandomString();
-		adminClient.namespaces().createNamespace(namespace);
-		log.info("Created Pulsar namespace {}", namespace);
-		// only set persistence if not in Astra
-		adminClient.namespaces().setPersistence(namespace,
+        // Create namespace and set the configuration
+        String tenant = config.client.namespacePrefix.split("/")[0];
+        String cluster = config.client.clusterName;
+        boolean astra = config.client.astraStreaming;
+        PersistenceConfiguration p = config.client.persistence;
+        if (astra) {
+            // Atsra streaming has limitations on the number of namespaces along with more constrained rules for the characters in the string.
+            log.info("Astra Streaming - tenant {} in cluster {}", tenant, cluster);
+            this.namespace = config.client.namespacePrefix;
+            log.info("Astra namespace {}", namespace);
+        } else {
+            try {
+                if (!adminClient.tenants().getTenants().contains(tenant)) {
+                    try {
+                        adminClient.tenants().createTenant(tenant,
+                                    TenantInfo.builder().adminRoles(Collections.emptySet()).allowedClusters(Sets.newHashSet(cluster)).build());
+                    } catch (ConflictException e) {
+                        // Ignore. This can happen when multiple workers are initializing at the same time
+                    }
+                }
+                log.info("Pulsar tenant {} with allowed cluster {}", tenant, cluster);
+                this.namespace = config.client.namespacePrefix + "-" + getRandomString();
+                adminClient.namespaces().createNamespace(namespace);
+                log.info("Created Pulsar namespace {}", namespace);
+                // only set persistence if not in Astra
+                adminClient.namespaces().setPersistence(namespace,
                             new PersistencePolicies(p.ensembleSize, p.writeQuorum, p.ackQuorum, 1.0));
+
+                adminClient.namespaces().setBacklogQuota(namespace,
+                                                         BacklogQuota.builder()
+                                                         .limitSize(-1L)
+                                                         .limitTime(-1)
+                                                         .retentionPolicy(RetentionPolicy.producer_exception)
+                                                         .build());
+                adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
+                log.info("Applied persistence configuration for namespace {}/{}/{}: {}", tenant, cluster, namespace,
+                         writer.writeValueAsString(p));
+            } catch (PulsarAdminException e) {
+                throw new IOException(e);
             }
-
-            adminClient.namespaces().setBacklogQuota(namespace,
-                    BacklogQuota.builder()
-                            .limitSize(-1L)
-                            .limitTime(-1)
-                            .retentionPolicy(RetentionPolicy.producer_exception)
-                            .build());
-            adminClient.namespaces().setDeduplicationStatus(namespace, p.deduplicationEnabled);
-            log.info("Applied persistence configuration for namespace {}/{}/{}: {}", tenant, cluster, namespace,
-                            writer.writeValueAsString(p));
-
-        } catch (PulsarAdminException e) {
-            throw new IOException(e);
         }
+
     }
 
     @Override
@@ -174,7 +169,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             log.info("Create topic: {}", topic);
             return adminClient.topics().createNonPartitionedTopicAsync(topic);
         }
-	log.info("Create topic: {}; Partitions: {}", topic, partitions);
+        log.info("Create topic: {}; Partitions: {}", topic, partitions);
         return adminClient.topics().createPartitionedTopicAsync(topic, partitions);
     }
 
