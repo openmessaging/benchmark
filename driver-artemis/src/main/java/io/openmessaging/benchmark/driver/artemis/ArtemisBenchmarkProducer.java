@@ -18,10 +18,12 @@ import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
+import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.api.core.client.ClientMessage;
 import org.apache.activemq.artemis.api.core.client.ClientProducer;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
+import org.apache.activemq.artemis.api.core.client.SendAcknowledgementHandler;
 
 public class ArtemisBenchmarkProducer implements BenchmarkProducer {
 
@@ -51,8 +53,16 @@ public class ArtemisBenchmarkProducer implements BenchmarkProducer {
         try {
             producer.send(
                     msg,
-                    message -> {
-                        future.complete(null);
+                    new SendAcknowledgementHandler() {
+                        @Override
+                        public void sendAcknowledged(Message message) {
+                            future.complete(null);
+                        }
+
+                        @Override
+                        public void sendFailed(Message message, Exception e) {
+                            future.completeExceptionally(e);
+                        }
                     });
         } catch (ActiveMQException e) {
             future.completeExceptionally(e);
