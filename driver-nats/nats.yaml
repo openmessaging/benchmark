@@ -17,4 +17,4 @@ driverClass: io.openmessaging.benchmark.driver.nats.NatsBenchmarkDriver
 
 natsHostUrl: localhost:4222
 
-replicationFactor: 1
+replicationFactor: 3

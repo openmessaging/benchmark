@@ -37,6 +37,7 @@ import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
@@ -58,6 +59,9 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
                         new Options.Builder()
                                 .server(config.natsHostUrl)
                                 .maxReconnects(5)
+                                .reconnectWait(Duration.ofSeconds(1))
+                                .connectionTimeout(Duration.ofSeconds(5))
+                                .pingInterval(Duration.ofSeconds(60))
                                 .errorListener(
                                         new ErrorListener() {
                                             @Override
