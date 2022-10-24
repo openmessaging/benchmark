@@ -1,3 +1,14 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+    }
+    random = {
+      source  = "hashicorp/random"
+    }
+  }
+}
+
 variable "public_key_path" {
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
@@ -8,8 +19,12 @@ Example: ~/.ssh/nats_aws.pub
 DESCRIPTION
 }
 
+resource "random_id" "hash" {
+  byte_length = 8
+}
+
 variable "key_name" {
-  default     = "nats-benchmark-key"
+  default     = "benchmark-key-nats"
   description = "Desired name of AWS key pair"
 }
 
@@ -34,7 +49,7 @@ resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags = {
-    Name = "Benchmark-VPC-NATS"
+    Name = "Benchmark-VPC-NATS-${random_id.hash.hex}"
   }
 }
 
@@ -59,7 +74,7 @@ resource "aws_subnet" "benchmark_subnet" {
 }
 
 resource "aws_security_group" "benchmark_security_group" {
-  name   = "terraform"
+  name   = "terraform-nats-${random_id.hash.hex}"
   vpc_id = aws_vpc.benchmark_vpc.id
 
   # SSH access from anywhere
@@ -103,12 +118,12 @@ resource "aws_security_group" "benchmark_security_group" {
   }
 
   tags = {
-    Name = "Benchmark-Security-Group-NATS-Streaming"
+    Name = "Benchmark-Security-Group-NATS-${random_id.hash.hex}"
   }
 }
 
 resource "aws_key_pair" "auth" {
-  key_name   = var.key_name
+  key_name   = "${var.key_name}-${random_id.hash.hex}"
   public_key = file(var.public_key_path)
 }
 
