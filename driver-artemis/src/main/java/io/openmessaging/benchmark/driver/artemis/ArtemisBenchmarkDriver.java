@@ -49,7 +49,14 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
         log.info("ActiveMQ Artemis driver configuration: {}", writer.writeValueAsString(config));
         try {
             ServerLocator serverLocator = ActiveMQClient.createServerLocator(config.brokerAddress);
-            serverLocator.setConfirmationWindowSize(1000);
+            // confirmation window size is in bytes, set to 1MB
+            serverLocator.setConfirmationWindowSize(1024 * 1024);
+            // use asynchronous sending of messages where SendAcknowledgementHandler reports
+            // success/failure
+            serverLocator.setBlockOnDurableSend(false);
+            serverLocator.setBlockOnNonDurableSend(false);
+            // use async acknowledgement
+            serverLocator.setBlockOnAcknowledge(false);
 
             sessionFactory = serverLocator.createSessionFactory();
             session = sessionFactory.createSession();
