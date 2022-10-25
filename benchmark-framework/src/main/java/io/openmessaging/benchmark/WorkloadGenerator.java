@@ -154,6 +154,21 @@ public class WorkloadGenerator implements AutoCloseable {
 		    });
 	    }
 
+	    if (workload.producerIncrementRate > 0) {
+		executor.execute(() -> {
+			// Run in background to adjust rates
+			try {
+			    increasingRate(topics,
+					   workload.producerStartRate,
+					   workload.producerRate,
+					   workload.producerIncrementRate,
+					   workload.producerIncrementSeconds);
+			} catch (IOException e) {
+			    log.warn("Failure incrementing rates", e);
+			}
+		    });
+	    }
+
 	    worker.resetStats();
 	    log.info("----- Starting benchmark traffic ------");
 
@@ -214,6 +229,32 @@ public class WorkloadGenerator implements AutoCloseable {
         }
 
         log.info("All consumers are ready");
+    }
+
+    /**
+     * Adjust the publish rate from an initial rate to a final rate by an increment every so many seconds
+     * being produced
+     */
+    private void increasingRate(List<String> topics, int currentRate, int finalRate, int incrementRate, int period) throws IOException {
+
+	int rate = currentRate;
+	
+        int controlPeriodMillis = 1000 * period;
+
+	worker.adjustPublishRate(currentRate);
+
+        while (!runCompleted) {
+	    log.info("Rate is now {}", rate);
+            // Check every few seconds and adjust the rate
+            try {
+                Thread.sleep(controlPeriodMillis);
+            } catch (InterruptedException e) {
+                return;
+            }
+	    rate += incrementRate;
+	    if (rate > finalRate) return;
+	    worker.adjustPublishRate(rate);
+	}
     }
 
     /**

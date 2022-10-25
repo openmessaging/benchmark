@@ -64,6 +64,15 @@ public class Workload {
     public int acceptableBacklog = 10000;
 
     /**
+     * if the producerIncrementRate is > 0 then the producer rates will be incremented from the prodceurStartRate
+     * to the producerRate every producerIncrementSeconds
+     */
+
+    public int producerIncrementRate = 0;
+
+    public int producerIncrementSeconds = 60;
+
+    /**
      * If the consumer backlog is > 0, the generator will accumulate messages until the requested amount of storage is
      * retained and then it will start the consumers to drain it.
      *
