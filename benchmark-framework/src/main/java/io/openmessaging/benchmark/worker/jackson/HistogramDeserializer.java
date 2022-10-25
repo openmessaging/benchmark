@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 public class HistogramDeserializer extends StdDeserializer<Histogram> {
 
     private final ThreadLocal<ByteBuffer> threadBuffer =
-            ThreadLocal.withInitial(() -> ByteBuffer.allocate(1024 * 1024));
+            ThreadLocal.withInitial(() -> ByteBuffer.allocate(8 * 1024 * 1024));
 
     public HistogramDeserializer() {
         super(Histogram.class);
@@ -46,10 +46,8 @@ public class HistogramDeserializer extends StdDeserializer<Histogram> {
             jsonParser.readBinaryValue(os);
             buffer.flip();
             // Long.MIN_VALUE used so that Histogram will defer to the value encoded in the histogram
-            // value. This
-            // assumes that it is acceptable for the deserialized value we create to share the same
-            // parameters of the
-            // source histogram that was serialized.
+            // value. This assumes that it is acceptable for the deserialized value we create to
+            // share the same parameters of the source histogram that was serialized.
             return Histogram.decodeFromCompressedByteBuffer(buffer, Long.MIN_VALUE);
         } catch (Exception e) {
             log.error(
