@@ -60,6 +60,6 @@ TF_STATE=. ansible-playbook \
   --user ec2-user \
   --inventory `which terraform-inventory` \
   -e @extra_vars.yaml \
-  restart_broker.yaml
+  restart-brokers.yaml
 ```
 
