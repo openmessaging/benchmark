@@ -143,7 +143,7 @@
     when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
 
   - name: RabbitMQ - Create high availability policy
-    shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
+    shell: rabbitmqctl set_policy ha-all "^" '{"ha-mode":"exactly","ha-params":3,"ha-sync-mode":"automatic"}'
     when: inventory_hostname == hostvars[groups['rabbitmq'][0]].inventory_hostname
 
 - name: Chrony setup
