@@ -46,3 +46,4 @@ producer:
 
 consumer:
   receiverQueueSize: 10000
+  subscriptionType: Failover

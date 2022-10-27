@@ -222,7 +222,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         return client
                 .newConsumer(Schema.BYTEBUFFER)
                 .priorityLevel(0)
-                .subscriptionType(SubscriptionType.Failover)
+                .subscriptionType(config.consumer.subscriptionType)
                 .messageListener(
                         (c, msg) -> {
                             try {
