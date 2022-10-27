@@ -58,7 +58,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
         this.consumerTask = this.executor.submit(() -> {
             while (!closing) {
                 try {
-                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(50));
+                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(100));
 
                     Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                     for (ConsumerRecord<String, byte[]> record : records) {
