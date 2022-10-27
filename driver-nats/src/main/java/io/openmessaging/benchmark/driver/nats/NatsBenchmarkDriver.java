@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NatsBenchmarkDriver implements BenchmarkDriver {
+
     private NatsConfig config;
 
     private Connection connection;
@@ -126,7 +127,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
                                 msg.ack();
                             },
                             false,
-                            new PushSubscribeOptions.Builder().build());
+                            new PushSubscribeOptions.Builder().deliverGroup(subscriptionName).build());
             return CompletableFuture.completedFuture(new NatsBenchmarkConsumer());
         } catch (Exception e) {
             CompletableFuture<BenchmarkConsumer> f = new CompletableFuture<>();
