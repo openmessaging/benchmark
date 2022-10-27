@@ -47,7 +47,6 @@ import org.apache.pulsar.client.api.ProducerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SizeUnit;
-import org.apache.pulsar.client.api.SubscriptionType;
 import org.apache.pulsar.common.policies.data.BacklogQuota;
 import org.apache.pulsar.common.policies.data.BacklogQuota.RetentionPolicy;
 import org.apache.pulsar.common.policies.data.PersistencePolicies;
@@ -222,7 +221,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
         return client
                 .newConsumer(Schema.BYTEBUFFER)
                 .priorityLevel(0)
-                .subscriptionType(SubscriptionType.Failover)
+                .subscriptionType(config.consumer.subscriptionType)
                 .messageListener(
                         (c, msg) -> {
                             try {
