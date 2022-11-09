@@ -197,7 +197,7 @@ public class WorkloadGenerator implements AutoCloseable {
         int controlPeriodMillis = 3000;
         long lastControlTimestamp = System.nanoTime();
 
-        RateController rateController = new RateController();
+        RateController rateController = new RateController(workload);
 
         while (!runCompleted) {
             // Check every few seconds and adjust the rate

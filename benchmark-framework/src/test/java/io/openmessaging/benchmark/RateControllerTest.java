@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class RateControllerTest {
-    private final RateController rateController = new RateController();
+    private final RateController rateController = new RateController(new Workload());
     private double rate = 10_000;
     private long periodNanos = SECONDS.toNanos(1);
 

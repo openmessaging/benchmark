@@ -27,6 +27,7 @@ class RateController {
     private final long receiveBacklogLimit;
     private final double minRampingFactor;
     private final double maxRampingFactor;
+    private final Workload workload;
 
     @Getter(PACKAGE)
     private double rampingFactor;
@@ -34,7 +35,8 @@ class RateController {
     private long previousTotalPublished = 0;
     private long previousTotalReceived = 0;
 
-    RateController() {
+    RateController(Workload workload) {
+        this.workload = workload;
         publishBacklogLimit = Env.getLong("PUBLISH_BACKLOG_LIMIT", 1_000);
         receiveBacklogLimit = Env.getLong("RECEIVE_BACKLOG_LIMIT", 1_000);
         minRampingFactor = Env.getDouble("MIN_RAMPING_FACTOR", 0.01);
@@ -58,8 +60,8 @@ class RateController {
                     rate(received, periodNanos));
         }
 
-        long receiveBacklog = totalPublished - totalReceived;
-        if (receiveBacklog > receiveBacklogLimit) {
+        long receiveBacklog = totalPublished - (totalReceived / workload.subscriptionsPerTopic);
+        if (phase != BACKLOG_FILL && phase != BACKLOG_DRAIN && receiveBacklog > receiveBacklogLimit) {
             return nextRate(periodNanos, received, expected, receiveBacklog, "Receive");
         }
 
