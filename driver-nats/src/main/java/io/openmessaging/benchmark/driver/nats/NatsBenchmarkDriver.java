@@ -27,6 +27,7 @@ import io.nats.client.Message;
 import io.nats.client.Nats;
 import io.nats.client.Options;
 import io.nats.client.PushSubscribeOptions;
+import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
@@ -44,11 +45,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NatsBenchmarkDriver implements BenchmarkDriver {
-
     private NatsConfig config;
-
     private Connection connection;
     private JetStream jetStream;
+    private JetStreamManagement jetStreamManagement;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger)
@@ -77,6 +77,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
                                         })
                                 .build());
         this.jetStream = connection.jetStream();
+        this.jetStreamManagement = connection.jetStreamManagement();
     }
 
     @Override
@@ -114,9 +115,19 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             String topic, String subscriptionName, ConsumerCallback consumerCallback) {
 
-        Dispatcher dispatcher = connection.createDispatcher();
+        ConsumerConfiguration cc =
+                ConsumerConfiguration.builder()
+                        .durable("durable-" + subscriptionName)
+                        .deliverSubject("delivery-subject-" + subscriptionName)
+                        .deliverGroup("group-" + subscriptionName)
+                        .build();
+        PushSubscribeOptions pso = PushSubscribeOptions.builder().configuration(cc).build();
 
         try {
+            jetStreamManagement.addOrUpdateConsumer(topic, cc);
+
+            Dispatcher dispatcher = connection.createDispatcher();
+
             JetStreamSubscription sub =
                     jetStream.subscribe(
                             topic,
@@ -127,7 +138,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
                                 msg.ack();
                             },
                             false,
-                            new PushSubscribeOptions.Builder().deliverGroup(subscriptionName).build());
+                            pso);
             return CompletableFuture.completedFuture(new NatsBenchmarkConsumer());
         } catch (Exception e) {
             CompletableFuture<BenchmarkConsumer> f = new CompletableFuture<>();
