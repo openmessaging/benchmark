@@ -123,6 +123,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
             ConsumerCallback consumerCallback) {
 
+	log.info("RabbitMQ: Create Consumer: Subscription={}; Topic={}", subscriptionName, topic);
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
         ForkJoinPool.commonPool().execute(() -> {
             try {
@@ -136,7 +137,8 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                 channel.queueDeclare(queueName, true, false, false, Collections.emptyMap());
                 channel.queueBind(queueName, exchange, "");
                 future.complete(new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
-            } catch (IOException e) {
+            } catch (Exception e) {
+                log.error("Create Consumer Error", e);
                 future.completeExceptionally(e);
             }
         });

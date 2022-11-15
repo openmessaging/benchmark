@@ -96,7 +96,9 @@ public class WorkloadGenerator implements AutoCloseable {
 	    ensureTopicsAreReady();
 
 	    acceptableBacklog = workload.acceptableBacklog;
-	    if (workload.producerRate > 0) {
+	    if (workload.producerIncrementRate > 0) {
+		targetPublishRate = workload.producerStartRate;
+	    } else if (workload.producerRate > 0) {
 		targetPublishRate = workload.producerRate;
 	    } else {
 		// Producer rate is 0 and we need to discover the sustainable rate

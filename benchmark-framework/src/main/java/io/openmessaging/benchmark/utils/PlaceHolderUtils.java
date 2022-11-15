@@ -64,10 +64,10 @@ public class PlaceHolderUtils {
         for (Map.Entry<Object, Object> entry : System.getProperties().entrySet()) {
             variables.put(entry.getKey() + "", entry.getValue() + "");
         }
-        log.info("readAndApplyPlaceholders before {}", content);
+        log.debug("readAndApplyPlaceholders before {}", content);
         StrSubstitutor sub = new StrSubstitutor(variables);
         String result =  sub.replace(content);
-        log.info("readAndApplyPlaceholders result {}", result);
+        log.debug("readAndApplyPlaceholders result {}", result);
         return result;
     }
 }
