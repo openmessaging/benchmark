@@ -208,6 +208,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     private void ensureTopicsAreReady() throws IOException {
+	int counter = 0;
         long expectedMessages = computeExpectedInitialBacklog(workload.producersPerTopic * workload.topics);
         log.info("Waiting for consumers to be ready ({} messages to be received)", expectedMessages);
         // This is work around the fact that there's no way to have a consumer ready in Kafka without first publishing
@@ -217,9 +218,15 @@ public class WorkloadGenerator implements AutoCloseable {
         worker.probeProducers();
 
 	while (true) {
+	    
             CountersStats stats = worker.getCountersStats();
 	    
             if (stats.messagesReceived < expectedMessages) {
+		log.info("({} of {} messages received)", stats.messagesReceived, expectedMessages);
+		if (counter++ > 100) {
+		    log.info("Timed out waiting for consumers to be ready - pretend they are");
+		    break;
+		}
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
