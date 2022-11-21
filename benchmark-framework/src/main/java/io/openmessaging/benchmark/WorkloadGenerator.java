@@ -72,114 +72,121 @@ public class WorkloadGenerator implements AutoCloseable {
         }
     }
 
+    private void pause(int seconds) {
+        // Pause to allow brokers to assign topic ownership (Pulsar async issues
+        Timer timer = new Timer();
+        try {
+            Thread.sleep(seconds*1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        log.info("Paused {} ms", timer.elapsedMillis());
+    }
+
     public TestResult run() throws Exception {
-	TestResult result = null;
-	try {
+        TestResult result = null;
+        try {
 	    Timer timer = new Timer();
-	    List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
-	    log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
-	    for (String topic: topics) {
-		log.info("Topic: {}", topic);
-	    }
-	    // Pause to allow brokers to assign topic ownership (Pulsar async issues
-	    timer = new Timer();
-	    try {
-		Thread.sleep(10000);
-	    } catch (InterruptedException e) {
-		throw new RuntimeException(e);
-	    }
-	    log.info("Paused {} ms", timer.elapsedMillis());
+            List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
+            log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
+            for (String topic: topics) {
+                log.info("Topic: {}", topic);
+            }
+            // Pause to allow brokers to assign topic ownership (Pulsar async issues
+            pause(5);
 
-	    createConsumers(topics);
-	    createProducers(topics);
+            createConsumers(topics);
+            pause(5);
+            
+            createProducers(topics);
 
-	    ensureTopicsAreReady();
+            ensureTopicsAreReady();
 
-	    acceptableBacklog = workload.acceptableBacklog;
-	    if (workload.producerIncrementRate > 0) {
-		targetPublishRate = workload.producerStartRate;
-	    } else if (workload.producerRate > 0) {
-		targetPublishRate = workload.producerRate;
-	    } else {
-		// Producer rate is 0 and we need to discover the sustainable rate
-		targetPublishRate = workload.producerStartRate;
+            acceptableBacklog = workload.acceptableBacklog;
+            if (workload.producerIncrementRate > 0) {
+                targetPublishRate = workload.producerStartRate;
+            } else if (workload.producerRate > 0) {
+                targetPublishRate = workload.producerRate;
+            } else {
+                // Producer rate is 0 and we need to discover the sustainable rate
+                targetPublishRate = workload.producerStartRate;
 
-		executor.execute(() -> {
-			// Run background controller to adjust rate
-			try {
-			    findMaximumSustainableRate(topics, targetPublishRate, acceptableBacklog);
-			} catch (IOException e) {
-			    log.warn("Failure in finding max sustainable rate", e);
-			}
-		    });
-	    }
+                executor.execute(() -> {
+                        // Run background controller to adjust rate
+                        try {
+                            findMaximumSustainableRate(topics, targetPublishRate, acceptableBacklog);
+                        } catch (IOException e) {
+                            log.warn("Failure in finding max sustainable rate", e);
+                        }
+                    });
+            }
 
-	    final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
+            final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
 
-	    ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
-	    producerWorkAssignment.keyDistributorType = workload.keyDistributor;
-	    producerWorkAssignment.publishRate = targetPublishRate;
-	    producerWorkAssignment.payloadData = new ArrayList<>();
+            ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
+            producerWorkAssignment.keyDistributorType = workload.keyDistributor;
+            producerWorkAssignment.publishRate = targetPublishRate;
+            producerWorkAssignment.payloadData = new ArrayList<>();
 
-	    if(workload.useRandomizedPayloads) {
-		// create messages that are part random and part zeros
-		// better for testing effects of compression
-		Random r = new Random();
-		int randomBytes = (int)(workload.messageSize * workload.randomBytesRatio);
-		int zerodBytes = workload.messageSize - randomBytes;
-		for(int i = 0; i<workload.randomizedPayloadPoolSize; i++) {
-		    byte[] randArray = new byte[randomBytes];
-		    r.nextBytes(randArray);
-		    byte[] zerodArray = new byte[zerodBytes];
-		    byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
-		    producerWorkAssignment.payloadData.add(combined);
-		}
-	    }
-	    else {
-		producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
-	    }
+            if(workload.useRandomizedPayloads) {
+                // create messages that are part random and part zeros
+                // better for testing effects of compression
+                Random r = new Random();
+                int randomBytes = (int)(workload.messageSize * workload.randomBytesRatio);
+                int zerodBytes = workload.messageSize - randomBytes;
+                for(int i = 0; i<workload.randomizedPayloadPoolSize; i++) {
+                    byte[] randArray = new byte[randomBytes];
+                    r.nextBytes(randArray);
+                    byte[] zerodArray = new byte[zerodBytes];
+                    byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
+                    producerWorkAssignment.payloadData.add(combined);
+                }
+            }
+            else {
+                producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
+            }
 
 
-	    log.info("----- Starting warm-up traffic ------");
+            log.info("----- Starting warm-up traffic ------");
 
-	    worker.startLoad(producerWorkAssignment);
+            worker.startLoad(producerWorkAssignment);
 
-	    printAndCollectStats(1, TimeUnit.MINUTES);
+            printAndCollectStats(1, TimeUnit.MINUTES);
 
-	    if (workload.consumerBacklogSizeGB > 0) {
-		executor.execute(() -> {
-			try {
-			    buildAndDrainBacklog(topics, acceptableBacklog);
-			} catch (IOException e) {
-			    log.error("Error {}", e);
-			}
-		    });
-	    }
+            if (workload.consumerBacklogSizeGB > 0) {
+                executor.execute(() -> {
+                        try {
+                            buildAndDrainBacklog(topics, acceptableBacklog);
+                        } catch (IOException e) {
+                            log.error("Error {}", e);
+                        }
+                    });
+            }
 
-	    if (workload.producerIncrementRate > 0) {
-		executor.execute(() -> {
-			// Run in background to adjust rates
-			try {
-			    increasingRate(topics,
-					   workload.producerStartRate,
-					   workload.producerRate,
-					   workload.producerIncrementRate,
-					   workload.producerIncrementSeconds);
-			} catch (IOException e) {
-			    log.warn("Failure incrementing rates", e);
-			}
-		    });
-	    }
+            if (workload.producerIncrementRate > 0) {
+                executor.execute(() -> {
+                        // Run in background to adjust rates
+                        try {
+                            increasingRate(topics,
+                                           workload.producerStartRate,
+                                           workload.producerRate,
+                                           workload.producerIncrementRate,
+                                           workload.producerIncrementSeconds);
+                        } catch (IOException e) {
+                            log.warn("Failure incrementing rates", e);
+                        }
+                    });
+            }
 
-	    worker.resetStats();
-	    log.info("----- Starting benchmark traffic ------");
+            worker.resetStats();
+            log.info("----- Starting benchmark traffic ------");
 
-	    result = printAndCollectStats(workload.testDurationMinutes, TimeUnit.MINUTES);
-	    runCompleted = true;
-	} catch (Exception e) {
-	    log.info("----- Exception ------");
-	    log.error("Error {}", e);
-	}
+            result = printAndCollectStats(workload.testDurationMinutes, TimeUnit.MINUTES);
+            runCompleted = true;
+        } catch (Exception e) {
+            log.info("----- Exception ------");
+            log.error("Error {}", e);
+        }
 
         worker.stopAll();
         return result;
@@ -208,7 +215,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     private void ensureTopicsAreReady() throws IOException {
-	int counter = 0;
+        int counter = 0;
         long expectedMessages = computeExpectedInitialBacklog(workload.producersPerTopic * workload.topics);
         log.info("Waiting for consumers to be ready ({} messages to be received)", expectedMessages);
         // This is work around the fact that there's no way to have a consumer ready in Kafka without first publishing
@@ -217,16 +224,14 @@ public class WorkloadGenerator implements AutoCloseable {
         // In this case we just publish 1 message on each producer and then wait for consumers to receive the data
         worker.probeProducers();
 
-	while (true) {
-	    
+        while (true) {
+            
             CountersStats stats = worker.getCountersStats();
-	    
+            
             if (stats.messagesReceived < expectedMessages) {
-		log.info("({} of {} messages received)", stats.messagesReceived, expectedMessages);
-		if (counter++ > 100) {
-		    log.info("Timed out waiting for consumers to be ready - pretend they are");
-		    break;
-		}
+                if ((counter++ % 10) == 0) {
+                    log.info("({} of {} messages received)", stats.messagesReceived, expectedMessages);
+                }
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
@@ -246,24 +251,24 @@ public class WorkloadGenerator implements AutoCloseable {
      */
     private void increasingRate(List<String> topics, int currentRate, int finalRate, int incrementRate, int period) throws IOException {
 
-	int rate = currentRate;
-	
+        int rate = currentRate;
+        
         int controlPeriodMillis = 1000 * period;
 
-	worker.adjustPublishRate(currentRate);
+        worker.adjustPublishRate(currentRate);
 
         while (!runCompleted) {
-	    log.info("Rate is now {}", rate);
+            log.info("Rate is now {}", rate);
             // Check every few seconds and adjust the rate
             try {
                 Thread.sleep(controlPeriodMillis);
             } catch (InterruptedException e) {
                 return;
             }
-	    rate += incrementRate;
-	    if (rate > finalRate) return;
-	    worker.adjustPublishRate(rate);
-	}
+            rate += incrementRate;
+            if (rate > finalRate) return;
+            worker.adjustPublishRate(rate);
+        }
     }
 
     /**
@@ -295,7 +300,7 @@ public class WorkloadGenerator implements AutoCloseable {
             // Consider multiple copies when using multiple subscriptions
             stats = worker.getCountersStats();
             long currentTime = System.nanoTime();
-	    double timeInterval = currentTime - lastControlTimestamp;
+            double timeInterval = currentTime - lastControlTimestamp;
             long totalMessagesSent = stats.messagesSent;
             long totalMessagesReceived = stats.messagesReceived;
             long messagesPublishedInPeriod = totalMessagesSent - localTotalMessagesSentCounter;
@@ -319,10 +324,10 @@ public class WorkloadGenerator implements AutoCloseable {
                         dec.format(currentRate), dec.format(publishRateInLastPeriod),
                         dec.format(receiveRateInLastPeriod), dec.format(minRate), dec.format(maxRate));
             } else {
-		log.info("Current rate: {} -- Publish rate {} -- Consume Rate: {} -- min-rate: {} -- max-rate: {}",
+                log.info("Current rate: {} -- Publish rate {} -- Consume Rate: {} -- min-rate: {} -- max-rate: {}",
                         dec.format(currentRate), dec.format(publishRateInLastPeriod),
                         dec.format(receiveRateInLastPeriod), dec.format(minRate), dec.format(maxRate));
-	    }
+            }
 
 
             if (publishRateInLastPeriod < currentRate * 0.95) {
@@ -340,7 +345,7 @@ public class WorkloadGenerator implements AutoCloseable {
                 // Slows the publishes to let the consumer time to absorb the backlog
                 worker.adjustPublishRate(minRate / 100);
 
-		drainBacklog(topics, acceptableBacklog);
+                drainBacklog(topics, acceptableBacklog);
 
                 log.debug("Resuming load at reduced rate");
                 worker.adjustPublishRate(currentRate);
@@ -359,9 +364,9 @@ public class WorkloadGenerator implements AutoCloseable {
             } else if (currentRate < maxRate) {
                 minRate = currentRate;
                 currentRate = currentRate * 1.05;
-		if ( maxRate < currentRate ) {
-		    maxRate = currentRate;
-		}
+                if ( maxRate < currentRate ) {
+                    maxRate = currentRate;
+                }
                 log.debug("No bottleneck found, increasing the rate to {}", currentRate);
             } else if (++successfulPeriods > 3) {
                 minRate = currentRate * 0.95;
@@ -385,7 +390,7 @@ public class WorkloadGenerator implements AutoCloseable {
         for(String topic: topics){
             for(int i = 0; i < workload.subscriptionsPerTopic; i++){
                 String subscriptionName = String.format("sub-%03d-%s", i, RandomGenerator.getRandomString());
-		log.info("Subscription: {} for {}", subscriptionName, topic);
+                log.info("Subscription: {} for {}", subscriptionName, topic);
                 for (int j = 0; j < workload.consumerPerSubscription; j++) {
                     consumerAssignment.topicsSubscriptions
                         .add(new TopicSubscription(topic, subscriptionName));
@@ -421,18 +426,18 @@ public class WorkloadGenerator implements AutoCloseable {
         log.info("Stopping all consumers to build backlog");
         worker.pauseConsumers();
 
-	this.needToWaitForBacklogDraining = true;
+        this.needToWaitForBacklogDraining = true;
 
-	// Calculate the number of messages for the backlog
+        // Calculate the number of messages for the backlog
         long requestedBacklogSize = (workload.consumerBacklogSizeGB * 1073741824) / workload.messageSize;
 
         while (true) {
-	    // Retrieve stats and calculate the current backlog in messages
+            // Retrieve stats and calculate the current backlog in messages
             CountersStats stats = worker.getCountersStats();
             long currentBacklogSize = computeBacklog(stats.messagesSent, stats.messagesReceived);
 
             if (currentBacklogSize >= requestedBacklogSize) {
-		break;
+                break;
             }
 
             try {
@@ -442,28 +447,28 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         }
 
-	if ( workload.producerPauseBeforeDrain > 0 ) {
+        if ( workload.producerPauseBeforeDrain > 0 ) {
 
-	    log.info("--- Pause production for {} seconds ---", workload.producerPauseBeforeDrain);
+            log.info("--- Pause production for {} seconds ---", workload.producerPauseBeforeDrain);
 
-	    worker.pauseProducers();
-	    try {
-		Thread.sleep(workload.producerPauseBeforeDrain * 1000);
-	    } catch (InterruptedException e) {
-		throw new RuntimeException(e);
-	    }
-	    worker.resumeProducers();
-	}
-	
+            worker.pauseProducers();
+            try {
+                Thread.sleep(workload.producerPauseBeforeDrain * 1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            worker.resumeProducers();
+        }
+        
         log.info("--- Start draining backlog ---");
 
-	if ( workload.producerPauseDuringDrain > 0 ) {
-	    worker.pauseProducers();
-	}
-	
+        if ( workload.producerPauseDuringDrain > 0 ) {
+            worker.pauseProducers();
+        }
+        
         worker.resumeConsumers();
 
-	drainBacklog(topics, acceptableBacklog);
+        drainBacklog(topics, acceptableBacklog);
 
     }
 

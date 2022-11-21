@@ -131,14 +131,14 @@ public class LocalWorker implements Worker, ConsumerCallback {
         testCompleted = false;
         producersArePaused = false;
         consumersArePaused = false;
-	if (benchmarkDriver != null) {
-	    try {
-		benchmarkDriver.close();
-	    } catch (Exception ee) {
-		/* eat it */
-	    }
-	    benchmarkDriver = null;
-	}
+        if (benchmarkDriver != null) {
+            try {
+                benchmarkDriver.close();
+            } catch (Exception ee) {
+                /* eat it */
+            }
+            benchmarkDriver = null;
+        }
         Preconditions.checkArgument(benchmarkDriver == null);
 
         DriverConfiguration driverConfiguration = PlaceHolderUtils.readAndApplyPlaceholders(driverConfigFile, DriverConfiguration.class);
@@ -158,11 +158,11 @@ public class LocalWorker implements Worker, ConsumerCallback {
             benchmarkDriver.initialize(tmpConfigFile, statsLogger);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             if (benchmarkDriver != null) {
-		try {
-		    benchmarkDriver.close();
-		} catch (Exception ee) {
-		    /* eat it */
-		}
+                try {
+                    benchmarkDriver.close();
+                } catch (Exception ee) {
+                    /* eat it */
+                }
                 benchmarkDriver = null;
             }
             throw new RuntimeException(e);
@@ -252,7 +252,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 while (!testCompleted) {
                     producers.forEach(producer -> {
                         rateLimiter.acquire();
-			if ( !producersArePaused ) {
+                        if ( !producersArePaused ) {
                             byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
                             final long sendTime = System.nanoTime();
                             producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
@@ -275,7 +275,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                 log.warn("Write error on message", ex);
                                 return null;
                             });
-			}
+                        }
                     });
                 }
             } catch (Throwable t) {
@@ -288,9 +288,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void adjustPublishRate(double publishRate) {
         if(publishRate < 1.0) {
             rateLimiter.setRate(1.0);
-            return;
+        } else {
+            rateLimiter.setRate(publishRate);
         }
-        rateLimiter.setRate(publishRate);
+        log.info("Rate is set to {} per Producer", rateLimiter.getRate());
     }
 
     @Override

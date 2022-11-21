@@ -71,12 +71,12 @@ public class DistributedWorkersEnsemble implements Worker {
 
         this.workers = workers;
 
-	// For driver-jms extra consumers are required.
-	// If there is an odd number of workers then allocate the extra to consumption.
-	int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
-	List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
-	this.producerWorkers = partitions.get(1); 
-	this.consumerWorkers = partitions.get(0);
+        // For driver-jms extra consumers are required.
+        // If there is an odd number of workers then allocate the extra to consumption.
+        int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
+        List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
+        this.producerWorkers = partitions.get(1); 
+        this.consumerWorkers = partitions.get(0);
 
         log.info("Workers list - producers: {}", producerWorkers);
         log.info("Workers list - consumers: {}", consumerWorkers);
@@ -85,13 +85,13 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void initializeDriver(File configurationFile, File consumerDriverFile) throws IOException {
         byte[] confFileContent = PlaceHolderUtils.readAndApplyPlaceholders(configurationFile).getBytes(StandardCharsets.UTF_8);
-	if ( consumerDriverFile == null ) {
-	    sendPost(workers, "/initialize-driver", confFileContent);
-	} else {
-	    sendPost(producerWorkers, "/initialize-driver", confFileContent);
-	    confFileContent = PlaceHolderUtils.readAndApplyPlaceholders(consumerDriverFile).getBytes(StandardCharsets.UTF_8);
-	    sendPost(consumerWorkers, "/initialize-driver", confFileContent);
-	}
+        if ( consumerDriverFile == null ) {
+            sendPost(workers, "/initialize-driver", confFileContent);
+        } else {
+            sendPost(producerWorkers, "/initialize-driver", confFileContent);
+            confFileContent = PlaceHolderUtils.readAndApplyPlaceholders(consumerDriverFile).getBytes(StandardCharsets.UTF_8);
+            sendPost(consumerWorkers, "/initialize-driver", confFileContent);
+        }
     }
 
     @Override
@@ -114,6 +114,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
         // Number of actually used workers might be less than available workers
         numberOfUsedProducerWorkers = i;
+        log.info("{} Producer Workers", i);
 
         List<CompletableFuture<Void>> futures = topicsPerProducerMap.keySet().stream().map(producer -> {
             try {
@@ -132,7 +133,8 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         // Reduce the publish rate across all the brokers
-        producerWorkAssignment.publishRate /= numberOfUsedProducerWorkers;
+        producerWorkAssignment.publishRate =
+            producerWorkAssignment.publishRate / numberOfUsedProducerWorkers;
         sendPost(producerWorkers, "/start-load", writer.writeValueAsBytes(producerWorkAssignment));
     }
 
@@ -144,8 +146,9 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void adjustPublishRate(double publishRate) throws IOException {
         // Reduce the publish rate across all the brokers
-        publishRate /= numberOfUsedProducerWorkers;
-        sendPost(producerWorkers, "/adjust-publish-rate", writer.writeValueAsBytes(publishRate));
+        double rate = publishRate / numberOfUsedProducerWorkers;
+        log.info("Rate is {} per Producer", rate);
+        sendPost(producerWorkers, "/adjust-publish-rate", writer.writeValueAsBytes(rate));
     }
 
     @Override
