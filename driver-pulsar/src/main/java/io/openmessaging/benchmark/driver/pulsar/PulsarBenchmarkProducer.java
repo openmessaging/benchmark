@@ -40,13 +40,13 @@ public class PulsarBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
         TypedMessageBuilder<byte[]> msgBuilder = producer.newMessage().value(payload);
         if (key.isPresent()) {
             msgBuilder.key(key.get());
         }
 
-        return msgBuilder.sendAsync().thenApply(msgId -> null);
+        return msgBuilder.sendAsync().thenApply(msgId -> 1);
     }
 
 }

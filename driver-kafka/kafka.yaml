@@ -18,6 +18,9 @@
 #
 
 
+batchSize: 1
+useTransactions: false
+
 name: Kafka
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 

@@ -256,12 +256,12 @@ public class LocalWorker implements Worker, ConsumerCallback {
                             byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
                             final long sendTime = System.nanoTime();
                             producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
-                                    .thenRun(() -> {
-                                messagesSent.increment();
-                                totalMessagesSent.increment();
-                                messagesSentCounter.inc();
-                                bytesSent.add(payloadData.length);
-                                bytesSentCounter.add(payloadData.length);
+                                    .thenAcceptAsync((numberOfMessages) -> {
+                                messagesSent.add(numberOfMessages);
+                                totalMessagesSent.add(numberOfMessages);
+                                messagesSentCounter.add(numberOfMessages);
+                                bytesSent.add(payloadData.length * numberOfMessages);
+                                bytesSentCounter.add(payloadData.length * numberOfMessages);
 
                                 long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
                                 publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);

@@ -32,4 +32,7 @@ public class Config {
     public String producerConfig;
 
     public String consumerConfig;
+
+    public int batchSize = 1;
+    public boolean useTransactions;
 }

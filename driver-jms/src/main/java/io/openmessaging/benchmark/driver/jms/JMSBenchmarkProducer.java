@@ -66,8 +66,8 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        CompletableFuture<Void> res = new CompletableFuture<>();
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
+        CompletableFuture<Integer> res = new CompletableFuture<>();
         try
         {
             BytesMessage bytesMessage = session.createBytesMessage();
@@ -103,7 +103,7 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                     @Override
                     public void onCompletion(Message message)
                     {
-                        res.complete(null);
+                        res.complete(1);
                     }
 
                     @Override
@@ -115,7 +115,7 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
                 });
             } else {
                 producer.send(bytesMessage);
-                res.complete(null);
+                res.complete(1);
             }
         } catch (JMSException err) {
             res.completeExceptionally(err);

@@ -52,7 +52,7 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
         try
         {
             // start a new Session every time, we cannot share the same Session
@@ -72,13 +72,13 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
 	    // Add a timer property for end to end
 	    bytesMessage.setLongProperty("E2EStartMillis",System.currentTimeMillis());
             if (useAsyncSend) {
-                CompletableFuture<Void> res = new CompletableFuture<>();
+                CompletableFuture<Integer> res = new CompletableFuture<>();
                 producer.send(bytesMessage, new CompletionListener()
                 {
                     @Override
                     public void onCompletion(Message message)
                     {
-                        res.complete(null);
+                        res.complete(1);
                     }
 
                     @Override
@@ -98,21 +98,21 @@ public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
                         }
                     }
                     ensureClosed(producer, session);;
-                });
+                }).thenApply(___ -> 1);
             } else {
 
                 try {
                     producer.send(bytesMessage);
                     session.commit();
-                    CompletableFuture<Void> res = new CompletableFuture<>();
-                    res.complete(null);
+                    CompletableFuture<Integer> res = new CompletableFuture<>();
+                    res.complete(1);
                     return res;
                 } finally {
                     ensureClosed(producer, session);
                 }
             }
         } catch (JMSException err) {
-            CompletableFuture<Void> res = new CompletableFuture<>();
+            CompletableFuture<Integer> res = new CompletableFuture<>();
             res.completeExceptionally(err);
             return res;
         }

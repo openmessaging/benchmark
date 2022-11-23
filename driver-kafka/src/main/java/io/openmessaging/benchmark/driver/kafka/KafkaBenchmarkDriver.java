@@ -137,7 +137,10 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         KafkaProducer<String, byte[]> kafkaProducer = new KafkaProducer<>(producerProperties);
-        BenchmarkProducer benchmarkProducer = new KafkaBenchmarkProducer(kafkaProducer, topic);
+        BenchmarkProducer benchmarkProducer = new KafkaBenchmarkProducer(kafkaProducer, topic, config.batchSize, config.useTransactions);
+        if (config.useTransactions) {
+            kafkaProducer.initTransactions();
+        }
         try {
             // Add to producer list to close later
             producers.add(benchmarkProducer);

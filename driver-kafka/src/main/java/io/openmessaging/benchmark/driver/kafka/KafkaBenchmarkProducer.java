@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -35,26 +36,63 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
     private final KafkaProducer<String, byte[]> producer;
     private final String topic;
 
-    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]> producer, String topic) {
+    private final int batchSize;
+
+    private final boolean useTransactions;
+
+    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]> producer, String topic,
+                                  int batchSize, boolean useTransactions) {
         this.producer = producer;
         this.topic = topic;
+        this.batchSize = batchSize;
+        this.useTransactions = useTransactions;
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
+        if (useTransactions) {
+            // with transactions, we must "block", because the KafkaProducer can do only one transaction at a time
+            producer.beginTransaction();
+            CompletableFuture<Integer> result = internalSendAsync(key, payload);
+            result.join();
+            producer.commitTransaction();
+            return result;
+        } else {
+            return internalSendAsync(key, payload);
+        }
+    }
+
+    private CompletableFuture<Integer> internalSendAsync(Optional<String> key, byte[] payload) {
+
         ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key.orElse(null), payload);
+        if (batchSize <= 1) {
+            CompletableFuture<Integer> future = new CompletableFuture<>();
+            producer.send(record, (metadata, exception) -> {
+                if (exception != null) {
+                    future.completeExceptionally(exception);
+                } else {
+                    future.complete(1);
+                }
+            });
+            return future;
+        }
 
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        producer.send(record, (metadata, exception) -> {
-            if (exception != null) {
-                future.completeExceptionally(exception);
-            } else {
-                future.complete(null);
-            }
-        });
-
-        return future;
+        List<CompletableFuture> handles = new ArrayList<>(batchSize);
+        for (int i = 0; i < batchSize; i++) {
+            CompletableFuture<Integer> future = new CompletableFuture<>();
+            handles.add(future);
+            producer.send(record, (metadata, exception) -> {
+                if (exception != null) {
+                    future.completeExceptionally(exception);
+                } else {
+                    future.complete(1);
+                }
+            });
+        }
+        return CompletableFuture
+                .allOf(handles.toArray(new CompletableFuture[0])).thenApply(___ -> {
+                    return batchSize;
+                });
     }
 
     @Override

@@ -49,19 +49,19 @@ public class ArtemisBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
         ClientMessage msg = session.createMessage(true /* durable */);
         msg.setTimestamp(System.currentTimeMillis());
         msg.getBodyBuffer().writeBytes(payload);
 
-        CompletableFuture<Void> future = new CompletableFuture<>();
+        CompletableFuture<Integer> future = new CompletableFuture<>();
         try {
             producer.send(
                     msg,
                     new SendAcknowledgementHandler() {
                         @Override
                         public void sendAcknowledged(Message message) {
-                            future.complete(null);
+                            future.complete(1);
                         }
 
                         @Override

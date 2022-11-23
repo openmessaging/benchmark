@@ -43,11 +43,11 @@ public class DlogBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
         LogRecord record = new LogRecord(
             sequencer.nextId(), payload);
 
-        return writer.write(record).thenApply(dlsn -> null);
+        return writer.write(record).thenApply(dlsn -> 1);
     }
 
 }

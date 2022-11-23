@@ -45,7 +45,7 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
     private final ConfirmListener listener;
     /**To record msg and it's future structure.**/
     volatile SortedSet<Long> ackSet = Collections.synchronizedSortedSet(new TreeSet<>());
-    private final ConcurrentHashMap<Long, CompletableFuture<Void>> futureConcurrentHashMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, CompletableFuture<Integer>> futureConcurrentHashMap = new ConcurrentHashMap<>();
     private final boolean messagePersistence;
 
     public RabbitMqBenchmarkProducer(Channel channel, String exchange, boolean messagePersistence) {
@@ -61,7 +61,7 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
                         for(Iterator<Long> iterator = treeHeadSet.iterator(); iterator.hasNext();) {
                             long value = iterator.next();
                             iterator.remove();
-                            CompletableFuture<Void> future = futureConcurrentHashMap.get(value);
+                            CompletableFuture<Integer> future = futureConcurrentHashMap.get(value);
                             if (future != null) {
                                 future.completeExceptionally(new RuntimeException("Message was negatively acknowledged"));
                                 futureConcurrentHashMap.remove(value);
@@ -71,7 +71,7 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
                     }
 
                 } else {
-                    CompletableFuture<Void> future = futureConcurrentHashMap.get(deliveryTag);
+                    CompletableFuture<Integer> future = futureConcurrentHashMap.get(deliveryTag);
                     if (future != null) {
                         future.completeExceptionally(new RuntimeException("Message was negatively acknowledged"));
                         futureConcurrentHashMap.remove(deliveryTag);
@@ -85,18 +85,18 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
                     SortedSet<Long> treeHeadSet = ackSet.headSet(deliveryTag + 1);
                     synchronized(ackSet) {
                         for(long value : treeHeadSet) {
-                            CompletableFuture<Void> future = futureConcurrentHashMap.get(value);
+                            CompletableFuture<Integer> future = futureConcurrentHashMap.get(value);
                             if (future != null) {
-                                future.complete(null);
+                                future.complete(1);
                                 futureConcurrentHashMap.remove(value);
                             }
                         }
                         treeHeadSet.clear();
                     }
                 } else {
-                    CompletableFuture<Void> future = futureConcurrentHashMap.get(deliveryTag);
+                    CompletableFuture<Integer> future = futureConcurrentHashMap.get(deliveryTag);
                     if (future != null) {
-                        future.complete(null);
+                        future.complete(1);
                         futureConcurrentHashMap.remove(deliveryTag);
                     }
                     ackSet.remove(deliveryTag);
@@ -120,13 +120,13 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
     private static final BasicProperties defaultProperties = new BasicProperties();
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
         BasicProperties.Builder builder = defaultProperties.builder().timestamp(new Date());
         if (messagePersistence) {
             builder.deliveryMode(2);
         }
         BasicProperties props = builder.build();
-        CompletableFuture<Void> future = new CompletableFuture<>();
+        CompletableFuture<Integer> future = new CompletableFuture<>();
         long msgId = channel.getNextPublishSeqNo();
         ackSet.add(msgId);
         futureConcurrentHashMap.putIfAbsent(msgId, future);

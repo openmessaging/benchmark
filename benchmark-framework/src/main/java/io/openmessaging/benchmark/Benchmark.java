@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Date;
 import java.util.List;
@@ -76,7 +77,7 @@ public class Benchmark {
         boolean extraConsumers;
 
         @Parameter(description = "Workloads")//, required = true)
-        public List<String> workloads;
+        public List<String> workloads = new ArrayList<>();
     }
 
     public static void main(String[] args) throws Exception {
