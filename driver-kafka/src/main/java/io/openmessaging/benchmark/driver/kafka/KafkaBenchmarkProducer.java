@@ -18,54 +18,115 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import org.apache.kafka.common.errors.ProducerFencedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
+    final String localId;
+
     private final KafkaProducer<String, byte[]> producer;
+
+    private final BlockingQueue<KafkaProducer<String, byte[]>> transactions;
     private final String topic;
 
-    private final int batchSize;
+    private final Config config;
 
-    private final boolean useTransactions;
+    public KafkaBenchmarkProducer(Config config, Properties producerProperties, String topic) {
+        String id;
+        try {
+            id = InetAddress.getLocalHost().getHostName() + "_" + UUID.randomUUID();
+        } catch (Exception err) {
+            id = UUID.randomUUID().toString();
+        }
+        localId = id;
 
-    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]> producer, String topic,
-                                  int batchSize, boolean useTransactions) {
-        this.producer = producer;
+        this.config = config;
+
+
+        if (config.useTransactions) {
+            // in Kafka one Producer can run only 1 transaction at a time,
+            // so if you want to have N concurrent transactions you have to start N
+            // producers
+            // each Producer must have a unique "transactional.id"
+            this.transactions = new ArrayBlockingQueue<>(config.maxConcurrentTransactions);
+            log.info("Creating a pool of {} transactions", config.maxConcurrentTransactions);
+            for (int i = 0; i < config.maxConcurrentTransactions; i++) {
+                Properties copy = new Properties();
+                copy.putAll(producerProperties);
+                copy.put("transactional.id", localId + "_tx_" + i);
+                log.info("Creating transactional producer with config {}", copy);
+                KafkaProducer transaction = new KafkaProducer<>(copy);
+                transaction.initTransactions();
+                transactions.add(transaction);
+            }
+            this.producer = null;
+        } else {
+            this.transactions = null;
+            log.info("Creating non-transactional producer with config {}", producerProperties);
+            this.producer = new KafkaProducer<>(producerProperties);
+        }
+
         this.topic = topic;
-        this.batchSize = batchSize;
-        this.useTransactions = useTransactions;
     }
 
     @Override
     public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
-        if (useTransactions) {
-            // with transactions, we must "block", because the KafkaProducer can do only one transaction at a time
-            producer.beginTransaction();
-            CompletableFuture<Integer> result = internalSendAsync(key, payload);
-            result.join();
-            producer.commitTransaction();
-            return result;
+        if (config.useTransactions) {
+            try {
+                // there is a bounded number of concurrent transactions
+                // this "take" method blocks until there is an available transaction in the pool
+                KafkaProducer<String, byte[]> transaction = transactions.take();
+                try {
+                    transaction.beginTransaction();
+                } catch (Exception err) {
+                    // add the transaction back to the pool
+                    transactions.add(transaction);
+                    throw err;
+                }
+                CompletableFuture<Integer> result = internalSendAsync(transaction, key, payload)
+                        .thenApplyAsync((numMessages) -> {
+                    // commit
+                    transaction.commitTransaction();
+                    return numMessages;
+                });
+
+                // add back the transaction to the pool
+                result.whenComplete( (numberOfMessages, error) -> {
+                    transactions.add(transaction);
+                });
+
+                return result;
+            } catch (Exception err) {
+                CompletableFuture<Integer> result = new CompletableFuture<>();
+                result.completeExceptionally(err);
+                return result;
+            }
         } else {
-            return internalSendAsync(key, payload);
+            return internalSendAsync(producer, key, payload);
         }
     }
 
-    private CompletableFuture<Integer> internalSendAsync(Optional<String> key, byte[] payload) {
+    private CompletableFuture<Integer> internalSendAsync(KafkaProducer<String, byte[]> producer,
+                                                         Optional<String> key, byte[] payload) {
 
         ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key.orElse(null), payload);
-        if (batchSize <= 1) {
+        if (config.batchSize <= 1) {
             CompletableFuture<Integer> future = new CompletableFuture<>();
             producer.send(record, (metadata, exception) -> {
                 if (exception != null) {
@@ -77,8 +138,8 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
             return future;
         }
 
-        List<CompletableFuture> handles = new ArrayList<>(batchSize);
-        for (int i = 0; i < batchSize; i++) {
+        List<CompletableFuture> handles = new ArrayList<>(config.batchSize);
+        for (int i = 0; i < config.batchSize; i++) {
             CompletableFuture<Integer> future = new CompletableFuture<>();
             handles.add(future);
             producer.send(record, (metadata, exception) -> {
@@ -91,7 +152,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
         }
         return CompletableFuture
                 .allOf(handles.toArray(new CompletableFuture[0])).thenApply(___ -> {
-                    return batchSize;
+                    return config.batchSize;
                 });
     }
 
@@ -100,4 +161,5 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
         producer.close();
     }
 
+    private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkProducer.class);
 }

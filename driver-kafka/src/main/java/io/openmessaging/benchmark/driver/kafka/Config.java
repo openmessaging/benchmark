@@ -35,4 +35,6 @@ public class Config {
 
     public int batchSize = 1;
     public boolean useTransactions;
+
+    public int maxConcurrentTransactions = 1;
 }

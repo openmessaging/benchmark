@@ -17,12 +17,14 @@
 # under the License.
 #
 
-
-batchSize: 1
-useTransactions: false
-
 name: Kafka
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+
+
+# Producer workload configuration
+batchSize: 1
+useTransactions: false
+maxConcurrentTransactions: 100
 
 # Kafka client-specific configuration
 replicationFactor: 3
