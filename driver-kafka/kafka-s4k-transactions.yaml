@@ -22,8 +22,8 @@ name: Kafka
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Producer workload configuration
-batchSize: 1
-useTransactions: false
+batchSize: 10
+useTransactions: true
 maxConcurrentTransactions: 100
 
 # Kafka client-specific configuration
