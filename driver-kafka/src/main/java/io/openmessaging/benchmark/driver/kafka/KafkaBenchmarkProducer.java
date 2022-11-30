@@ -43,6 +43,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
     private final KafkaProducer<String, byte[]> producer;
 
     private final BlockingQueue<KafkaProducer<String, byte[]>> transactions;
+    private final List<KafkaProducer<String, byte[]>> transactionsCopy;
     private final String topic;
 
     private final Config config;
@@ -65,6 +66,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
             // producers
             // each Producer must have a unique "transactional.id"
             this.transactions = new ArrayBlockingQueue<>(config.maxConcurrentTransactions);
+            this.transactionsCopy = new ArrayList<>(config.maxConcurrentTransactions);
             log.info("Creating a pool of {} transactions", config.maxConcurrentTransactions);
             for (int i = 0; i < config.maxConcurrentTransactions; i++) {
                 Properties copy = new Properties();
@@ -74,10 +76,12 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
                 KafkaProducer transaction = new KafkaProducer<>(copy);
                 transaction.initTransactions();
                 transactions.add(transaction);
+                transactionsCopy.add(transaction);
             }
             this.producer = null;
         } else {
             this.transactions = null;
+            this.transactionsCopy = null;
             log.info("Creating non-transactional producer with config {}", producerProperties);
             this.producer = new KafkaProducer<>(producerProperties);
         }
@@ -158,7 +162,15 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public void close() throws Exception {
-        producer.close();
+        if (producer != null) {
+            producer.close();
+        }
+        if (transactionsCopy != null) {
+            for (KafkaProducer<String, byte[]> prod : transactionsCopy) {
+                prod.close();
+            }
+        }
+
     }
 
     private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkProducer.class);
