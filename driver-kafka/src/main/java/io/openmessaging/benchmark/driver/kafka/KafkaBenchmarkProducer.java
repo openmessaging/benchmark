@@ -27,12 +27,12 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
-import org.apache.kafka.common.errors.ProducerFencedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +48,8 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
     private final Config config;
 
+    private final Properties producerProperties;
+
     public KafkaBenchmarkProducer(Config config, Properties producerProperties, String topic) {
         String id;
         try {
@@ -56,6 +58,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
             id = UUID.randomUUID().toString();
         }
         localId = id;
+        this.producerProperties = producerProperties;
 
         this.config = config;
 
@@ -66,17 +69,10 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
             // producers
             // each Producer must have a unique "transactional.id"
             this.transactions = new ArrayBlockingQueue<>(config.maxConcurrentTransactions);
-            this.transactionsCopy = new ArrayList<>(config.maxConcurrentTransactions);
+            this.transactionsCopy = new CopyOnWriteArrayList<>();
             log.info("Creating a pool of {} transactions", config.maxConcurrentTransactions);
             for (int i = 0; i < config.maxConcurrentTransactions; i++) {
-                Properties copy = new Properties();
-                copy.putAll(producerProperties);
-                copy.put("transactional.id", localId + "_tx_" + i);
-                log.info("Creating transactional producer with config {}", copy);
-                KafkaProducer transaction = new KafkaProducer<>(copy);
-                transaction.initTransactions();
-                transactions.add(transaction);
-                transactionsCopy.add(transaction);
+                buildNewTransaction();
             }
             this.producer = null;
         } else {
@@ -89,6 +85,22 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
         this.topic = topic;
     }
 
+    private void buildNewTransaction() {
+        try {
+            int i = transactionsCopy.size();
+            Properties copy = new Properties();
+            copy.putAll(producerProperties);
+            copy.put("transactional.id", localId + "_tx_" + i);
+            log.info("Creating transactional producer with config {}", copy);
+            KafkaProducer transaction = new KafkaProducer<>(copy);
+            transaction.initTransactions();
+            transactions.add(transaction);
+            transactionsCopy.add(transaction);
+        } catch (Throwable error) {
+            log.error("Cannot create a new Transactional producer", error);
+        }
+    }
+
     @Override
     public CompletableFuture<Integer> sendAsync(Optional<String> key, byte[] payload) {
         if (config.useTransactions) {
@@ -98,10 +110,11 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
                 KafkaProducer<String, byte[]> transaction = transactions.take();
                 try {
                     transaction.beginTransaction();
-                } catch (Exception err) {
-                    // add the transaction back to the pool
-                    transactions.add(transaction);
-                    throw err;
+                } catch (Throwable error) {
+
+                    closeTransactionAndCreateNew(transaction, error);
+
+                    throw error;
                 }
                 CompletableFuture<Integer> result = internalSendAsync(transaction, key, payload)
                         .thenApplyAsync((numMessages) -> {
@@ -112,7 +125,12 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
                 // add back the transaction to the pool
                 result.whenComplete( (numberOfMessages, error) -> {
-                    transactions.add(transaction);
+
+                    if (error != null) {
+                        closeTransactionAndCreateNew(transaction, error);
+                    } else {
+                        transactions.add(transaction);
+                    }
                 });
 
                 return result;
@@ -124,6 +142,17 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
         } else {
             return internalSendAsync(producer, key, payload);
         }
+    }
+
+    private void closeTransactionAndCreateNew(KafkaProducer<String, byte[]> transaction, Throwable error) {
+        log.error("Closing producer {} due to error {}",
+                transaction, error);
+        safeCloseProducer(transaction);
+
+        // create a new producer in background
+        CompletableFuture.runAsync(() -> {
+            buildNewTransaction();
+        });
     }
 
     private CompletableFuture<Integer> internalSendAsync(KafkaProducer<String, byte[]> producer,
@@ -163,14 +192,22 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
     @Override
     public void close() throws Exception {
         if (producer != null) {
-            producer.close();
+            safeCloseProducer(producer);
         }
         if (transactionsCopy != null) {
             for (KafkaProducer<String, byte[]> prod : transactionsCopy) {
-                prod.close();
+                safeCloseProducer(prod);
             }
         }
 
+    }
+
+    private static void safeCloseProducer(KafkaProducer<String, byte[]> prod) {
+        try {
+            prod.close();
+        } catch (Throwable error) {
+            log.error("Error closing producer: " + error);
+        }
     }
 
     private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkProducer.class);
