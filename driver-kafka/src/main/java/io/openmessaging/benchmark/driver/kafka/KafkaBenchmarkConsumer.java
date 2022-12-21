@@ -48,11 +48,12 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private final Future<?> consumerTask;
     private boolean sync;
     private volatile boolean closing = false;
+    private volatile boolean finished = false;
     private boolean autoCommit;
 
     public KafkaBenchmarkConsumer(KafkaConsumer<String, byte[]> consumer, Properties consumerConfig, ConsumerCallback callback, boolean useSync) {
         this.consumer = consumer;
-	this.sync = useSync;
+        this.sync = useSync;
         this.executor = Executors.newSingleThreadExecutor();
         this.autoCommit= Boolean.valueOf((String)consumerConfig.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,"false"));
         this.consumerTask = this.executor.submit(() -> {
@@ -69,22 +70,30 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                     }
 
                     if (!autoCommit&&!offsetMap.isEmpty()) {
-			if (sync) {
-			    consumer.commitSync(offsetMap, null);
-			} else {
-			    consumer.commitAsync(offsetMap, null);
-			}
+                        if (sync) {
+                            consumer.commitSync(offsetMap, null);
+                        } else {
+                            consumer.commitAsync(offsetMap, null);
+                        }
                     }
                 } catch(Exception e) {
                     log.error("exception occur while consuming message", e);
                 }
             }
+            finished = true;
         });
     }
 
     @Override
     public void close() throws Exception {
         closing = true;
+        while (!finished) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         executor.shutdown();
         consumerTask.get();
         consumer.close();
