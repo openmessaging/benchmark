@@ -35,6 +35,7 @@ import io.openmessaging.benchmark.utils.PlaceHolderUtils;
 import org.HdrHistogram.Histogram;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.asynchttpclient.AsyncHttpClient;
+import org.asynchttpclient.Dsl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,7 @@ public class DistributedWorkersEnsemble implements Worker {
     private final List<String> producerWorkers;
     private final List<String> consumerWorkers;
 
-    private final AsyncHttpClient httpClient = asyncHttpClient();
+    private final AsyncHttpClient httpClient = asyncHttpClient(Dsl.config().setRequestTimeout(90000));
 
     private int numberOfUsedProducerWorkers;
 
@@ -71,7 +72,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
         this.workers = workers;
 
-        // For driver-jms extra consumers are required.
+        // For many cases extra consumers gives better performance.
         // If there is an odd number of workers then allocate the extra to consumption.
         int numberOfProducerWorkers = extraConsumerWorkers ? (workers.size() + 2) / 3 : workers.size() / 2;
         List<List<String>> partitions = Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
