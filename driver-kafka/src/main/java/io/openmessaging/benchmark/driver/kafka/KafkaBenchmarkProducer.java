@@ -153,6 +153,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
                 return result;
             } catch (Exception err) {
+                log.error("Producer Error ", err);
                 CompletableFuture<Integer> result = new CompletableFuture<>();
                 result.completeExceptionally(err);
                 return result;
