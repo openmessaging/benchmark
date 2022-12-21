@@ -33,10 +33,14 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class KafkaBenchmarkProducer implements BenchmarkProducer {
+
+    private final static AtomicInteger TRANSACTIONAL_ID_GENERATOR = new AtomicInteger();
 
     final String localId;
 
@@ -71,8 +75,19 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
             this.transactions = new ArrayBlockingQueue<>(config.maxConcurrentTransactions);
             this.transactionsCopy = new CopyOnWriteArrayList<>();
             log.info("Creating a pool of {} transactions", config.maxConcurrentTransactions);
+            List<CompletableFuture<Void>> handles = new ArrayList<>();
             for (int i = 0; i < config.maxConcurrentTransactions; i++) {
-                buildNewTransaction();
+                handles.add(buildNewTransaction());
+            }
+            try {
+                CompletableFuture
+                    .allOf(handles.toArray(new CompletableFuture[0]))
+                    .get();
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Cannot start the transactional producers", error);
+            } catch (ExecutionException error) {
+                throw new RuntimeException("Cannot start the transactional producers", error.getCause());
             }
             this.producer = null;
         } else {
@@ -85,20 +100,23 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
         this.topic = topic;
     }
 
-    private void buildNewTransaction() {
-        try {
-            int i = transactionsCopy.size();
-            Properties copy = new Properties();
-            copy.putAll(producerProperties);
-            copy.put("transactional.id", localId + "_tx_" + i);
-            log.info("Creating transactional producer with config {}", copy);
-            KafkaProducer transaction = new KafkaProducer<>(copy);
-            transaction.initTransactions();
-            transactions.add(transaction);
-            transactionsCopy.add(transaction);
-        } catch (Throwable error) {
-            log.error("Cannot create a new Transactional producer", error);
-        }
+    private CompletableFuture<Void> buildNewTransaction() {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                int id = TRANSACTIONAL_ID_GENERATOR.incrementAndGet();
+                Properties copy = new Properties();
+                copy.putAll(producerProperties);
+                copy.put("transactional.id", localId + "_tx_" + id);
+                log.info("Creating transactional producer with config {}", copy);
+                KafkaProducer transaction = new KafkaProducer<>(copy);
+                transaction.initTransactions();
+                transactions.add(transaction);
+                transactionsCopy.add(transaction);
+            } catch (Throwable error) {
+                log.error("Cannot create a new Transactional producer", error);
+                throw new RuntimeException(error);
+            }
+        });
     }
 
     @Override
