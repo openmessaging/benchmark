@@ -53,6 +53,8 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
     private final Config config;
 
     private final Properties producerProperties;
+    
+    private boolean closing;
 
     public KafkaBenchmarkProducer(Config config, Properties producerProperties, String topic) {
         String id;
@@ -66,6 +68,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
         this.config = config;
 
+        this.closing = false;
 
         if (config.useTransactions) {
             // in Kafka one Producer can run only 1 transaction at a time,
@@ -168,10 +171,12 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
                 transaction, error);
         safeCloseProducer(transaction);
 
-        // create a new producer in background
-        CompletableFuture.runAsync(() -> {
-            buildNewTransaction();
-        });
+        if (!closing) {
+            // create a new producer in background
+            CompletableFuture.runAsync(() -> {
+                buildNewTransaction();
+            });
+        }
     }
 
     private CompletableFuture<Integer> internalSendAsync(KafkaProducer<String, byte[]> producer,
@@ -210,6 +215,7 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public void close() throws Exception {
+        closing = true;
         if (producer != null) {
             safeCloseProducer(producer);
         }
