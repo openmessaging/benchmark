@@ -260,7 +260,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                 messagesSent.add(numberOfMessages);
                                 totalMessagesSent.add(numberOfMessages);
                                 messagesSentCounter.add(numberOfMessages);
-                                double throughput = payloadData.length * numberOfMessages;
+                                long throughput = payloadData.length * numberOfMessages;
                                 bytesSent.add(throughput);
                                 bytesSentCounter.add(throughput);
 
