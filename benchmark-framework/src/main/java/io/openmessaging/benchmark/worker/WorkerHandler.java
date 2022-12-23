@@ -185,7 +185,7 @@ public class WorkerHandler {
         localWorker.resetStats();
     }
 
-    private final ByteBuffer histogramSerializationBuffer = ByteBuffer.allocate(1024 * 1024);
+    private final ByteBuffer histogramSerializationBuffer = ByteBuffer.allocate(2 * 1024 * 1024);
 
     private static final Logger log = LoggerFactory.getLogger(WorkerHandler.class);
 

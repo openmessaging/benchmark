@@ -240,8 +240,8 @@ public class DistributedWorkersEnsemble implements Worker {
                 stats.publishLatency.add(Histogram.decodeFromCompressedByteBuffer(
                         ByteBuffer.wrap(is.publishLatencyBytes), TimeUnit.SECONDS.toMicros(30)));
             } catch (Exception e) {
-                log.error("Failed to decode publish latency: {}",
-                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.publishLatencyBytes)));
+                log.error("Failed to decode publish latency: {}", e);
+                //                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.publishLatencyBytes)));
                 throw new RuntimeException(e);
             }
 
@@ -249,8 +249,8 @@ public class DistributedWorkersEnsemble implements Worker {
                 stats.endToEndLatency.add(Histogram.decodeFromCompressedByteBuffer(
                         ByteBuffer.wrap(is.endToEndLatencyBytes), TimeUnit.HOURS.toMicros(12)));
             } catch (Exception e) {
-                log.error("Failed to decode end-to-end latency: {}",
-                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.endToEndLatencyBytes)));
+                log.error("Failed to decode end-to-end latency: {}", e);
+                //                        ByteBufUtil.prettyHexDump(Unpooled.wrappedBuffer(is.endToEndLatencyBytes)));
                 throw new RuntimeException(e);
             }
         });
