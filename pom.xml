@@ -80,6 +80,15 @@
 						<exclude>NOTICE</exclude>
 						<exclude>payload/**</exclude>
 						<exclude>**/*.pyc</exclude>
+						<exclude>**/*.tf</exclude>
+						<exclude>**/*.service</exclude>
+						<exclude>**/*.tpl</exclude>
+						<exclude>**/*.yaml</exclude>
+						<exclude>**/*.tfvars</exclude>
+						<exclude>**/*.log</exclude>
+						<exclude>**/*.cfg</exclude>
+						<exclude>**/*.html</exclude>
+						<exclude>**/*.htm</exclude>
 						<exclude>**/.pydevproject</exclude>
                                                 <exclude>**/*.sh</exclude>
 					</excludes>
