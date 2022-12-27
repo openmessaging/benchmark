@@ -33,7 +33,6 @@
     <packaging>pom</packaging>
 
     <properties>
-        <dockerfile-maven.version>1.4.13</dockerfile-maven.version>
         <docker.organization>datastax</docker.organization>
     </properties>
 
@@ -53,47 +52,7 @@
             <id>docker</id>
             <build>
                 <plugins>
-                    <plugin>
-                        <groupId>com.spotify</groupId>
-                        <artifactId>dockerfile-maven-plugin</artifactId>
-                        <version>${dockerfile-maven.version}</version>
-                        <executions>
-                            <execution>
-                                <id>default</id>
-                                <goals>
-                                    <goal>build</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>add-no-repo-and-version</id>
-                                <goals>
-                                    <goal>tag</goal>
-                                </goals>
-                                <configuration>
-                                    <repository>openmessaging-benchmark</repository>
-                                    <tag>${project.version}</tag>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>add-no-repo-and-latest</id>
-                                <goals>
-                                    <goal>tag</goal>
-                                </goals>
-                                <configuration>
-                                    <repository>${docker.organization}/openmessaging-benchmark</repository>
-                                    <tag>latest</tag>
-                                </configuration>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <repository>${docker.organization}/openmessaging-benchmark</repository>
-                            <pullNewerImage>false</pullNewerImage>
-                            <tag>${project.version}</tag>
-                            <buildArgs>
-                                <BENCHMARK_TARBALL>target/package-${project.version}-bin.tar.gz</BENCHMARK_TARBALL>
-                            </buildArgs>
-                        </configuration>
-                    </plugin>
+
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-dependency-plugin</artifactId>
@@ -108,6 +67,34 @@
                                     <outputDirectory>${project.build.directory}/</outputDirectory>
                                     <includeArtifactIds>package</includeArtifactIds>
                                     <excludeTransitive>true</excludeTransitive>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.0.0</version>
+                        <executions>
+                            <execution>
+                                <id>docker-build</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <arguments>
+                                        <argument>build</argument>
+                                        <argument>-f</argument>
+                                        <argument>Dockerfile</argument>
+                                        <argument>--build-arg</argument>
+                                        <argument>BENCHMARK_TARBALL=target/package-${project.version}-bin.tar.gz</argument>
+                                        <argument>-t</argument>
+                                        <argument>datastax/openmessaging-benchmarks:${project.version}</argument>
+                                        <argument>.</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>
