@@ -125,6 +125,7 @@ public class WorkloadGenerator implements AutoCloseable {
 
             ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
             producerWorkAssignment.keyDistributorType = workload.keyDistributor;
+            producerWorkAssignment.producerPermits = workload.producerPermits;
             producerWorkAssignment.publishRate = targetPublishRate;
             producerWorkAssignment.payloadData = new ArrayList<>();
 

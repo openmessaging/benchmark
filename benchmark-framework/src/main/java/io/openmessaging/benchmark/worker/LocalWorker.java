@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
@@ -75,6 +76,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final RateLimiter rateLimiter = RateLimiter.create(1.0);
 
     private final ExecutorService executor = Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
+
+    private int producerPermits;
 
     // stats
 
@@ -223,17 +226,22 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         rateLimiter.setRate(producerWorkAssignment.publishRate);
 
+        producerPermits = producerWorkAssignment.producerPermits;
+
         Map<Integer, List<BenchmarkProducer>> processorAssignment = new TreeMap<>();
 
         int processorIdx = 0;
+        int producerIdx = 0;
         for (BenchmarkProducer p : producers) {
             processorAssignment.computeIfAbsent(processorIdx, x -> new ArrayList<BenchmarkProducer>()).add(p);
-
+            log.info("Producer to processor assignment: {} => {}/{}", producerIdx++, processorIdx, processors);
             processorIdx = (processorIdx + 1) % processors;
         }
 
-        processorAssignment.values().forEach(producers -> submitProducersToExecutor(producers,
-                KeyDistributor.build(producerWorkAssignment.keyDistributorType), producerWorkAssignment.payloadData));
+        processorAssignment.values().forEach(producers -> submitProducersToExecutor(
+                producers,
+                KeyDistributor.build(producerWorkAssignment.keyDistributorType),
+                producerWorkAssignment.payloadData));
     }
 
     @Override
@@ -244,6 +252,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     private void submitProducersToExecutor(List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
         executor.submit(() -> {
+            Semaphore gate = new Semaphore(producerPermits);
             int payloadCount = payloads.size();
             Random r = new Random();
             byte[] firstPayload = payloads.get(0);
@@ -252,11 +261,19 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 while (!testCompleted) {
                     producers.forEach(producer -> {
                         rateLimiter.acquire();
+                        try {
+                            gate.acquire();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                         if ( !producersArePaused ) {
                             byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
                             final long sendTime = System.nanoTime();
                             producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
                                     .thenAcceptAsync((numberOfMessages) -> {
+
+                                gate.release();
+
                                 messagesSent.add(numberOfMessages);
                                 totalMessagesSent.add(numberOfMessages);
                                 messagesSentCounter.add(numberOfMessages);
@@ -273,6 +290,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                 publishLatencyRecorder.recordValue(latencyMicros);
                                 cumulativePublishLatencyRecorder.recordValue(latencyMicros);
                             }).exceptionally(ex -> {
+                                gate.release();
                                 log.warn("Write error on message", ex);
                                 return null;
                             });
@@ -280,7 +298,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                     });
                 }
             } catch (Throwable t) {
-                log.error("Got error", t);
+                log.error("Got producer error", t);
             }
         });
     }
@@ -307,6 +325,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         stats.totalMessagesSent = totalMessagesSent.sum();
         stats.totalMessagesReceived = totalMessagesReceived.sum();
+
+        log.info("Sent={}; Received={}", stats.messagesSent, stats.messagesReceived);
 
         stats.publishLatency = publishLatencyRecorder.getIntervalHistogram();
         stats.endToEndLatency = endToEndLatencyRecorder.getIntervalHistogram();
@@ -390,6 +410,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void stopAll() throws IOException {
         testCompleted = true;
         consumersArePaused = false;
+        // Pausing producers should mean that current publishing will finish before the close
+        producersArePaused = true;
 
         publishLatencyRecorder.reset();
         cumulativePublishLatencyRecorder.reset();

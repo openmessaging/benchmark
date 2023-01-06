@@ -28,5 +28,7 @@ public class ProducerWorkAssignment {
     
     public double publishRate;
 
+    public int producerPermits;
+
     public KeyDistributorType keyDistributorType;
 }
