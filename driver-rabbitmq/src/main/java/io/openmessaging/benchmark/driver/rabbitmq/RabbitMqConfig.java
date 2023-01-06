@@ -38,6 +38,12 @@ public class RabbitMqConfig {
             Map<String, Object> queueOptions() {
                 return Collections.singletonMap("x-queue-type", "quorum");
             }
+        },
+        STREAM {
+            @Override
+            Map<String, Object> queueOptions() {
+                return Collections.singletonMap("x-queue-type", "stream");
+            }
         };
 
         abstract Map<String, Object> queueOptions();
