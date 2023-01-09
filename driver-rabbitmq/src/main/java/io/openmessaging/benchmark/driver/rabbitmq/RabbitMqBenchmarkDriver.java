@@ -13,10 +13,12 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.rabbitmq.client.Address;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -30,6 +32,7 @@ import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +49,10 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     private RabbitMqConfig config;
     private final AtomicInteger uriIndex = new AtomicInteger();
+    /**
+     * Map of client's primary broker to the connection -- the connection may still be able to fall
+     * back to secondary brokers.
+     */
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
     @Override
@@ -70,9 +78,10 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public String getTopicNamePrefix() {
-        // Do a round-robin on AMQP URIs
-        URI configUri =
-                URI.create(config.amqpUris.get(uriIndex.getAndIncrement() % config.amqpUris.size()));
+        // Distribute topics by performing a round-robin on AMQP URIs
+        String primaryBrokerUri =
+                config.amqpUris.get(uriIndex.getAndIncrement() % config.amqpUris.size());
+        URI configUri = URI.create(primaryBrokerUri);
         URI topicUri = configUri.resolve(configUri.getRawPath() + "?exchange=test-exchange");
         return topicUri.toString();
     }
@@ -150,15 +159,26 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         return parameters.get("exchange").get(0);
     }
 
-    private Connection getOrCreateConnection(String uri) {
+    private Connection getOrCreateConnection(String primaryBrokerUri) {
         return connections.computeIfAbsent(
-                uri,
-                uriKey -> {
+                primaryBrokerUri,
+                p -> {
+                    String[] userInfo = newURI(primaryBrokerUri).getUserInfo().split(":");
+                    String user = userInfo[0];
+                    String password = userInfo[1];
+                    // RabbitMQ will pick the first available address from the list. Future reconnection
+                    // attempts will pick a random accessible address from the provided list.
+                    List<Address> addresses =
+                            Stream.concat(Stream.of(p), config.amqpUris.stream().filter(s -> !s.equals(p)))
+                                    .map(s -> newURI(s))
+                                    .map(u -> new Address(u.getHost(), u.getPort()))
+                                    .collect(toList());
                     try {
                         ConnectionFactory connectionFactory = new ConnectionFactory();
                         connectionFactory.setAutomaticRecoveryEnabled(true);
-                        connectionFactory.setUri(uri);
-                        return connectionFactory.newConnection();
+                        connectionFactory.setUsername(user);
+                        connectionFactory.setPassword(password);
+                        return connectionFactory.newConnection(addresses);
                     } catch (Exception e) {
                         throw new RuntimeException("Couldn't establish connection", e);
                     }
@@ -170,4 +190,12 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkDriver.class);
+
+    private static URI newURI(String uri) {
+        try {
+            return new URI(uri);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
