@@ -64,6 +64,11 @@
       state: present
       disable_gpg_check: yes
 
+  - name: RabbitMQ - Create rabbitmq.conf file
+    template:
+      src: "templates/rabbitmq.conf"
+      dest: "/etc/rabbitmq/rabbitmq.conf"
+
   - name: RabbitMQ - Create rabbitmq-env.conf file
     template:
       src: "templates/rabbitmq-env.conf"
