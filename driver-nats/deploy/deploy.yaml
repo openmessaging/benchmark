@@ -59,7 +59,7 @@
   - name: NATS - Install server
     tags: [ broker ]
     yum:
-      name: "https://github.com/nats-io/nats-server/releases/download/v2.9.3/nats-server-v2.9.3-amd64.rpm"
+      name: "https://github.com/nats-io/nats-server/releases/download/v2.9.6/nats-server-v2.9.6-amd64.rpm"
       state: present
       disable_gpg_check: yes
   - name: NATS - Apply server configuration
