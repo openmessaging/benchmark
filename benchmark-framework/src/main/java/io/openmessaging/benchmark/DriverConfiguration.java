@@ -17,4 +17,8 @@ public class DriverConfiguration {
     public String name;
 
     public String driverClass;
+    public int createConsumerBatchSize;
+    public long createConsumerBatchDelay;
+    public int createProducerBatchSize;
+    public long createProducerBatchDelay;
 }

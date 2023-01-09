@@ -16,11 +16,16 @@
 name: RabbitMQ
 driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
 
-# RabbitMq client specific configurations
+# RMQ struggles to create more than 10 quroum queues at a time, so we batch with a delay
+createConsumerBatchSize: 10
+createConsumerBatchDelay: 1000
+createProducerBatchSize: 10
+createProducerBatchDelay: 1000
 
 amqpUris:
 {% for pulsar in groups['rabbitmq'] %}
   - amqp://admin:admin@{{ hostvars[pulsar].private_ip }}:5672
 {% endfor %}
-messagePersistence: false
+
+# messagePersistence is not used by quorum queues
 queueType: QUORUM

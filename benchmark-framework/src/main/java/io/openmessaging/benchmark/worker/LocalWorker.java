@@ -24,9 +24,12 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.openmessaging.benchmark.DriverConfiguration;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
+import io.openmessaging.benchmark.driver.BenchmarkDriver.ConsumerInfo;
+import io.openmessaging.benchmark.driver.BenchmarkDriver.ProducerInfo;
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.utils.Batcher;
 import io.openmessaging.benchmark.utils.RandomGenerator;
 import io.openmessaging.benchmark.utils.Timer;
 import io.openmessaging.benchmark.utils.UniformRateLimiter;
@@ -36,6 +39,7 @@ import io.openmessaging.benchmark.worker.commands.CountersStats;
 import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
+import io.openmessaging.benchmark.worker.commands.TopicSubscription;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 import java.io.File;
 import java.io.IOException;
@@ -45,12 +49,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+import lombok.SneakyThrows;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
@@ -67,6 +71,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final WorkerStats stats;
     private boolean testCompleted = false;
     private boolean consumersArePaused = false;
+    private DriverConfiguration driverConfiguration;
 
     public LocalWorker() {
         this(NullStatsLogger.INSTANCE);
@@ -82,8 +87,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         Preconditions.checkArgument(benchmarkDriver == null);
         testCompleted = false;
 
-        DriverConfiguration driverConfiguration =
-                mapper.readValue(driverConfigFile, DriverConfiguration.class);
+        driverConfiguration = mapper.readValue(driverConfigFile, DriverConfiguration.class);
 
         log.info("Driver: {}", writer.writeValueAsString(driverConfiguration));
 
@@ -123,26 +127,47 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
+    @SneakyThrows
     public void createProducers(List<String> topics) {
         Timer timer = new Timer();
-
-        List<CompletableFuture<BenchmarkProducer>> futures =
-                topics.stream().map(topic -> benchmarkDriver.createProducer(topic)).collect(toList());
-
-        futures.forEach(f -> producers.add(f.join()));
+        List<List<String>> batches =
+                new Batcher<String>(driverConfiguration.createProducerBatchSize).batch(topics);
+        for (int i = 0; i < batches.size(); i++) {
+            if (i != 0 && (batches.size() - i) > 1) {
+                Thread.sleep(driverConfiguration.createProducerBatchDelay);
+            }
+            List<String> batch = batches.get(i);
+            List<BenchmarkProducer> batchResults =
+                    benchmarkDriver
+                            .createProducers(batch.stream().map(ProducerInfo::new).collect(toList()))
+                            .join();
+            producers.addAll(batchResults);
+        }
         log.info("Created {} producers in {} ms", producers.size(), timer.elapsedMillis());
     }
 
     @Override
+    @SneakyThrows
     public void createConsumers(ConsumerAssignment consumerAssignment) {
         Timer timer = new Timer();
 
-        List<CompletableFuture<BenchmarkConsumer>> futures =
-                consumerAssignment.topicsSubscriptions.stream()
-                        .map(ts -> benchmarkDriver.createConsumer(ts.topic, ts.subscription, this))
-                        .collect(toList());
-
-        futures.forEach(f -> consumers.add(f.join()));
+        List<List<TopicSubscription>> batches =
+                new Batcher<TopicSubscription>(driverConfiguration.createConsumerBatchSize)
+                        .batch(consumerAssignment.topicsSubscriptions);
+        for (int i = 0; i < batches.size(); i++) {
+            if (i != 0 && (batches.size() - i) > 1) {
+                Thread.sleep(driverConfiguration.createConsumerBatchDelay);
+            }
+            List<TopicSubscription> batch = batches.get(i);
+            List<BenchmarkConsumer> batchResults =
+                    benchmarkDriver
+                            .createConsumers(
+                                    batch.stream()
+                                            .map(ts -> new ConsumerInfo(ts.topic, ts.subscription, this))
+                                            .collect(toList()))
+                            .join();
+            consumers.addAll(batchResults);
+        }
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
     }
 

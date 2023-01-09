@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver;
 
+import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
@@ -76,6 +77,22 @@ public interface BenchmarkDriver extends AutoCloseable {
     CompletableFuture<BenchmarkProducer> createProducer(String topic);
 
     /**
+     * Create a producers for a given topic.
+     *
+     * @param producers
+     * @return a producer future
+     */
+    default CompletableFuture<List<BenchmarkProducer>> createProducers(List<ProducerInfo> producers) {
+        List<CompletableFuture<BenchmarkProducer>> futures =
+                producers.stream().map(ci -> createProducer(ci.getTopic())).collect(toList());
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(
+                        future -> {
+                            return futures.stream().map(CompletableFuture::join).collect(toList());
+                        });
+    }
+
+    /**
      * Create a benchmark consumer relative to one particular topic and subscription.
      *
      * <p>It is responsibility of the driver implementation to invoke the <code>consumerCallback
@@ -88,6 +105,39 @@ public interface BenchmarkDriver extends AutoCloseable {
      */
     CompletableFuture<BenchmarkConsumer> createConsumer(
             String topic, String subscriptionName, ConsumerCallback consumerCallback);
+
+    /**
+     * Create a consumers for a given topic.
+     *
+     * @param consumers
+     * @return a producer future
+     */
+    default CompletableFuture<List<BenchmarkConsumer>> createConsumers(List<ConsumerInfo> consumers) {
+        List<CompletableFuture<BenchmarkConsumer>> futures =
+                consumers.stream()
+                        .map(
+                                ci ->
+                                        createConsumer(
+                                                ci.getTopic(), ci.getSubscriptionName(), ci.getConsumerCallback()))
+                        .collect(toList());
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(
+                        future -> {
+                            return futures.stream().map(CompletableFuture::join).collect(toList());
+                        });
+    }
+
+    @Value
+    class ProducerInfo {
+        String topic;
+    }
+
+    @Value
+    class ConsumerInfo {
+        String topic;
+        String subscriptionName;
+        ConsumerCallback consumerCallback;
+    }
 
     @Value
     class TopicInfo {
