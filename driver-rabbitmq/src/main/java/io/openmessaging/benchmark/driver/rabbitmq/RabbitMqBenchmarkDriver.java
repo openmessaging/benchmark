@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.driver.rabbitmq;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,8 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.driver.ResourceCreator;
+import io.openmessaging.benchmark.driver.ResourceCreator.CreationResult;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -38,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -121,6 +125,57 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
+    public CompletableFuture<List<BenchmarkProducer>> createProducers(List<ProducerInfo> producers) {
+        return new ResourceCreator<ProducerInfo, BenchmarkProducer>(
+                        "producer",
+                        config.producerCreationBatchSize,
+                        config.producerCreationDelay,
+                        ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.getTopic()))),
+                        fc -> {
+                            try {
+                                return new CreationResult<>(fc.get(), true);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException(e);
+                            } catch (ExecutionException e) {
+                                log.debug(e.getMessage());
+                                return new CreationResult<>(null, false);
+                            }
+                        })
+                .create(producers);
+    }
+
+    @Override
+    public CompletableFuture<List<BenchmarkConsumer>> createConsumers(List<ConsumerInfo> consumers) {
+        return new ResourceCreator<ConsumerInfo, BenchmarkConsumer>(
+                        "consumer",
+                        config.consumerCreationBatchSize,
+                        config.consumerCreationDelay,
+                        cs ->
+                                cs.stream()
+                                        .collect(
+                                                toMap(
+                                                        c -> c,
+                                                        c ->
+                                                                createConsumer(
+                                                                        c.getTopic(),
+                                                                        c.getSubscriptionName(),
+                                                                        c.getConsumerCallback()))),
+                        fc -> {
+                            try {
+                                return new CreationResult<>(fc.get(), true);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException(e);
+                            } catch (ExecutionException e) {
+                                log.debug(e.getMessage());
+                                return new CreationResult<>(null, false);
+                            }
+                        })
+                .create(consumers);
+    }
+
+    @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             String topic, String subscriptionName, ConsumerCallback consumerCallback) {
 
@@ -163,9 +218,6 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
         return connections.computeIfAbsent(
                 primaryBrokerUri,
                 p -> {
-                    String[] userInfo = newURI(primaryBrokerUri).getUserInfo().split(":");
-                    String user = userInfo[0];
-                    String password = userInfo[1];
                     // RabbitMQ will pick the first available address from the list. Future reconnection
                     // attempts will pick a random accessible address from the provided list.
                     List<Address> addresses =
@@ -176,11 +228,15 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                     try {
                         ConnectionFactory connectionFactory = new ConnectionFactory();
                         connectionFactory.setAutomaticRecoveryEnabled(true);
-                        connectionFactory.setUsername(user);
-                        connectionFactory.setPassword(password);
+                        String userInfo = newURI(primaryBrokerUri).getUserInfo();
+                        if (userInfo != null) {
+                            String[] userInfoElems = userInfo.split(":");
+                            connectionFactory.setUsername(userInfoElems[0]);
+                            connectionFactory.setPassword(userInfoElems[1]);
+                        }
                         return connectionFactory.newConnection(addresses);
                     } catch (Exception e) {
-                        throw new RuntimeException("Couldn't establish connection", e);
+                        throw new RuntimeException("Couldn't establish connection to: " + primaryBrokerUri, e);
                     }
                 });
     }

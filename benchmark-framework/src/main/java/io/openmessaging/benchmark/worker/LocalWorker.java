@@ -24,6 +24,8 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.openmessaging.benchmark.DriverConfiguration;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
+import io.openmessaging.benchmark.driver.BenchmarkDriver.ConsumerInfo;
+import io.openmessaging.benchmark.driver.BenchmarkDriver.ProducerInfo;
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
@@ -45,11 +47,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -125,24 +127,35 @@ public class LocalWorker implements Worker, ConsumerCallback {
     @Override
     public void createProducers(List<String> topics) {
         Timer timer = new Timer();
+        AtomicInteger index = new AtomicInteger();
 
-        List<CompletableFuture<BenchmarkProducer>> futures =
-                topics.stream().map(topic -> benchmarkDriver.createProducer(topic)).collect(toList());
+        producers.addAll(
+                benchmarkDriver
+                        .createProducers(
+                                topics.stream()
+                                        .map(t -> new ProducerInfo(index.getAndIncrement(), t))
+                                        .collect(toList()))
+                        .join());
 
-        futures.forEach(f -> producers.add(f.join()));
         log.info("Created {} producers in {} ms", producers.size(), timer.elapsedMillis());
     }
 
     @Override
     public void createConsumers(ConsumerAssignment consumerAssignment) {
         Timer timer = new Timer();
+        AtomicInteger index = new AtomicInteger();
 
-        List<CompletableFuture<BenchmarkConsumer>> futures =
-                consumerAssignment.topicsSubscriptions.stream()
-                        .map(ts -> benchmarkDriver.createConsumer(ts.topic, ts.subscription, this))
-                        .collect(toList());
+        consumers.addAll(
+                benchmarkDriver
+                        .createConsumers(
+                                consumerAssignment.topicsSubscriptions.stream()
+                                        .map(
+                                                c ->
+                                                        new ConsumerInfo(
+                                                                index.getAndIncrement(), c.topic, c.subscription, this))
+                                        .collect(toList()))
+                        .join());
 
-        futures.forEach(f -> consumers.add(f.join()));
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
     }
 
