@@ -18,10 +18,10 @@
 #
 
 #name: incremental-bigcluster-50b
-name: bigcluster-50b
+name: bigcluster-50b-2
 
 topics: 18
-partitionsPerTopic: 40
+partitionsPerTopic: 20
 messageSize: 50
 #payloadFile: "payload/payload-100b.data"
 useRandomizedPayloads: true
@@ -29,10 +29,10 @@ randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
 
 subscriptionsPerTopic: 1
-consumerPerSubscription: 48
-producersPerTopic: 48
-producerPermits: 2400
-producerRate: 60000000
+consumerPerSubscription: 36
+producersPerTopic: 15
+
+producerRate: 64000000
 #producerStartRate: 30000000
 #producerIncrementRate: 10000000
 #producerIncrementSeconds: 60

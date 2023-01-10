@@ -17,25 +17,25 @@
 # under the License.
 #
 
-#name: incremental-bigcluster-50b
-name: bigcluster-50b
+name: 8-topics-200-partitions-500b
 
-topics: 18
-partitionsPerTopic: 40
-messageSize: 50
+topics: 8
+partitionsPerTopic: 200
+messageSize: 500
 #payloadFile: "payload/payload-100b.data"
 useRandomizedPayloads: true
 randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
 
 subscriptionsPerTopic: 1
-consumerPerSubscription: 48
-producersPerTopic: 48
-producerPermits: 2400
-producerRate: 60000000
-#producerStartRate: 30000000
-#producerIncrementRate: 10000000
-#producerIncrementSeconds: 60
+consumerPerSubscription: 12
+producersPerTopic: 6
+
+# Discover max-sustainable rate
+producerRate: 1750
+producerStartRate: 250
+producerIncrementRate: 125
+producerIncrementSeconds: 30
 
 consumerBacklogSizeGB: 0
-testDurationMinutes: ${ombTestDuration:-5}
+testDurationMinutes: ${ombTestDuration:-10}

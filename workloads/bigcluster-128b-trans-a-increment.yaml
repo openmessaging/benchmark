@@ -17,12 +17,11 @@
 # under the License.
 #
 
-#name: incremental-bigcluster-50b
-name: bigcluster-50b
+name: incremental-bigcluster-128b-a-trans
 
 topics: 18
-partitionsPerTopic: 40
-messageSize: 50
+partitionsPerTopic: 30
+messageSize: 128
 #payloadFile: "payload/payload-100b.data"
 useRandomizedPayloads: true
 randomBytesRatio: 0.5
@@ -31,10 +30,10 @@ randomizedPayloadPoolSize: 1000
 subscriptionsPerTopic: 1
 consumerPerSubscription: 48
 producersPerTopic: 48
-producerPermits: 2400
-producerRate: 60000000
-#producerStartRate: 30000000
-#producerIncrementRate: 10000000
+
+producerRate: 3500
+#producerStartRate: 1000
+#producerIncrementRate: 750
 #producerIncrementSeconds: 60
 
 consumerBacklogSizeGB: 0
