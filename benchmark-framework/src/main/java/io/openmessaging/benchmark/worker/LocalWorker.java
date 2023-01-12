@@ -270,7 +270,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                             byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
                             final long sendTime = System.nanoTime();
                             producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
-                                    .thenAcceptAsync((numberOfMessages) -> {
+                                    .thenAccept((numberOfMessages) -> {
 
                                 gate.release();
 
