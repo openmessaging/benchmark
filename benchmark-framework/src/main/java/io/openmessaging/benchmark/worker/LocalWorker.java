@@ -261,18 +261,28 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 while (!testCompleted) {
                     producers.forEach(producer -> {
                         rateLimiter.acquire();
-                        try {
-                            gate.acquire();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
                         if ( !producersArePaused ) {
+                            // acquiring a permit to prevent overrunning production (is this needed after switching away from thenAcceptAsync
+                            try {
+                                gate.acquire();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                             byte[] payloadData = payloadCount == 0 ? firstPayload : payloads.get(r.nextInt(payloadCount));
+                            // Start latency measurement just prior to send
                             final long sendTime = System.nanoTime();
                             producer.sendAsync(Optional.ofNullable(keyDistributor.next()), payloadData)
                                     .thenAccept((numberOfMessages) -> {
 
-                                gate.release();
+                                // Measure latency immediately after success
+                                long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
+                                publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
+                                if (latencyMicros > MAX_LATENCY) {
+                                    // prevent errors in the recorders
+                                    latencyMicros = MAX_LATENCY;
+                                }
+                                publishLatencyRecorder.recordValue(latencyMicros);
+                                cumulativePublishLatencyRecorder.recordValue(latencyMicros);
 
                                 messagesSent.add(numberOfMessages);
                                 totalMessagesSent.add(numberOfMessages);
@@ -281,18 +291,12 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                 bytesSent.add(throughput);
                                 bytesSentCounter.add(throughput);
 
-                                long latencyMicros = TimeUnit.NANOSECONDS.toMicros(System.nanoTime() - sendTime);
-                                publishLatencyStats.registerSuccessfulEvent(latencyMicros, TimeUnit.MICROSECONDS);
-                                if (latencyMicros > MAX_LATENCY) {
-                                    // prevent errors
-                                    latencyMicros = MAX_LATENCY;
-                                }
-                                publishLatencyRecorder.recordValue(latencyMicros);
-                                cumulativePublishLatencyRecorder.recordValue(latencyMicros);
+                                gate.release();
+
                             }).exceptionally(ex -> {
                                 gate.release();
                                 log.warn("Write error on message", ex);
-                                return null;
+				return null;
                             });
                         }
                     });

@@ -76,7 +76,7 @@ public class Workload {
      * In the producer per processor loop in LocalWorker a semaphore is added to prevent too many publish threads.
      */
 
-    public int producerPermits = 500;
+    public int producerPermits = 1000;
 
     /**
      * If the consumer backlog is > 0, the generator will accumulate messages until the requested amount of storage is
