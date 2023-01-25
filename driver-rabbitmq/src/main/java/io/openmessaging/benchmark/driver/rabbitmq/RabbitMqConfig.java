@@ -25,6 +25,10 @@ public class RabbitMqConfig {
     public List<String> amqpUris = new ArrayList<>();
     public boolean messagePersistence = false;
     public QueueType queueType = CLASSIC;
+    public long producerCreationDelay = 100;
+    public int producerCreationBatchSize = 5;
+    public long consumerCreationDelay = 100;
+    public int consumerCreationBatchSize = 5;
 
     public enum QueueType {
         CLASSIC {
