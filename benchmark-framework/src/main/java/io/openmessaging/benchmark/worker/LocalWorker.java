@@ -355,11 +355,6 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
     @Override
     public void messageReceived(byte[] data, long publishTimestamp) {
-        messagesReceived.increment();
-        totalMessagesReceived.increment();
-        messagesReceivedCounter.inc();
-        bytesReceived.add(data.length);
-        bytesReceivedCounter.add(data.length);
 
         long now = System.currentTimeMillis();
         long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);
@@ -368,6 +363,12 @@ public class LocalWorker implements Worker, ConsumerCallback {
             endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
             endToEndLatencyStats.registerSuccessfulEvent(endToEndLatencyMicros, TimeUnit.MICROSECONDS);
         }
+
+        messagesReceived.increment();
+        totalMessagesReceived.increment();
+        messagesReceivedCounter.inc();
+        bytesReceived.add(data.length);
+        bytesReceivedCounter.add(data.length);
 
         while (consumersArePaused) {
             try {
