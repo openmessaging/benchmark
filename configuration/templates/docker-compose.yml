@@ -1,0 +1,20 @@
+version: '2'
+
+services:
+  grafana:
+    image: grafana/grafana-oss:latest
+    ports:
+      - {{ hostvars[groups['prometheus'][0]].private_ip }}:3000:3000
+    environment:
+      GF_RENDERING_SERVER_URL: http://{{ hostvars[groups['prometheus'][0]].private_ip }}:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_LOG_FILTERS: rendering:debug
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - /opt/grafana/provisioning:/etc/grafana/provisioning
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+    ports:
+      - {{ hostvars[groups['prometheus'][0]].private_ip }}:8081:8081
+    volumes:
+      - /opt/grafana/config.json:/usr/src/app/config.json

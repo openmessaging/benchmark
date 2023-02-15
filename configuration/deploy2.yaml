@@ -1,0 +1,615 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Format and mount disks for Pulsar/BookKeeper hosts
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - name: Format disks
+      filesystem:
+         fstype: xfs
+         dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme1n1'
+        - '/dev/nvme2n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/journal", src: "/dev/nvme1n1" }
+        - { path: "/mnt/storage", src: "/dev/nvme2n1" }
+
+- name: All hosts installation
+  hosts: all
+  connection: ssh
+  become: true
+  tasks:
+    - name: Get variables from terraform
+      include_vars: ./tf_ansible_vars.yaml
+    - name: "Configuration facts"
+      set_fact:
+        zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
+        serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
+        serviceTlsUrl: "pulsar+ssl://{{ hostvars[groups['pulsar'][0]].private_ip }}:6651/"
+        httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
+        httpsUrl: "https://{{ hostvars[groups['pulsar'][0]].private_ip }}:8443/"
+        pulsarServer: "{{ hostvars[groups['pulsar'][0]].private_ip }}"
+        bootstrapServers: "{{ groups['pulsar'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
+        bootstrapTlsServers: "{{ groups['pulsar'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9093') | join(',') }}"
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        max_heap_memory: "24g"
+        max_direct_memory: "24g"
+        gc_options: "{{ pulsar_package['gc'] }}{% if leak is defined %}{% if leak == 'advanced' %} -Dpulsar.allocator.leak_detection=Advanced -Dio.netty.leakDetectionLevel=advanced{% else %} -Dpulsar.allocator.leak_detection=Simple -Dio.netty.leakDetectionLevel=simple{% endif %}{% endif %}"
+        description: "{% if desc is defined %}{{ desc }}{% else %}OpenMessaging Benchmark{% endif %}"
+        s3_bucket: "{{ tf_s3_bucket }}"
+        s3_region: "{{ tf_s3_region }}"
+        s3_url: "https://s3.{{ tf_s3_region }}.amazonaws.com"
+    - name: Set performance profile
+      command: tuned-adm profile latency-performance
+    - name: Install RPM packages
+      yum:
+        name:
+          - wget
+          - "{{ java_jdk }}"
+          - "{{ java_jdk }}-devel"
+          - sysstat
+          - vim
+          - svn
+          - chrony
+          - perf
+        state: latest
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+    - name: Make system log file copiable
+      shell: |
+        chmod 644 /var/log/messages
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
+- name: Install Node exporter on Brokers and Workers to collect system metrics
+  hosts: pulsar
+  become: true
+  tasks:
+    - name: Add user node_exporter
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+    - name: Download and extract
+      unarchive:
+        src: "https://github.com/prometheus/node_exporter/releases/download/v1.5.0/node_exporter-1.5.0.linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy bin node_exporter to /usr/local/bin
+      copy:
+        src: /tmp/node_exporter-1.5.0.linux-amd64/node_exporter
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter
+        state: started
+        enabled: yes
+
+    - name: Check whether port 9100 is available
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
+
+
+- name: Pulsar/Zookeeper installation
+  hosts: pulsar,zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/pulsar state=absent
+    - file: path=/opt/pulsar state=directory
+    - name: "Download {{ pulsar_package['url'] }} binary package"
+      unarchive:
+        src: "{{ pulsar_package['url'] }}"
+        remote_src: no
+        dest: /opt/pulsar
+        extra_opts: ["--strip-components=1"]
+    - template:
+        src: "templates/bkenv.sh"
+        dest: "/opt/pulsar/conf/bkenv.sh"
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - template:
+        src: "templates/log4j2.yaml"
+        dest: "/opt/pulsar/conf/log4j2.yaml"
+
+- name: ZooKeeper setup
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
+        max_heap_memory: "512m"
+        max_direct_memory: "512m"
+        gc_options: "{{ pulsar_package['gc'] }}"
+    - file:
+        path: "/opt/pulsar/{{ item }}"
+        state: directory
+      with_items:
+        - data/zookeeper
+    - template:
+        src: "templates/pulsar_env.sh"
+        dest: "/opt/pulsar/conf/pulsar_env.sh"
+    - template:
+        src: "templates/zoo.cfg"
+        dest: "/opt/pulsar/conf/zookeeper.conf"
+    - template:
+        src: templates/myid
+        dest: "/opt/pulsar/data/zookeeper/myid"
+    - template:
+        src: "templates/zookeeper.service"
+        dest: "/etc/systemd/system/zookeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "zookeeper"
+    - command: >
+        bin/pulsar initialize-cluster-metadata --cluster local
+        --zookeeper localhost:2181
+        --configuration-store localhost:2181
+        --web-service-url {{ httpUrl }}
+        --broker-service-url {{ serviceUrl }}
+      args:
+        chdir: /opt/pulsar
+      when: groups['zookeeper'][0] == inventory_hostname
+
+- name: BookKeeper setup
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - template:
+        src: "templates/bookkeeper.conf"
+        dest: "/opt/pulsar/conf/bookkeeper.conf"
+    - name: Install bookkeeper systemd service
+      template:
+        src: "templates/bookkeeper.service"
+        dest: "/etc/systemd/system/bookkeeper.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "bookkeeper"
+
+- name: Pulsar configuration and systemd setup
+  hosts: pulsar
+  connection: ssh
+  become: true
+  vars:
+    hostNameStr2: "{{ private_ip | replace('.', '-') }}"
+    broker_key_name: "broker.{{ hostNameStr2 }}.key-pk8.pem"
+    broker_cert_name: "broker.{{ hostNameStr2 }}.crt.pem"
+  tasks:
+    - file: path=/opt/pulsar/server state=absent
+    - file: path=/opt/pulsar/server state=directory
+    - file: path=/opt/pulsar/rootca state=absent
+    - file: path=/opt/pulsar/rootca state=directory
+    - file: path=/opt/pulsar/{{ pulsar_extras.folder }} state=absent
+      when: pulsar_extras.nar
+    - file: path=/opt/pulsar/{{ pulsar_extras.folder }} state=directory
+      when: pulsar_extras.nar
+    - name: Copy NAR to /opt/pulsar/{{ pulsar_extras.folder }}
+      copy:
+        src: /opt/packages/{{ pulsar_extras.url }}
+        dest: /opt/pulsar/{{ pulsar_extras.folder }}/
+      when: pulsar_extras.nar
+    - name: If broker TLS is enabled, copy TLS certificate related security files
+      copy:
+        src: "{{ item.src_file }}"
+        dest: "{{ item.dest_file }}"
+#        owner: pulsar
+#        group: pulsar
+        force: false
+      with_items:
+        - { src_file: "files/brokers/{{ broker_key_name }}", 
+            dest_file: "/opt/pulsar/server/{{ broker_key_name }}" }
+        - { src_file: "files/brokers/{{ broker_cert_name }}", 
+            dest_file: "/opt/pulsar/server/{{ broker_cert_name }}" }
+        - { src_file: "files/certs/ca.cert.pem", 
+            dest_file: "/opt/pulsar/rootca/ca.cert.pem" }
+      when: tls is defined and tls|bool
+    - name: Set up broker
+      template:
+        src: "templates/{{ pulsar_package['broker'] }}"
+        dest: "/opt/pulsar/conf/broker.conf"
+    - name: If broker TLS is enabled, configure TLS related settings in the broker config file
+      lineinfile:
+        path: "/opt/pulsar/conf/broker.conf"
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^brokerServicePortTls=', line: 'brokerServicePortTls=6651' }
+        - { regexp: '^webServicePortTls=', line: 'webServicePortTls=8443' }
+        - { regexp: '^tlsKeyFilePath=', line: "tlsKeyFilePath=/opt/pulsar/server/{{ broker_key_name }}" }
+        - { regexp: '^tlsCertificateFilePath=', line: "tlsCertificateFilePath=/opt/pulsar/server/{{ broker_cert_name }}" }
+        - { regexp: '^tlsTrustCertsFilePath=', line: "tlsTrustCertsFilePath=/opt/pulsar/rootca/ca.cert.pem" }
+        - { regexp: '^brokerClientTlsEnabled=', line: "brokerClientTlsEnabled=true" }
+        - { regexp: '^brokerClientTrustCertsFilePath=', line: "brokerClientTrustCertsFilePath=/opt/pulsar/rootca/ca.cert.pem" }
+      when: tls is defined and tls|bool
+    - template:
+        src: "templates/pulsar.service"
+        dest: "/etc/systemd/system/pulsar.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "pulsar"
+
+- name: "OpenMessaging Benchmark setup"
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - file: path=/opt/benchmark state=absent
+    - name: Copy benchmark code
+      unarchive:
+        src: "{{ benchmark_package['path'] }}"
+        dest: /opt
+    - shell: "mv /opt/{{ benchmark_package['name'] }} /opt/benchmark"
+    - file: path=/opt/benchmark/rootca state=absent
+    - file: path=/opt/benchmark/rootca state=directory
+    - name: If broker TLS is enabled, copy TLS certificate related security files from localhost to Pulsar (broker) servers
+      copy:
+        src: "{{ item.src_file }}"
+        dest: "{{ item.dest_file }}"
+        force: false
+      with_items:
+        - { src_file: "files/certs/ca.cert.pem", 
+            dest_file: "/opt/benchmark/rootca/ca.cert.pem" }
+      when: tls is defined and tls|bool
+    - name: Enviroment Variables for Placeholders
+      template:
+        src: "templates/setenv.sh"
+        dest: "/opt/benchmark/bin/setenv.sh"
+    - name: Make setenv.sh executable
+      shell: |
+        chmod 755 /opt/benchmark/bin/setenv.sh
+    - name: Configure installation information
+      template:
+        src: "templates/install.yaml"
+        dest: "/opt/benchmark/install.yaml"
+    - name: Configure workers information 
+      template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-pulsar/*.yaml
+      register: drivers_list
+    - name: Configure service URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  serviceUrl\: '
+         line: '  serviceUrl: ${SERVICEURL}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure http URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  httpUrl: '
+         line: '  httpUrl: ${HTTPURL}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Configure tlsTrustCertsFilePath
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  tlsTrustCertsFilePath:'
+         line: '  tlsTrustCertsFilePath: ${TLSCERTPATH}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+    - name: Get list of kafka driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
+      register: kafka_drivers_list
+    - name: Configure Kafka Bootstrap Servers
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  bootstrap.servers='
+         line: '  bootstrap.servers=${BOOTSTRAPSERVERS}'
+      with_items: '{{ kafka_drivers_list.stdout_lines }}'
+    - name: Configure Starlight for RabbitMQ Driver
+      template:
+        src: "templates/starlight-rabbitmq.yaml"
+        dest: "/opt/benchmark/driver-starlight-rabbitmq/starlight-rabbitmq.yaml"
+    - name: Get list of jms driver config files
+      raw: ls -1 /opt/benchmark/driver-jms/pulsar*.yaml
+      register: jms_drivers_list
+    - name: Configure JMS service URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  serviceUrl\: '
+         line: '  serviceUrl: ${SERVICEURL}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure JMS service Connection Handler
+      ansible.builtin.replace:
+         dest: '{{ item }}'
+         regexp: 'pulsar\:\/\/localhost\:6650'
+         replace: '${SERVICEURL}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure JMS http URL
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  httpUrl: '
+         line: '  httpUrl: ${HTTPURL}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure JMS http Connection Handler
+      ansible.builtin.replace:
+         dest: '{{ item }}'
+         regexp: 'http\:\/\/localhost\:8080'
+         replace: '{% if tls is defined and tls|bool %}${HTTPURL}", "tlsTrustCertsFilePath": "${TLSCERTPATH}{% else %}${HTTPURL}{% endif %}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure tlsTrustCertsFilePath
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  tlsTrustCertsFilePath:'
+         line: '  tlsTrustCertsFilePath: ${TLSCERTPATH}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms6G -Xmx12G -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:+PerfDisableSharedMem -XX:+AlwaysPreTouch -XX:-UseBiasedLocking"'
+    - name: call setenv.sh
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_GC_LOG='
+         line: '. ./bin/setenv.sh'
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx4G"'
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+
+- name: Benchmark Worker jfr and jmap setup
+  hosts: client
+  connection: ssh
+  become: false
+  tasks:
+    - name: Setup JFR.start script
+      template:
+        src: "templates/worker-flightrecorder.sh"
+        dest: "~/flightrecorder.sh"
+    - name: Setup jmap and JFR.dump script
+      template:
+        src: "templates/worker-heapdump.sh"
+        dest: "~/heapdump.sh"
+
+- name: Pulsar stack dump setup
+  hosts: pulsar
+  connection: ssh
+  become: false
+  tasks:
+    - name: Setup JFR.start script
+      template:
+        src: "templates/flightrecorder.sh"
+        dest: "~/flightrecorder.sh"
+    - name: Setup jmap and JFR.dump script
+      template:
+        src: "templates/heapdump.sh"
+        dest: "~/heapdump.sh"
+    - name: Setup perf record script
+      template:
+        src: "templates/perfrecord.sh"
+        dest: "~/perfrecord.sh"
+    - name: Setup jstack script
+      template:
+        src: "templates/stacktrace.sh"
+        dest: "~/stacktrace.sh"
+    - name: Run jstack script every minute on broker and bookie
+      ansible.builtin.cron:
+        name: "jstack dumps"
+        minute: "*/5"
+        job: "bash ~/stacktrace.sh >/dev/null 2>/dev/null"
+
+- name: Pulsar tenant setup
+  hosts: pulsar
+  connection: ssh
+  become: true
+  tasks:
+    - name: Create benchmark tenant
+      command: >
+        bin/pulsar-admin tenants create benchmark
+      args:
+        chdir: /opt/pulsar
+      when: groups['pulsar'][0] == inventory_hostname
+
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - name: Add Extras Repo
+      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+        - prometheus_package is defined
+    - name: Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - prometheus_package is defined
+    - name: Installing docker
+      yum:
+        state: latest
+        pkg: ['docker-ce']
+      when: prometheus_package is defined
+    - name: Start docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      when: prometheus_package is defined
+    - file: path=/opt/pulsar state=absent
+      when: prometheus_package is defined
+    - file: path=/opt/pulsar state=directory
+      when: prometheus_package is defined
+    - file: path=/opt/prometheus state=absent
+      when: prometheus_package is defined
+    - file: path=/opt/prometheus state=directory
+      when: prometheus_package is defined
+    - name: Download Prometheus Binary Package
+      when: prometheus_package is defined
+      unarchive:
+        src: "{{ prometheus_package['url'] }}"
+        remote_src: yes
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+    - name: "Docker Compose"
+      file: path=/opt/grafana state=absent
+      when: prometheus_package is defined
+    - file: path=/opt/grafana state=directory
+      when: prometheus_package is defined
+    - template:
+        src: "templates/docker-compose.yml"
+        dest: "/opt/grafana/docker-compose.yml"
+      when: prometheus_package is defined
+    - copy:
+        src: "templates/config.json"
+        dest: "/opt/grafana/config.json"
+      when: prometheus_package is defined
+    - name: "Grafana Provisioning"
+      file: path=/opt/grafana/provisioning state=directory
+      when: prometheus_package is defined
+    - file: path=/opt/grafana/provisioning/datasources state=directory
+      when: prometheus_package is defined
+    - template:
+        src: "templates/grafana-datasource.yml"
+        dest: "/opt/grafana/provisioning/datasources/pulsar.yml"
+      when: prometheus_package is defined
+    - file: path=/opt/grafana/provisioning/dashboards state=directory
+      when: prometheus_package is defined
+    - name: "Grafana Dashboards"
+      copy:
+        src: "templates/dashboards/"
+        dest: "/opt/grafana/provisioning/dashboards/"
+    - template:
+        src: "templates/grafana-dashboards.yml"
+        dest: "/opt/grafana/provisioning/dashboards/pulsar.yml"
+      when: prometheus_package is defined
+
+
+- name: Prometheus and Grafana services
+  hosts: prometheus
+  connection: ssh
+  become: true
+  tasks:
+    - file:
+        path: "/opt/prometheus/{{ item }}"
+        state: directory
+      with_items:
+        - data
+      when: prometheus_package is defined
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+      when: prometheus_package is defined
+#    - template:
+#        src: "templates/pulsar-dashboard.service"
+#        dest: "/etc/systemd/system/pulsar-dashboard.service"
+#      when: prometheus_package is defined
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+      when: prometheus_package is defined
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+      when: prometheus_package is defined
+#    - systemd:
+#        state: restarted
+#        daemon_reload: yes
+#        name: "pulsar-dashboard"
+#      when: prometheus_package is defined
+    - name: Start grafana / systemd has networking issues
+      shell: |
+        sleep 60
+        cd /opt/grafana
+        /usr/libexec/docker/cli-plugins/docker-compose up -d
+      when: prometheus_package is defined
+
+
+- name: List host addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "Zookeeper servers {{ item }}"
+      with_items: "{{ groups['zookeeper'] }}"
+    - debug:
+        msg: "Pulsar/BookKeeper servers {{ item }}"
+      with_items: "{{ groups['pulsar'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus servers {{ item }}"
+      with_items: "{{ groups['prometheus'] }}"
+      when: prometheus_package is defined
