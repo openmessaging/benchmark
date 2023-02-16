@@ -94,6 +94,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
                                     .name(topic)
                                     .subjects(topic)
                                     .storageType(config.storageType)
+                                    .maxBytes(config.maxBytes)
                                     .replicas(config.replicationFactor)
                                     .build());
             log.info("Created stream {} -- {}", topic, JsonUtils.getFormatted(streamInfo));

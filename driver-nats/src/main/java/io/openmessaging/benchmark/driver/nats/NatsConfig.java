@@ -22,4 +22,7 @@ public class NatsConfig {
     public int replicationFactor;
 
     public StorageType storageType = StorageType.File;
+
+    // -1 is unlimited
+    public int maxBytes = -1;
 }
