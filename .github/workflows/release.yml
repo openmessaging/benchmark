@@ -1,9 +1,16 @@
 name: Release Image
 
 on:
+  pull_request:
+    branches:
+      - master
   push:
     branches:
-      - '*'
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docker:
@@ -32,4 +39,3 @@ jobs:
           file: docker/Dockerfile.build
           push: true
           tags: streamnative/benchmark:base
-
