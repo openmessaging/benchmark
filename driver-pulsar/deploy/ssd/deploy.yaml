@@ -23,7 +23,7 @@
         serviceUrl: "pulsar://{{ hostvars[groups['pulsar'][0]].private_ip }}:6650/"
         httpUrl: "http://{{ hostvars[groups['pulsar'][0]].private_ip }}:8080/"
     - set_fact:
-        pulsar_version: "{{ pulsar_version | default('2.10.2') }}"
+        pulsar_version: "{{ pulsar_version | default('2.11.0') }}"
         node_exporter_version: "{{ node_exporter_version | default('1.2.2') }}"
         prometheus_version: "{{ prometheus_version | default('2.31.1') }}"
         disk_dev: "{{ disk_dev | default(['/dev/nvme1n1', '/dev/nvme2n1']) }}"
@@ -416,12 +416,12 @@
       lineinfile:
          dest: /opt/benchmark/bin/benchmark-worker
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xms100G -Xmx100G -XX:+UseZGC"'
+         line: 'JVM_MEM="-Xms64G -Xmx64G -XX:+UseZGC"'
     - name: Configure memory
       lineinfile:
          dest: /opt/benchmark/bin/benchmark
          regexp: '^JVM_MEM='
-         line: 'JVM_MEM="-Xmx4G"'
+         line: 'JVM_MEM="-Xmx16G"'
     - name: Install benchmark systemd service
       template:
         src: "templates/benchmark-worker.service"
