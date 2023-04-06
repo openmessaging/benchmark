@@ -18,7 +18,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.openmessaging.benchmark.utils.Env;
-import io.openmessaging.benchmark.worker.Worker;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
