@@ -217,9 +217,19 @@ public class WorkloadGenerator implements AutoCloseable {
 
             lastControlTimestamp = currentTime;
 
+            double p99PublishLatency =
+                    microsToMillis(periodStats.publishLatency.getValueAtPercentile(99));
+            double p99EndToEndLatency =
+                    microsToMillis(periodStats.endToEndLatency.getValueAtPercentile(99));
+
             currentRate =
                     rateController.nextRate(
-                            currentRate, periodNanos, stats.messagesSent, stats.messagesReceived, periodStats);
+                            currentRate,
+                            periodNanos,
+                            stats.messagesSent,
+                            stats.messagesReceived,
+                            p99PublishLatency,
+                            p99EndToEndLatency);
             worker.adjustPublishRate(currentRate);
         }
     }
@@ -534,11 +544,11 @@ public class WorkloadGenerator implements AutoCloseable {
     private static final DecimalFormat throughputFormat = new PaddingDecimalFormat("0.0", 4);
     private static final DecimalFormat dec = new PaddingDecimalFormat("0.0", 4);
 
-    public static double microsToMillis(double timeInMicros) {
+    private static double microsToMillis(double timeInMicros) {
         return timeInMicros / 1000.0;
     }
 
-    public static double microsToMillis(long timeInMicros) {
+    private static double microsToMillis(long timeInMicros) {
         return timeInMicros / 1000.0;
     }
 

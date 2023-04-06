@@ -13,12 +13,10 @@
  */
 package io.openmessaging.benchmark;
 
-import static io.openmessaging.benchmark.WorkloadGenerator.microsToMillis;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.openmessaging.benchmark.utils.Env;
-import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,7 +52,8 @@ class RateController {
             long periodNanos,
             long totalPublished,
             long totalReceived,
-            PeriodStats periodStats) {
+            double p99PublishLatency,
+            double p99EndToEndLatency) {
         long expected = (long) ((rate / ONE_SECOND_IN_NANOS) * periodNanos);
         long published = totalPublished - previousTotalPublished;
         long received = totalReceived - previousTotalReceived;
@@ -80,20 +79,13 @@ class RateController {
             return nextRate(periodNanos, published, expected, publishBacklog, "Publish");
         }
 
-        if (periodStats != null) {
-            double p99PublishLatency =
-                    microsToMillis(periodStats.publishLatency.getValueAtPercentile(99));
-            double p99EndToEndLatency =
-                    microsToMillis(periodStats.endToEndLatency.getValueAtPercentile(99));
-
-            if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
-                rampDown();
-                return rate * (targetP99EndToEndLatency / p99EndToEndLatency);
-            }
-            if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
-                rampDown();
-                return rate * (targetP99PublishLatency / p99PublishLatency);
-            }
+        if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
+            rampDown();
+            return rate * (targetP99EndToEndLatency / p99EndToEndLatency);
+        }
+        if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
+            rampDown();
+            return rate * (targetP99PublishLatency / p99PublishLatency);
         }
         rampUp();
 
