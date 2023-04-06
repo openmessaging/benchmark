@@ -13,10 +13,13 @@
  */
 package io.openmessaging.benchmark;
 
+import static io.openmessaging.benchmark.WorkloadGenerator.microsToMillis;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.openmessaging.benchmark.utils.Env;
+import io.openmessaging.benchmark.worker.Worker;
+import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +30,8 @@ class RateController {
     private final long receiveBacklogLimit;
     private final double minRampingFactor;
     private final double maxRampingFactor;
+    private final double targetP99EndToEndLatency;
+    private final double targetP99PublishLatency;
 
     @Getter(PACKAGE)
     private double rampingFactor;
@@ -39,10 +44,14 @@ class RateController {
         receiveBacklogLimit = Env.getLong("RECEIVE_BACKLOG_LIMIT", 1_000);
         minRampingFactor = Env.getDouble("MIN_RAMPING_FACTOR", 0.01);
         maxRampingFactor = Env.getDouble("MAX_RAMPING_FACTOR", 1);
+        targetP99EndToEndLatency = Env.getDouble("TARGET_P99_END_TO_END_LATENCY", 0);
+        targetP99PublishLatency = Env.getDouble("TARGET_P99_PUBLISH_LATENCY", 0);
+
         rampingFactor = maxRampingFactor;
+
     }
 
-    double nextRate(double rate, long periodNanos, long totalPublished, long totalReceived) {
+    double nextRate(double rate, long periodNanos, long totalPublished, long totalReceived, PeriodStats periodStats) {
         long expected = (long) ((rate / ONE_SECOND_IN_NANOS) * periodNanos);
         long published = totalPublished - previousTotalPublished;
         long received = totalReceived - previousTotalReceived;
@@ -68,6 +77,19 @@ class RateController {
             return nextRate(periodNanos, published, expected, publishBacklog, "Publish");
         }
 
+        if (periodStats != null) {
+            double p99PublishLatency = microsToMillis(periodStats.publishLatency.getValueAtPercentile(99));
+            double p99EndToEndLatency = microsToMillis(periodStats.endToEndLatency.getValueAtPercentile(99));
+
+            if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
+                rampDown();
+                return rate * (targetP99EndToEndLatency / p99EndToEndLatency);
+            }
+            if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
+                rampDown();
+                return rate * (targetP99PublishLatency / p99PublishLatency);
+            }
+        }
         rampUp();
 
         return rate + (rate * rampingFactor);

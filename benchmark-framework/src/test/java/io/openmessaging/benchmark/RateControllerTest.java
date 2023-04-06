@@ -28,12 +28,12 @@ class RateControllerTest {
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // no backlog
-        rate = rateController.nextRate(rate, periodNanos, 10_000, 10_000);
+        rate = rateController.nextRate(rate, periodNanos, 10_000, 10_000, null);
         assertThat(rate).isEqualTo(20_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // receive backlog
-        rate = rateController.nextRate(rate, periodNanos, 20_000, 15_000);
+        rate = rateController.nextRate(rate, periodNanos, 20_000, 15_000, null);
         assertThat(rate).isEqualTo(5_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
     }
@@ -43,12 +43,12 @@ class RateControllerTest {
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // no backlog
-        rate = rateController.nextRate(rate, periodNanos, 10_000, 10_000);
+        rate = rateController.nextRate(rate, periodNanos, 10_000, 10_000, null);
         assertThat(rate).isEqualTo(20_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // publish backlog
-        rate = rateController.nextRate(rate, periodNanos, 15_000, 20_000);
+        rate = rateController.nextRate(rate, periodNanos, 15_000, 20_000, null);
         assertThat(rate).isEqualTo(5_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
     }
@@ -58,12 +58,12 @@ class RateControllerTest {
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
 
         // receive backlog
-        rate = rateController.nextRate(rate, periodNanos, 10_000, 5_000);
+        rate = rateController.nextRate(rate, periodNanos, 10_000, 5_000, null);
         assertThat(rate).isEqualTo(5_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(0.5);
 
         // no backlog
-        rate = rateController.nextRate(rate, periodNanos, 20_000, 20_000);
+        rate = rateController.nextRate(rate, periodNanos, 20_000, 20_000, null);
         assertThat(rate).isEqualTo(10_000);
         assertThat(rateController.getRampingFactor()).isEqualTo(1);
     }

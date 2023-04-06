@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+      - base_image
   push:
     branches:
       - master
@@ -33,4 +34,4 @@ jobs:
           context: .
           file: docker/Dockerfile.build
           push: true
-          tags: streamnative/benchmark:base
+          tags: streamnative/benchmark:${{ github.head_ref || github.ref_name }}
