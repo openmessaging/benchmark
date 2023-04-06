@@ -75,7 +75,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void initializeDriver(File configurationFile) throws IOException {
-        workers.parallelStream()
+        workers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {
@@ -107,7 +108,9 @@ public class DistributedWorkersEnsemble implements Worker {
                 (int) topicsPerProducerMap.values().stream().filter(t -> !t.isEmpty()).count();
         log.debug(
                 "Producing worker count: {} of {}", numberOfUsedProducerWorkers, producerWorkers.size());
-        topicsPerProducerMap.entrySet().parallelStream()
+        topicsPerProducerMap
+                .entrySet()
+                .parallelStream()
                 .forEach(
                         e -> {
                             try {
@@ -124,7 +127,8 @@ public class DistributedWorkersEnsemble implements Worker {
         double newRate = producerWorkAssignment.publishRate / numberOfUsedProducerWorkers;
         log.debug("Setting worker assigned publish rate to {} msgs/sec", newRate);
         // Reduce the publish rate across all the brokers
-        producerWorkers.parallelStream()
+        producerWorkers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {
@@ -137,7 +141,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void probeProducers() throws IOException {
-        producerWorkers.parallelStream()
+        producerWorkers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {
@@ -152,7 +157,8 @@ public class DistributedWorkersEnsemble implements Worker {
     public void adjustPublishRate(double publishRate) throws IOException {
         double newRate = publishRate / numberOfUsedProducerWorkers;
         log.debug("Adjusting producer publish rate to {} msgs/sec", newRate);
-        producerWorkers.parallelStream()
+        producerWorkers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {
@@ -175,7 +181,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void pauseConsumers() throws IOException {
-        consumerWorkers.parallelStream()
+        consumerWorkers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {
@@ -188,7 +195,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void resumeConsumers() throws IOException {
-        consumerWorkers.parallelStream()
+        consumerWorkers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {
@@ -211,7 +219,9 @@ public class DistributedWorkersEnsemble implements Worker {
             individualAssignment.topicsSubscriptions = tsl;
             topicsPerWorkerMap.put(consumerWorkers.get(i++), individualAssignment);
         }
-        topicsPerWorkerMap.entrySet().parallelStream()
+        topicsPerWorkerMap
+                .entrySet()
+                .parallelStream()
                 .forEach(
                         e -> {
                             try {
@@ -224,7 +234,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public PeriodStats getPeriodStats() {
-        return workers.parallelStream()
+        return workers
+                .parallelStream()
                 .map(
                         w -> {
                             try {
@@ -238,7 +249,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public CumulativeLatencies getCumulativeLatencies() {
-        return workers.parallelStream()
+        return workers
+                .parallelStream()
                 .map(
                         w -> {
                             try {
@@ -252,7 +264,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public CountersStats getCountersStats() throws IOException {
-        return workers.parallelStream()
+        return workers
+                .parallelStream()
                 .map(
                         w -> {
                             try {
@@ -266,7 +279,8 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void resetStats() throws IOException {
-        workers.parallelStream()
+        workers
+                .parallelStream()
                 .forEach(
                         w -> {
                             try {

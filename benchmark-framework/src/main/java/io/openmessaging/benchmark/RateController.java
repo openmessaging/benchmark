@@ -47,10 +47,14 @@ class RateController {
         targetP99PublishLatency = Env.getDouble("TARGET_P99_PUBLISH_LATENCY", 0);
 
         rampingFactor = maxRampingFactor;
-
     }
 
-    double nextRate(double rate, long periodNanos, long totalPublished, long totalReceived, PeriodStats periodStats) {
+    double nextRate(
+            double rate,
+            long periodNanos,
+            long totalPublished,
+            long totalReceived,
+            PeriodStats periodStats) {
         long expected = (long) ((rate / ONE_SECOND_IN_NANOS) * periodNanos);
         long published = totalPublished - previousTotalPublished;
         long received = totalReceived - previousTotalReceived;
@@ -77,8 +81,10 @@ class RateController {
         }
 
         if (periodStats != null) {
-            double p99PublishLatency = microsToMillis(periodStats.publishLatency.getValueAtPercentile(99));
-            double p99EndToEndLatency = microsToMillis(periodStats.endToEndLatency.getValueAtPercentile(99));
+            double p99PublishLatency =
+                    microsToMillis(periodStats.publishLatency.getValueAtPercentile(99));
+            double p99EndToEndLatency =
+                    microsToMillis(periodStats.endToEndLatency.getValueAtPercentile(99));
 
             if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
                 rampDown();

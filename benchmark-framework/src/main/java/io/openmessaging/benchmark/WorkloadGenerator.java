@@ -212,7 +212,6 @@ public class WorkloadGenerator implements AutoCloseable {
             stats = worker.getCountersStats();
             periodStats = worker.getPeriodStats();
 
-
             long currentTime = System.nanoTime();
             long periodNanos = currentTime - lastControlTimestamp;
 
