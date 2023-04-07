@@ -81,15 +81,15 @@ class RateController {
 
         if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
             rampDown();
-            return rate * (targetP99EndToEndLatency / p99EndToEndLatency);
+            return 0.2 * rate + 0.8 * rate * (targetP99EndToEndLatency / p99EndToEndLatency);
         }
         if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
             rampDown();
-            return rate * (targetP99PublishLatency / p99PublishLatency);
+            return 0.2 * rate + 0.8 * rate * (targetP99PublishLatency / p99PublishLatency);
         }
         rampUp();
 
-        return rate + (rate * rampingFactor);
+        return 0.2 * rate + 0.8 * (rate + (rate * rampingFactor));
     }
 
     private double nextRate(long periodNanos, long actual, long expected, long backlog, String type) {
@@ -98,7 +98,7 @@ class RateController {
         long nextExpected = Math.max(0, expected - backlog);
         double nextExpectedRate = rate(nextExpected, periodNanos);
         double actualRate = rate(actual, periodNanos);
-        return Math.min(actualRate, nextExpectedRate);
+        return 0.2 * actualRate +  0.8 * nextExpectedRate;
     }
 
     private double rate(long count, long periodNanos) {
