@@ -40,8 +40,8 @@
             <version>4.14.4</version>
             <exclusions>
                 <exclusion>
-                    <artifactId>bc-fips</artifactId>
                     <groupId>org.bouncycastle</groupId>
+                    <artifactId>bc-fips</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

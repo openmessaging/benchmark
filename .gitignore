@@ -21,3 +21,4 @@ core/*.json
 # IntelliJ artifacts
 .idea/
 *.iml
+/benchmark-worker.log
