@@ -19,7 +19,7 @@ WORKDIR /benchmark
 RUN mvn install -DskipTests
 
 # Create the benchmark image
-FROM openjdk:8-jdk
+FROM eclipse-temurin:17.0.6_10-jdk
 COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz /
 RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1
 RUN rm /openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz
