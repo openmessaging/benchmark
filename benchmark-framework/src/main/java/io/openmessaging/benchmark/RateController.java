@@ -98,7 +98,7 @@ class RateController {
         long nextExpected = Math.max(0, expected - backlog);
         double nextExpectedRate = rate(nextExpected, periodNanos);
         double actualRate = rate(actual, periodNanos);
-        return 0.2 * actualRate +  0.8 * nextExpectedRate;
+        return 0.2 * actualRate + 0.8 * nextExpectedRate;
     }
 
     private double rate(long count, long periodNanos) {
