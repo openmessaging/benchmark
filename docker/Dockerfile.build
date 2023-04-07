@@ -16,7 +16,7 @@
 FROM maven:latest as build
 COPY . /benchmark
 WORKDIR /benchmark
-RUN mvn install
+RUN mvn install -DskipTests
 
 # Create the benchmark image
 FROM openjdk:8-jdk
