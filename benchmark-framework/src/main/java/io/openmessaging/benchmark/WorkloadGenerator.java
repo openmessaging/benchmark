@@ -193,6 +193,7 @@ public class WorkloadGenerator implements AutoCloseable {
      */
     private void findMaximumSustainableRate(double currentRate) throws IOException {
         CountersStats stats = worker.getCountersStats();
+        PeriodStats periodStats = worker.getPeriodStats();
 
         int controlPeriodMillis = 3000;
         long lastControlTimestamp = System.nanoTime();
@@ -209,14 +210,26 @@ public class WorkloadGenerator implements AutoCloseable {
 
             // Consider multiple copies when using multiple subscriptions
             stats = worker.getCountersStats();
+            periodStats = worker.getPeriodStats();
+
             long currentTime = System.nanoTime();
             long periodNanos = currentTime - lastControlTimestamp;
 
             lastControlTimestamp = currentTime;
 
+            double p99PublishLatency =
+                    microsToMillis(periodStats.publishLatency.getValueAtPercentile(99));
+            double p99EndToEndLatency =
+                    microsToMillis(periodStats.endToEndLatency.getValueAtPercentile(99));
+
             currentRate =
                     rateController.nextRate(
-                            currentRate, periodNanos, stats.messagesSent, stats.messagesReceived);
+                            currentRate,
+                            periodNanos,
+                            stats.messagesSent,
+                            stats.messagesReceived,
+                            p99PublishLatency,
+                            p99EndToEndLatency);
             worker.adjustPublishRate(currentRate);
         }
     }
@@ -373,7 +386,9 @@ public class WorkloadGenerator implements AutoCloseable {
                                     - stats.totalMessagesReceived);
 
             log.info(
-                    "Pub rate {} msg/s / {} MB/s | Pub err {} err/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | Pub Delay Latency (us) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
+                    "Pub rate {} msg/s / {} MB/s | Pub err {} err/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | "
+                            + "Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | Pub Delay Latency"
+                            + " (us) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
                     rateFormat.format(publishRate),
                     throughputFormat.format(publishThroughput),
                     rateFormat.format(errorRate),
@@ -433,7 +448,9 @@ public class WorkloadGenerator implements AutoCloseable {
             if (now >= testEndTime && !needToWaitForBacklogDraining) {
                 CumulativeLatencies agg = worker.getCumulativeLatencies();
                 log.info(
-                        "----- Aggregated Pub Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {} | Pub Delay (us)  avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99.99%: {} - Max: {}",
+                        "----- Aggregated Pub Latency (ms) avg: {} - 50%: {} - 95%: {} - 99%: {} - 99.9%: {} - 99"
+                                + ".99%: {} - Max: {} | Pub Delay (us)  avg: {} - 50%: {} - 95%: {} - 99%: {} - 99"
+                                + ".9%: {} - 99.99%: {} - Max: {}",
                         dec.format(agg.publishLatency.getMean() / 1000.0),
                         dec.format(agg.publishLatency.getValueAtPercentile(50) / 1000.0),
                         dec.format(agg.publishLatency.getValueAtPercentile(95) / 1000.0),
