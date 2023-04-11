@@ -76,7 +76,7 @@ public class WorkloadGenerator implements AutoCloseable {
         createConsumers(topics);
         createProducers(topics);
 
-//        ensureTopicsAreReady();
+        ensureTopicsAreReady();
 
         if (workload.producerRate > 0) {
             targetPublishRate = workload.producerRate;
