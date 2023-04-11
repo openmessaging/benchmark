@@ -103,6 +103,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             pulsarAdminBuilder.authentication(
                     config.client.authentication.plugin, config.client.authentication.data);
         }
+        clientBuilder.enableTransaction(config.client.enableTransaction);
+
 
         client = clientBuilder.build();
 
@@ -193,7 +195,13 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        return producerBuilder.topic(topic).createAsync().thenApply(PulsarBenchmarkProducer::new);
+        if (config.client.enableTransaction) {
+            return producerBuilder.topic(topic).createAsync()
+                    .thenApply(producer -> new PulsarBenchmarkTxnProducer(producer, client));
+        } else {
+            return producerBuilder.topic(topic).createAsync()
+                    .thenApply(PulsarBenchmarkProducer::new);
+        }
     }
 
     @Override

@@ -53,6 +53,8 @@ public class PulsarClientConfig {
 
     public AuthenticationConfiguration authentication = new AuthenticationConfiguration();
 
+    public boolean enableTransaction = true;
+
     public static class AuthenticationConfiguration {
         public String plugin;
         public String data;
