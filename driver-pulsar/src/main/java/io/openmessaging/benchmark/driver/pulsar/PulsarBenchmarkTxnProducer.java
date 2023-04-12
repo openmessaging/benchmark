@@ -42,11 +42,14 @@ public class PulsarBenchmarkTxnProducer implements BenchmarkProducer {
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        return buildTransaction().thenCompose(txn -> {
-            TypedMessageBuilder<byte[]> msgBuilder = producer.newMessage(txn).value(payload);
-            key.ifPresent(msgBuilder::key);
-            return msgBuilder.sendAsync().thenApply(msgId -> txn);
-        }).thenCompose(Transaction::abort);
+        return buildTransaction()
+                .thenCompose(
+                        txn -> {
+                            TypedMessageBuilder<byte[]> msgBuilder = producer.newMessage(txn).value(payload);
+                            key.ifPresent(msgBuilder::key);
+                            return msgBuilder.sendAsync().thenApply(msgId -> txn);
+                        })
+                .thenCompose(Transaction::abort);
     }
 
     private CompletableFuture<Transaction> buildTransaction() {
