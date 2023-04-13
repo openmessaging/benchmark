@@ -30,8 +30,6 @@ class RateController {
     private final double targetP99EndToEndLatency;
     private final double targetP99PublishLatency;
 
-    private static final
-
     @Getter(PACKAGE)
     private double rampingFactor;
 
