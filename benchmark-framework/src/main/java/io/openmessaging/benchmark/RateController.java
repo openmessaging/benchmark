@@ -81,11 +81,11 @@ class RateController {
 
         if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
             rampDown();
-            return (rate - rate * rampingFactor);
+            return (0.98 * rate - 0.02 * rate * rampingFactor);
         }
         if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
             rampDown();
-            return (rate - rate * rampingFactor);
+            return (0.98 * rate - 0.02 * rate * rampingFactor);
         }
         rampUp();
 
