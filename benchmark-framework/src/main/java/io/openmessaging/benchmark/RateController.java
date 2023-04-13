@@ -30,6 +30,8 @@ class RateController {
     private final double targetP99EndToEndLatency;
     private final double targetP99PublishLatency;
 
+    private static final
+
     @Getter(PACKAGE)
     private double rampingFactor;
 
@@ -81,11 +83,11 @@ class RateController {
 
         if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
             rampDown();
-            return 0.2 * rate + 0.8 * rate * (targetP99EndToEndLatency / p99EndToEndLatency);
+            return (rate - rate * rampingFactor);
         }
         if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
             rampDown();
-            return 0.2 * rate + 0.8 * rate * (targetP99PublishLatency / p99PublishLatency);
+            return (rate - rate * rampingFactor);
         }
         rampUp();
 
