@@ -442,9 +442,9 @@
             </build>
         </profile>
         <profile>
-            <id>jdk-8-compile</id>
+            <id>jdk-17-compile</id>
             <activation>
-                <jdk>[,8]</jdk>
+                <jdk>[,17]</jdk>
             </activation>
             <build>
                 <pluginManagement>
@@ -452,10 +452,10 @@
                         <plugin>
                             <groupId>org.apache.maven.plugins</groupId>
                             <artifactId>maven-compiler-plugin</artifactId>
-                            <version>3.8.1</version>
+                            <version>3.11.0</version>
                             <configuration>
-                                <source>8</source>
-                                <target>8</target>
+                                <source>17</source>
+                                <target>17</target>
                                 <encoding>${project.build.sourceEncoding}</encoding>
                                 <showDeprecation>true</showDeprecation>
                                 <showWarnings>true</showWarnings>
