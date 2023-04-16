@@ -94,7 +94,13 @@ class RateController {
             rampUp();
             return rate * (1 + rampingFactor);
         }
-        return rate * 1.05 * rampingFactor;
+
+        if (hintMaxRateTimes > 50) {
+            hintMaxRateTimes -= 1;
+            return maxRate;
+        } else {
+            return rate * 1.05;
+        }
     }
 
     private double nextRate(long periodNanos, long actual, long expected, long backlog, String type) {
