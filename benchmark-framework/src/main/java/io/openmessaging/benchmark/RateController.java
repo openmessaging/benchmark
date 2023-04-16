@@ -94,7 +94,7 @@ class RateController {
             rampUp();
             return rate * (1 + rampingFactor);
         }
-        return rate * 1.05;
+        return rate * 1.05 * rampingFactor;
     }
 
     private double nextRate(long periodNanos, long actual, long expected, long backlog, String type) {
