@@ -13,7 +13,7 @@
 #
 
 # Build the Project
-FROM maven:latest as build
+FROM maven:3.9.1-eclipse-temurin-17-alpine as build
 COPY . /benchmark
 WORKDIR /benchmark
 RUN mvn install -DskipTests
