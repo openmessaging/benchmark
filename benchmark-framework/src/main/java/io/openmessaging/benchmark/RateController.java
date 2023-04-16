@@ -29,12 +29,15 @@ class RateController {
     private final double maxRampingFactor;
     private final double targetP99EndToEndLatency;
     private final double targetP99PublishLatency;
-
     @Getter(PACKAGE)
     private double rampingFactor;
 
     private long previousTotalPublished = 0;
     private long previousTotalReceived = 0;
+
+    private double maxRate = 0;
+
+    private int hintMaxRateTimes = 0;
 
     RateController() {
         publishBacklogLimit = Env.getLong("PUBLISH_BACKLOG_LIMIT", 1_000);
@@ -79,17 +82,23 @@ class RateController {
             return nextRate(periodNanos, published, expected, publishBacklog, "Publish");
         }
 
-        if (targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) {
+        if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) ||
+                (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)
+        ) {
             rampDown();
-            return (0.98 * rate - 0.02 * rate * rampingFactor);
+            maxRate = rate * 0.95;
+            hintMaxRateTimes += 1;
+            return maxRate;
         }
-        if (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency) {
-            rampDown();
-            return (0.98 * rate - 0.02 * rate * rampingFactor);
+        if (maxRate == 0) {
+            rampUp();
+            return 0.2 * rate + 0.8 * rate * rampingFactor;
         }
-        rampUp();
-
-        return 0.2 * rate + 0.8 * (rate + (rate * rampingFactor));
+        if (hintMaxRateTimes > 10) {
+            return maxRate;
+        } else {
+            return rate * 1.05;
+        }
     }
 
     private double nextRate(long periodNanos, long actual, long expected, long backlog, String type) {
