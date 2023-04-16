@@ -92,7 +92,7 @@ class RateController {
         }
         if (maxRate == 0) {
             rampUp();
-            return 0.2 * rate + 0.8 * rate * rampingFactor;
+            return rate * (1 + rampingFactor);
         }
         if (hintMaxRateTimes > 10) {
             return maxRate;
