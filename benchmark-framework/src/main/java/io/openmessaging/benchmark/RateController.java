@@ -29,6 +29,7 @@ class RateController {
     private final double maxRampingFactor;
     private final double targetP99EndToEndLatency;
     private final double targetP99PublishLatency;
+
     @Getter(PACKAGE)
     private double rampingFactor;
 
@@ -82,9 +83,8 @@ class RateController {
             return nextRate(periodNanos, published, expected, publishBacklog, "Publish");
         }
 
-        if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency) ||
-                (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)
-        ) {
+        if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency)
+                || (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)) {
             rampDown();
             maxRate = rate * 0.95;
             hintMaxRateTimes += 1;
