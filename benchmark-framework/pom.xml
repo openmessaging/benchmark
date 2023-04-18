@@ -39,6 +39,12 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>driver-artemis</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
