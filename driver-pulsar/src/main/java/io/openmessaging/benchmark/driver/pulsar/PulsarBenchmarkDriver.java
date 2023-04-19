@@ -189,11 +189,18 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             // No-op
             return CompletableFuture.completedFuture(null);
         }
-        return adminClient.topics()
-                .createPartitionedTopicAsync(topic, partitions).thenCompose(ignore ->
-                        adminClient.topics().setRetentionAsync(topic,
-                                new RetentionPolicies(config.client.retentionTimeInMinutes,
-                                        config.client.retentionSizeInMB)));
+        return adminClient
+                .topics()
+                .createPartitionedTopicAsync(topic, partitions)
+                .thenCompose(
+                        ignore ->
+                                adminClient
+                                        .topics()
+                                        .setRetentionAsync(
+                                                topic,
+                                                new RetentionPolicies(
+                                                        config.client.retentionTimeInMinutes,
+                                                        config.client.retentionSizeInMB)));
     }
 
     @Override
