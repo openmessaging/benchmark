@@ -55,6 +55,10 @@ public class PulsarClientConfig {
 
     public boolean enableTransaction = true;
 
+    public int retentionTimeInMinutes = 5;
+
+    public int retentionSizeInMB = 500;
+
     public static class AuthenticationConfiguration {
         public String plugin;
         public String data;

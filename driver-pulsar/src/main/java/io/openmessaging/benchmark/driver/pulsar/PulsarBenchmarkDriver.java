@@ -48,6 +48,7 @@ import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.SizeUnit;
 import org.apache.pulsar.common.policies.data.PersistencePolicies;
+import org.apache.pulsar.common.policies.data.RetentionPolicies;
 import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.slf4j.Logger;
@@ -188,8 +189,11 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             // No-op
             return CompletableFuture.completedFuture(null);
         }
-
-        return adminClient.topics().createPartitionedTopicAsync(topic, partitions);
+        return adminClient.topics()
+                .createPartitionedTopicAsync(topic, partitions).thenCompose(ignore ->
+                        adminClient.topics().setRetentionAsync(topic,
+                                new RetentionPolicies(config.client.retentionTimeInMinutes,
+                                        config.client.retentionSizeInMB)));
     }
 
     @Override
