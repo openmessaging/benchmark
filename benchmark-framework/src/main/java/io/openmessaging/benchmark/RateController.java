@@ -95,7 +95,7 @@ class RateController {
             return rate * (1 + rampingFactor);
         }
 
-        if (hintMaxRateTimes > 3) {
+        if (hintMaxRateTimes >= 2) {
             hintMaxRateTimes -= 1;
             return maxRate;
         } else {
