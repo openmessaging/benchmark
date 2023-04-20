@@ -99,7 +99,7 @@ class RateController {
             hintMaxRateTimes -= 1;
             return maxRate;
         } else {
-            return rate * 1.05;
+            return rate * 1.005;
         }
     }
 
