@@ -75,6 +75,18 @@ class RateController {
                     rate(received, periodNanos));
         }
 
+        if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency)
+                || (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)) {
+            rampDown();
+            hintMaxRateTimes += 1;
+
+            if (hintMaxRateTimes > 20) {
+                maxRate = rate * 0.8;
+                log.debug("Exceed max rate for 20 times, current rate {}", maxRate);
+                return maxRate;
+            }
+        }
+
         long receiveBacklog = totalPublished - totalReceived;
         if (receiveBacklog > receiveBacklogLimit) {
             return nextRate(periodNanos, received, expected, receiveBacklog, "Receive");
@@ -85,26 +97,17 @@ class RateController {
             return nextRate(periodNanos, published, expected, publishBacklog, "Publish");
         }
 
-        if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency)
-                || (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)) {
-            rampDown();
-            //            maxRate = rate * 0.95;
-            hintMaxRateTimes += 1;
-
-            if (hintMaxRateTimes > 20) {
-                maxRate = rate * 0.8;
-            }
-        }
-
         notHintMaxRateTimes += 1;
 
         if (notHintMaxRateTimes >= 3600) {
             maxRate = maxRate * 1.2;
+            log.debug("Increase rate, rate {}", maxRate);
         }
         if (maxRate == 0) {
             rampUp();
             return rate * (1 + rampingFactor);
         }
+
         return maxRate;
     }
 
