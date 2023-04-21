@@ -99,9 +99,10 @@ class RateController {
 
         notHintMaxRateTimes += 1;
 
-        if (notHintMaxRateTimes >= 3600) {
+        if (notHintMaxRateTimes >= 200) {
             maxRate = maxRate * 1.2;
             log.info("Increase rate, rate {}", maxRate);
+            hintMaxRateTimes = 0;
         }
         if (maxRate == 0) {
             rampUp();
