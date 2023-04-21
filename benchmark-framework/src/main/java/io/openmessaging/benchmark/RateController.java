@@ -80,10 +80,11 @@ class RateController {
             rampDown();
             hintMaxRateTimes += 1;
 
-            if (hintMaxRateTimes > 20) {
+            if (hintMaxRateTimes > 50) {
                 maxRate = rate * 0.8;
-                log.info("Exceed max rate for 20 times, current rate {}", maxRate);
+                log.info("Exceed max rate for 50 times, current rate {}", maxRate);
                 hintMaxRateTimes = 0;
+                notHintMaxRateTimes = 0;
                 return maxRate;
             }
         }
@@ -101,17 +102,17 @@ class RateController {
         notHintMaxRateTimes += 1;
 
         if (notHintMaxRateTimes >= 200) {
-            maxRate = maxRate * 1.2;
-            log.info("Increase rate, rate {}", maxRate);
+            log.info("Increase rate, rate {}", Math.min(rate * 1.2, maxRate));
             hintMaxRateTimes = 0;
             notHintMaxRateTimes = 0;
+            return Math.min(rate * 1.2, maxRate);
         }
         if (maxRate == 0) {
             rampUp();
             return rate * (1 + rampingFactor);
         }
 
-        return maxRate;
+        return rate;
     }
 
     private double nextRate(long periodNanos, long actual, long expected, long backlog, String type) {
