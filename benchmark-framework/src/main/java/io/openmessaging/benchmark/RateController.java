@@ -83,6 +83,7 @@ class RateController {
             if (hintMaxRateTimes > 20) {
                 maxRate = rate * 0.8;
                 log.info("Exceed max rate for 20 times, current rate {}", maxRate);
+                hintMaxRateTimes = 0;
                 return maxRate;
             }
         }
@@ -103,6 +104,7 @@ class RateController {
             maxRate = maxRate * 1.2;
             log.info("Increase rate, rate {}", maxRate);
             hintMaxRateTimes = 0;
+            notHintMaxRateTimes = 0;
         }
         if (maxRate == 0) {
             rampUp();
