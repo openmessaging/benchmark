@@ -107,7 +107,10 @@ class RateController {
             notHintMaxRateTimes = 0;
             return Math.min(rate * 1.2, maxRate);
         }
-        if (maxRate == 0) {
+        if (maxRate == 0 || rate == 0) {
+            if (rate == 0) {
+                rate = 100;
+            }
             rampUp();
             return rate * (1 + rampingFactor);
         }
