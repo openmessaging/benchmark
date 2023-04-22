@@ -75,14 +75,17 @@ class RateController {
                     rate(received, periodNanos));
         }
 
+        log.info("Current p99PublishLatency {}", p99PublishLatency);
+        log.info("Current targetP99PublishLatency {}", targetP99PublishLatency);
+
         if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency)
                 || (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)) {
             rampDown();
             hintMaxRateTimes += 1;
 
-            if (hintMaxRateTimes > 50) {
+            if (hintMaxRateTimes >= 2) {
                 maxRate = rate;
-                log.info("Exceed max rate for 50 times, decrease rate {} from {}", rate, rate * 0.8);
+                log.info("Exceed max rate for 2 times, decrease rate {} from {}", rate, rate * 0.8);
                 hintMaxRateTimes = 0;
                 notHintMaxRateTimes = 0;
                 return rate * 0.8;
