@@ -104,7 +104,7 @@ class RateController {
 
         notHintMaxRateTimes += 1;
 
-        if (notHintMaxRateTimes > 50) {
+        if (notHintMaxRateTimes > 5) {
             log.info("Increase rate from {} to rate {}", rate, Math.min(rate * 1.2, maxRate));
             hintMaxRateTimes = 0;
             notHintMaxRateTimes = 0;
