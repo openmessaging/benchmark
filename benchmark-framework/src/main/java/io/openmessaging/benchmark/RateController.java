@@ -85,7 +85,7 @@ class RateController {
 
             if (hintMaxRateTimes > 1) {
                 maxRate = rate;
-                log.info("Exceed max rate for 2 times, decrease rate {} from {}", rate, rate * 0.8);
+                log.info("Exceed max rate for 2 times, decrease rate from {} to {}", rate, rate * 0.8);
                 hintMaxRateTimes = 0;
                 notHintMaxRateTimes = 0;
                 return rate * 0.8;
