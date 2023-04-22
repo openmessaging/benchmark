@@ -83,7 +83,7 @@ class RateController {
             rampDown();
             hintMaxRateTimes += 1;
 
-            if (hintMaxRateTimes >= 2) {
+            if (hintMaxRateTimes > 20) {
                 maxRate = rate;
                 log.info("Exceed max rate for 2 times, decrease rate {} from {}", rate, rate * 0.8);
                 hintMaxRateTimes = 0;
