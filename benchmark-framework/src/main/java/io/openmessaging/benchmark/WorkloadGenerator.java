@@ -82,6 +82,9 @@ public class WorkloadGenerator implements AutoCloseable {
 
         ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
         producerWorkAssignment.keyDistributorType = workload.keyDistributor;
+        if (workload.producerRate <= 0) {
+            targetPublishRate = 10000;
+        }
         producerWorkAssignment.publishRate = targetPublishRate;
         producerWorkAssignment.payloadData = new ArrayList<>();
 
@@ -99,9 +102,6 @@ public class WorkloadGenerator implements AutoCloseable {
                 producerWorkAssignment.payloadData.add(combined);
             }
         } else {
-            if (workload.producerRate <= 0) {
-                workload.producerRate = 10000;
-            }
             producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
         }
 
@@ -109,7 +109,7 @@ public class WorkloadGenerator implements AutoCloseable {
             targetPublishRate = workload.producerRate;
         } else {
             // Producer rate is 0 and we need to discover the sustainable rate
-            targetPublishRate = 10000;
+            //            targetPublishRate = 10000;
 
             executor.execute(
                     () -> {
@@ -238,6 +238,7 @@ public class WorkloadGenerator implements AutoCloseable {
             // The broker or omb client may have some trouble during stress
             if (stats.messagesSent == 0 && stats.messagesReceived == 0 && targetPublishRate != 10000) {
                 worker.stopAll();
+                log.info("Stop all and Adjust rate {}", currentRate * 0.8);
                 worker.startLoad(producerWorkAssignment.withPublishRate(currentRate * 0.8));
             }
             worker.adjustPublishRate(currentRate);
