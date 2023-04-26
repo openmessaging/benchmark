@@ -40,6 +40,10 @@ class RateController {
 
     private int notHintMaxRateTimes = 0;
 
+    private int hintTargetLatencyTimesGlobal = 0;
+
+    private double maxRate = 0;
+
     RateController() {
         publishBacklogLimit = Env.getLong("PUBLISH_BACKLOG_LIMIT", 1_000);
         receiveBacklogLimit = Env.getLong("RECEIVE_BACKLOG_LIMIT", 1_000);
@@ -58,7 +62,6 @@ class RateController {
             long totalReceived,
             double p99PublishLatency,
             double p99EndToEndLatency) {
-        //        long expected = (long) ((rate / ONE_SECOND_IN_NANOS) * periodNanos);
         long published = totalPublished - previousTotalPublished;
         long received = totalReceived - previousTotalReceived;
 
@@ -81,7 +84,13 @@ class RateController {
             rampDown();
             hintTargetLatencyTimes += 1;
 
+            if (hintTargetLatencyTimes >= 2 && hintTargetLatencyTimesGlobal > 5) {
+                maxRate = rate;
+            }
+
             if (hintTargetLatencyTimes > 20) {
+                hintTargetLatencyTimesGlobal += 1;
+                log.info("Hint target latency global {}", hintTargetLatencyTimesGlobal);
                 log.info("Hint target latency for 20 times, decrease rate from {} to {}", rate, rate * 0.8);
                 hintTargetLatencyTimes = 0;
                 notHintMaxRateTimes = 0;
@@ -90,23 +99,17 @@ class RateController {
             return rate;
         }
 
-        //        long receiveBacklog = totalPublished - totalReceived;
-        //        if (receiveBacklog > receiveBacklogLimit) {
-        //            return nextRate(periodNanos, received, expected, receiveBacklog, "Receive");
-        //        }
-        //
-        //        long publishBacklog = expected - published;
-        //        if (publishBacklog > publishBacklogLimit) {
-        //            return nextRate(periodNanos, published, expected, publishBacklog, "Publish");
-        //        }
-
         notHintMaxRateTimes += 1;
         hintTargetLatencyTimes = 0;
 
         if (notHintMaxRateTimes > 50) {
             log.info("Increase rate from {} to rate {}", rate, rate * 1.2);
             notHintMaxRateTimes = 0;
-            return rate * 1.2;
+            if (maxRate != 0) {
+                return Math.min(maxRate, rate * 1.2);
+            } else {
+                return rate * 1.2;
+            }
         }
         return rate;
     }
