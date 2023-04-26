@@ -99,6 +99,9 @@ public class WorkloadGenerator implements AutoCloseable {
                 producerWorkAssignment.payloadData.add(combined);
             }
         } else {
+            if (workload.producerRate <= 0) {
+                workload.producerRate = 10000;
+            }
             producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
         }
 
