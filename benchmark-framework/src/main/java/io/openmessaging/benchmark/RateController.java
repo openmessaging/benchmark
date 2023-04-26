@@ -86,6 +86,7 @@ class RateController {
 
             if (hintTargetLatencyTimes >= 2 && hintTargetLatencyTimesGlobal > 3) {
                 maxRate = rate;
+                hintTargetLatencyTimesGlobal = 0;
             }
 
             if (hintTargetLatencyTimes > 20) {
