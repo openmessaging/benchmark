@@ -104,11 +104,12 @@ class RateController {
         hintTargetLatencyTimes = 0;
 
         if (notHintMaxRateTimes > 50) {
-            log.info("Increase rate from {} to rate {}", rate, rate * 1.2);
             notHintMaxRateTimes = 0;
             if (maxRate != 0) {
+                log.info("Increase rate from {} to rate {}", rate, Math.min(maxRate, rate * 1.2));
                 return Math.min(maxRate, rate * 1.2);
             } else {
+                log.info("Increase rate from {} to rate {}", rate, rate * 1.2);
                 return rate * 1.2;
             }
         }
