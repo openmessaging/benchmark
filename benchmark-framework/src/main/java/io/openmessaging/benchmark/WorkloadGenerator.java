@@ -84,6 +84,8 @@ public class WorkloadGenerator implements AutoCloseable {
         producerWorkAssignment.keyDistributorType = workload.keyDistributor;
         if (workload.producerRate <= 0) {
             targetPublishRate = 10000;
+        } else {
+            targetPublishRate = workload.producerRate;
         }
         producerWorkAssignment.publishRate = targetPublishRate;
         producerWorkAssignment.payloadData = new ArrayList<>();
@@ -105,9 +107,7 @@ public class WorkloadGenerator implements AutoCloseable {
             producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
         }
 
-        if (workload.producerRate > 0) {
-            targetPublishRate = workload.producerRate;
-        } else {
+        if (workload.producerRate <= 0) {
             // Producer rate is 0 and we need to discover the sustainable rate
             //            targetPublishRate = 10000;
 
