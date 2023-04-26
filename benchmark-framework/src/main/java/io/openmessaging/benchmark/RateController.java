@@ -36,9 +36,7 @@ class RateController {
     private long previousTotalPublished = 0;
     private long previousTotalReceived = 0;
 
-    private double maxRate = 0;
-
-    private int hintMaxRateTimes = 0;
+    private int hintTargetLatencyTimes = 0;
 
     private int notHintMaxRateTimes = 0;
 
@@ -81,12 +79,11 @@ class RateController {
         if ((targetP99EndToEndLatency != 0 && p99EndToEndLatency > targetP99EndToEndLatency)
                 || (targetP99PublishLatency != 0 && p99PublishLatency > targetP99PublishLatency)) {
             rampDown();
-            hintMaxRateTimes += 1;
+            hintTargetLatencyTimes += 1;
 
-            if (hintMaxRateTimes > 10) {
-                maxRate = rate;
-                log.info("Exceed max rate for 2 times, decrease rate from {} to {}", rate, rate * 0.8);
-                hintMaxRateTimes = 0;
+            if (hintTargetLatencyTimes > 20) {
+                log.info("Hint target latency for 20 times, decrease rate from {} to {}", rate, rate * 0.8);
+                hintTargetLatencyTimes = 0;
                 notHintMaxRateTimes = 0;
                 return rate * 0.8;
             }
@@ -104,23 +101,13 @@ class RateController {
         //        }
 
         notHintMaxRateTimes += 1;
-        hintMaxRateTimes = 0;
+        hintTargetLatencyTimes = 0;
 
         if (notHintMaxRateTimes > 50) {
-            log.info("Increase rate from {} to rate {}", rate, Math.min(rate * 1.2, maxRate));
+            log.info("Increase rate from {} to rate {}", rate, rate * 1.2);
             notHintMaxRateTimes = 0;
-            return Math.min(rate * 1.2, maxRate);
+            return rate * 1.2;
         }
-        if (maxRate == 0 || rate == 0) {
-            log.info("Begin to increase rate {}", rate);
-            if (rate == 0) {
-                rate = 10000;
-            }
-            rampUp();
-            log.info("Begin to increase rate to {}", rate * (1 + rampingFactor));
-            return rate * (1 + rampingFactor);
-        }
-        log.info("Current rate {}", rate);
         return rate;
     }
 

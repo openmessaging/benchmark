@@ -78,23 +78,6 @@ public class WorkloadGenerator implements AutoCloseable {
 
         ensureTopicsAreReady();
 
-        if (workload.producerRate > 0) {
-            targetPublishRate = workload.producerRate;
-        } else {
-            // Producer rate is 0 and we need to discover the sustainable rate
-            targetPublishRate = 10000;
-
-            executor.execute(
-                    () -> {
-                        // Run background controller to adjust rate
-                        try {
-                            findMaximumSustainableRate(targetPublishRate);
-                        } catch (IOException e) {
-                            log.warn("Failure in finding max sustainable rate", e);
-                        }
-                    });
-        }
-
         final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
 
         ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
@@ -117,6 +100,23 @@ public class WorkloadGenerator implements AutoCloseable {
             }
         } else {
             producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
+        }
+
+        if (workload.producerRate > 0) {
+            targetPublishRate = workload.producerRate;
+        } else {
+            // Producer rate is 0 and we need to discover the sustainable rate
+            targetPublishRate = 10000;
+
+            executor.execute(
+                    () -> {
+                        // Run background controller to adjust rate
+                        try {
+                            findMaximumSustainableRate(targetPublishRate, producerWorkAssignment);
+                        } catch (IOException e) {
+                            log.warn("Failure in finding max sustainable rate", e);
+                        }
+                    });
         }
 
         worker.startLoad(producerWorkAssignment);
@@ -191,7 +191,8 @@ public class WorkloadGenerator implements AutoCloseable {
      *
      * @param currentRate
      */
-    private void findMaximumSustainableRate(double currentRate) throws IOException {
+    private void findMaximumSustainableRate(
+            double currentRate, ProducerWorkAssignment producerWorkAssignment) throws IOException {
         CountersStats stats = worker.getCountersStats();
         PeriodStats periodStats = worker.getPeriodStats();
 
@@ -230,6 +231,11 @@ public class WorkloadGenerator implements AutoCloseable {
                             stats.messagesReceived,
                             p99PublishLatency,
                             p99EndToEndLatency);
+            // The broker or omb client may have some trouble during stress
+            if (stats.messagesSent == 0 && stats.messagesReceived == 0 && targetPublishRate != 10000) {
+                worker.stopAll();
+                worker.startLoad(producerWorkAssignment.withPublishRate(currentRate * 0.8));
+            }
             worker.adjustPublishRate(currentRate);
         }
     }
