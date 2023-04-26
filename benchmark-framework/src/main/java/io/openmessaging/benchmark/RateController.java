@@ -84,7 +84,7 @@ class RateController {
             rampDown();
             hintTargetLatencyTimes += 1;
 
-            if (hintTargetLatencyTimes >= 2 && hintTargetLatencyTimesGlobal > 5) {
+            if (hintTargetLatencyTimes >= 2 && hintTargetLatencyTimesGlobal > 3) {
                 maxRate = rate;
             }
 
