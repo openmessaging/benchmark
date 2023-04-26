@@ -190,6 +190,7 @@ public class WorkloadGenerator implements AutoCloseable {
      * messages that are being produced.
      *
      * @param currentRate
+     * @param producerWorkAssignment
      */
     private void findMaximumSustainableRate(
             double currentRate, ProducerWorkAssignment producerWorkAssignment) throws IOException {
