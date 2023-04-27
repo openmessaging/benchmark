@@ -177,7 +177,7 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                     writer.writeValueAsString(p));
 
         } catch (PulsarAdminException ignore) {
-//            throw new IOException(e);
+            //            throw new IOException(e);
         }
     }
 
