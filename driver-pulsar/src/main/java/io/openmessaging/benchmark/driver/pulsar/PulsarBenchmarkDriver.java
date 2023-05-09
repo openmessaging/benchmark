@@ -146,11 +146,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
             }
             log.info("Created Pulsar tenant {} with allowed cluster {}", tenant, cluster);
 
-            this.namespace = config.client.namespacePrefix + "-" + "transaction_stress_test";
-            try {
-                adminClient.namespaces().createNamespace(namespace);
-            } catch (Exception ignore) {
-            }
+            this.namespace = config.client.namespacePrefix + "-" + getRandomString();
+            adminClient.namespaces().createNamespace(namespace);
             log.info("Created Pulsar namespace {}", namespace);
 
             PersistenceConfiguration p = config.client.persistence;
@@ -176,8 +173,8 @@ public class PulsarBenchmarkDriver implements BenchmarkDriver {
                     namespace,
                     writer.writeValueAsString(p));
 
-        } catch (PulsarAdminException ignore) {
-            //            throw new IOException(e);
+        } catch (PulsarAdminException e) {
+            throw new IOException(e);
         }
     }
 

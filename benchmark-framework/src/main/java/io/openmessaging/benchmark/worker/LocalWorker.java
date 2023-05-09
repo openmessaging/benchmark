@@ -29,6 +29,7 @@ import io.openmessaging.benchmark.driver.BenchmarkDriver.ProducerInfo;
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.utils.RandomGenerator;
 import io.openmessaging.benchmark.utils.Timer;
 import io.openmessaging.benchmark.utils.UniformRateLimiter;
 import io.openmessaging.benchmark.utils.distributor.KeyDistributor;
@@ -119,7 +120,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     private String generateTopicName(int i) {
-        return String.format("%s-%07d", benchmarkDriver.getTopicNamePrefix(), i);
+        return String.format(
+                "%s-%07d-%s", benchmarkDriver.getTopicNamePrefix(), i, RandomGenerator.getRandomString());
     }
 
     @Override

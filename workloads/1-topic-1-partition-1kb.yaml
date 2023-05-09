@@ -19,8 +19,9 @@ partitionsPerTopic: 1
 keyDistributor: "NO_KEY"
 messageSize: 1024
 payloadFile: "payload/payload-1Kb.data"
-subscriptionsPerTopic: 0
+subscriptionsPerTopic: 1
+consumerPerSubscription: 1
 producersPerTopic: 1
-producerRate: 1000
+producerRate: 50000
 consumerBacklogSizeGB: 0
 testDurationMinutes: 15
