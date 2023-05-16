@@ -13,8 +13,6 @@
  */
 package io.openmessaging.benchmark.worker;
 
-import static java.util.stream.Collectors.toList;
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -39,6 +37,11 @@ import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
+import org.apache.bookkeeper.stats.NullStatsLogger;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,10 +56,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
-import org.apache.bookkeeper.stats.NullStatsLogger;
-import org.apache.bookkeeper.stats.StatsLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static java.util.stream.Collectors.toList;
 
 public class LocalWorker implements Worker, ConsumerCallback {
 
@@ -94,9 +95,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
                     (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
             benchmarkDriver.initialize(driverConfigFile, stats.getStatsLogger());
         } catch (InstantiationException
-                | IllegalAccessException
-                | ClassNotFoundException
-                | InterruptedException e) {
+                 | IllegalAccessException
+                 | ClassNotFoundException
+                 | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
@@ -187,10 +188,17 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
-    public void probeProducers() throws IOException {
+    public void probeProducers(ProducerWorkAssignment producerWorkAssignment) throws IOException {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        int payloadCount = producerWorkAssignment.payloadData.size();
+        KeyDistributor keyDistributor = KeyDistributor.build(producerWorkAssignment.keyDistributorType);
         producers.forEach(
                 producer ->
-                        producer.sendAsync(Optional.of("key"), new byte[10]).thenRun(stats::recordMessageSent));
+                        producer.sendAsync(
+                                        Optional.ofNullable(keyDistributor.next()),
+                                        producerWorkAssignment.payloadData.get(r.nextInt(payloadCount))
+                                )
+                                .thenRun(stats::recordMessageSent));
     }
 
     private void submitProducersToExecutor(

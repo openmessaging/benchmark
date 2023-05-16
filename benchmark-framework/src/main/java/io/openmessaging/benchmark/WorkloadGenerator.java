@@ -76,8 +76,6 @@ public class WorkloadGenerator implements AutoCloseable {
         createConsumers(topics);
         createProducers(topics);
 
-        ensureTopicsAreReady();
-
         if (workload.producerRate > 0) {
             targetPublishRate = workload.producerRate;
         } else {
@@ -119,6 +117,7 @@ public class WorkloadGenerator implements AutoCloseable {
             producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
         }
 
+        ensureTopicsAreReady(producerWorkAssignment);
         worker.startLoad(producerWorkAssignment);
 
         if (workload.warmupDurationMinutes > 0) {
@@ -147,7 +146,7 @@ public class WorkloadGenerator implements AutoCloseable {
         return result;
     }
 
-    private void ensureTopicsAreReady() throws IOException {
+    private void ensureTopicsAreReady(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         log.info("Waiting for consumers to be ready");
         // This is work around the fact that there's no way to have a consumer ready in Kafka without
         // first publishing
@@ -156,7 +155,7 @@ public class WorkloadGenerator implements AutoCloseable {
         int expectedMessages = workload.topics * workload.subscriptionsPerTopic;
 
         // In this case we just publish 1 message and then wait for consumers to receive the data
-        worker.probeProducers();
+        worker.probeProducers(producerWorkAssignment);
 
         long start = System.currentTimeMillis();
         long end = start + 60 * 1000;

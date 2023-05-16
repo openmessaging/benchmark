@@ -90,7 +90,7 @@ public class WorkerHandler {
     }
 
     private void handleProbeProducers(Context ctx) throws Exception {
-        localWorker.probeProducers();
+        localWorker.probeProducers(mapper.readValue(ctx.body(), ProducerWorkAssignment.class));
     }
 
     private void handleCreateConsumers(Context ctx) throws Exception {
