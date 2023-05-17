@@ -13,6 +13,8 @@
  */
 package io.openmessaging.benchmark.worker;
 
+import static java.util.stream.Collectors.toList;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -37,11 +39,6 @@ import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
-import org.apache.bookkeeper.stats.NullStatsLogger;
-import org.apache.bookkeeper.stats.StatsLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -56,8 +53,10 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
-
-import static java.util.stream.Collectors.toList;
+import org.apache.bookkeeper.stats.NullStatsLogger;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LocalWorker implements Worker, ConsumerCallback {
 
@@ -95,9 +94,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
                     (BenchmarkDriver) Class.forName(driverConfiguration.driverClass).newInstance();
             benchmarkDriver.initialize(driverConfigFile, stats.getStatsLogger());
         } catch (InstantiationException
-                 | IllegalAccessException
-                 | ClassNotFoundException
-                 | InterruptedException e) {
+                | IllegalAccessException
+                | ClassNotFoundException
+                | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
@@ -194,10 +193,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
         KeyDistributor keyDistributor = KeyDistributor.build(producerWorkAssignment.keyDistributorType);
         producers.forEach(
                 producer ->
-                        producer.sendAsync(
+                        producer
+                                .sendAsync(
                                         Optional.ofNullable(keyDistributor.next()),
-                                        producerWorkAssignment.payloadData.get(r.nextInt(payloadCount))
-                                )
+                                        producerWorkAssignment.payloadData.get(r.nextInt(payloadCount)))
                                 .thenRun(stats::recordMessageSent));
     }
 
