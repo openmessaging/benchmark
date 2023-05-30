@@ -20,4 +20,6 @@ public class PulsarProducerConfig {
     public int batchingMaxPublishDelayMs = 1;
 
     public int pendingQueueSize = 1000;
+
+    public String inputTopic;
 }

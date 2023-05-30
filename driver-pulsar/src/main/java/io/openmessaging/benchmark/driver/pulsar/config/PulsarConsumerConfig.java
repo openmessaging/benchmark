@@ -20,5 +20,5 @@ import org.apache.pulsar.client.api.SubscriptionType;
 public class PulsarConsumerConfig {
     public String subscriptionType = SubscriptionType.Failover.toString();
     public String subscriptionMode = SubscriptionMode.Durable.toString();
-
+    public String outputTopic;
 }
