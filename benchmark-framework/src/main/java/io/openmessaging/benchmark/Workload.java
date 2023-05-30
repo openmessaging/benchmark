@@ -25,6 +25,8 @@ public class Workload {
     /** Number of partitions each topic will contain */
     public int partitionsPerTopic;
 
+    public boolean ensureTopicsAreReady = true;
+
     public KeyDistributorType keyDistributor = KeyDistributorType.NO_KEY;
 
     public int messageSize;

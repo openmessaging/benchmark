@@ -20,12 +20,12 @@ driverClass: io.openmessaging.benchmark.driver.pulsar.PulsarBenchmarkDriver
 client:
   astraStreaming: true
   connectorTesting: true
-  serviceUrl: ${pulsarServiceUrl:-pulsar+ssl://pulsar-aws-useast2.staging.streaming.datastax.com:6651}
-  httpUrl: ${pulsarAdminUrl:-https://pulsar-aws-useast2.api.staging.streaming.datastax.com}
+  serviceUrl: pulsar+ssl://pulsar-aws-useast2.dev.streaming.datastax.com:6651
+  httpUrl: https://pulsar-aws-useast2.api.dev.streaming.datastax.com
   ioThreads: 8
   connectionsPerBroker: 8
   clusterName: ${astraCluster:-dev0}
-  namespacePrefix: ${astraTenant:-dave-fisher-flink}/${astraNamespace:-default}
+  namespacePrefix: dave-fisher-flink/default
   topicType: persistent
   persistence:
     ensembleSize: 3
@@ -41,7 +41,7 @@ client:
 
 # Producer configuration
 producer:
-  inputTopic: persistent://${astraTenant:-dave-fisher-flink}/${astraNamespace:-default}/persons
+  inputTopic: persistent://dave-fisher-flink/default/persons
   batchingEnabled: true
   batchingMaxPublishDelayMs: 1
   blockIfQueueFull: true
@@ -49,6 +49,6 @@ producer:
 
 # Consumer configuration
 consumer:
-  outputTopic: persistent://${astraTenant:-dave-fisher-flink}/${astraNamespace:-default}/persons-output
-  subscriptionType: Failover
+  outputTopic: persistent://dave-fisher-flink/default/persons-output
+  subscriptionType: Shared
   subscriptionMode: Durable

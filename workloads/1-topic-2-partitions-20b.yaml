@@ -13,10 +13,11 @@
 # under the License.
 #
 
-name: 1 topic / 6 partition / 100b
+name: 1-topic-2-partition-20b
 
 topics: 1
-partitionsPerTopic: 6
+partitionsPerTopic: 2
+ensureTopicsAreReady: false
 keyDistributor: "KEY_ROUND_ROBIN"
 messageSize: 20
 payloadFile: "payload/payload-20b.data"

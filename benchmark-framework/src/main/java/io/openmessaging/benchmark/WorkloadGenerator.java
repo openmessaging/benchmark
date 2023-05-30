@@ -82,7 +82,7 @@ public class WorkloadGenerator implements AutoCloseable {
     public TestResult run() throws Exception {
         TestResult result = null;
         try {
-	    Timer timer = new Timer();
+            Timer timer = new Timer();
             List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
             log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
             for (String topic: topics) {
@@ -212,6 +212,7 @@ public class WorkloadGenerator implements AutoCloseable {
     }
 
     private void ensureTopicsAreReady() throws IOException {
+        if ( !workload.ensureTopicsAreReady ) return;
         int counter = 0;
         long expectedMessages = computeExpectedInitialBacklog(workload.producersPerTopic * workload.topics);
         log.info("Waiting for consumers to be ready ({} messages to be received)", expectedMessages);
