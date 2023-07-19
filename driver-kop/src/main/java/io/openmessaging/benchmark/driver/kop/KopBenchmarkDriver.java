@@ -153,7 +153,7 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
                     new KafkaBenchmarkProducer(new KafkaProducer<>(producerProperties), topic);
             producers.add(producer);
             return CompletableFuture.completedFuture(producer);
-        } else if (config.consumerType.equals(ClientType.PULSAR)) {
+        } else if (config.producerType.equals(ClientType.PULSAR)) {
             return producerBuilder
                     .clone()
                     .topic(topic)

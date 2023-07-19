@@ -12,7 +12,7 @@
 # limitations under the License.
 #
 
-name: Kafka producer and Pulsar consumer
+name: Pulsar producer and Kafka consumer
 driverClass: io.openmessaging.benchmark.driver.kop.KopBenchmarkDriver
 
 producerType: pulsar
