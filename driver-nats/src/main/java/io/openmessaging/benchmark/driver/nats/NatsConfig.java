@@ -13,8 +13,16 @@
  */
 package io.openmessaging.benchmark.driver.nats;
 
+
+import io.nats.client.api.StorageType;
+
 public class NatsConfig {
     public String natsHostUrl;
 
     public int replicationFactor;
+
+    public StorageType storageType = StorageType.File;
+
+    // -1 is unlimited
+    public int maxBytes = -1;
 }

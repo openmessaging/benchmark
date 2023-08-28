@@ -28,7 +28,6 @@ import io.nats.client.Nats;
 import io.nats.client.Options;
 import io.nats.client.PushSubscribeOptions;
 import io.nats.client.api.ConsumerConfiguration;
-import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.support.JsonUtils;
@@ -94,7 +93,8 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
                             StreamConfiguration.builder()
                                     .name(topic)
                                     .subjects(topic)
-                                    .storageType(StorageType.File)
+                                    .storageType(config.storageType)
+                                    .maxBytes(config.maxBytes)
                                     .replicas(config.replicationFactor)
                                     .build());
             log.info("Created stream {} -- {}", topic, JsonUtils.getFormatted(streamInfo));
