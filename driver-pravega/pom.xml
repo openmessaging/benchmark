@@ -27,7 +27,7 @@
     <properties>
         <!--Specify pravegaVersion in properties or use default: 0.10.0-->
         <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
-        <pravegaVersion>0.10.2</pravegaVersion>
+        <pravegaVersion>0.12.0</pravegaVersion>
     </properties>
 
     <dependencies>
@@ -64,7 +64,7 @@
         <dependency>
             <groupId>io.pravega</groupId>
             <artifactId>pravega-keycloak-client</artifactId>
-            <version>0.11.0</version>
+            <version>${pravegaVersion}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

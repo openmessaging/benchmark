@@ -30,13 +30,15 @@ check [how to build Pravega](doc/build_pravega.md).
 
 # DEPLOY A PRAVEGA CLUSTER ON AMAZON WEB SERVICES
 
-You can deploy a Pravega cluster on AWS (for benchmarking purposes) using [Terraform 0.12.20](https://www.terraform.io/) and [Ansible 2.8.5](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html).
-You’ll need to have both of those tools installed as well as the `terraform-inventory` [plugin](https://github.com/adammck/terraform-inventory) for Terraform.
+You can deploy a Pravega cluster on AWS (for benchmarking purposes) using [Terraform 0.12.20](https://www.terraform.io/)
+and [Ansible 2.8.5](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) (with a
+a version of `Jinja2=<3.0.3`).
+You’ll need to have both tools installed, as well as the `terraform-inventory` [plugin](https://github.com/adammck/terraform-inventory) for Terraform.
 
-You also need to install an Ansible modules to support metrics.
+You also need to install an Ansible modules to support metrics:
 
 ```
-ansible-galaxy install cloudalchemy.node-exporter
+ansible-galaxy install cloudalchemy.node_exporter
 ```
 
 In addition, you’ll need to:
@@ -74,7 +76,7 @@ This will install the following [EC2](https://aws.amazon.com/ec2) instances (plu
 |       Resource       |                         Description                         | Count |
 |----------------------|-------------------------------------------------------------|-------|
 | Controller instances | The VMs on which a Pravega controller will run              | 1     |
-| Bookkeeper instances | The VMs on which a Bookkeeper and Segmentstore will run     | 3     |
+| Bookkeeper instances | The VMs on which a Bookkeeper and Segment Store will run    | 3     |
 | ZooKeeper instances  | The VMs on which a ZooKeeper node will run                  | 3     |
 | Client instance      | The VM from which the benchmarking suite itself will be run | 2     |
 
@@ -84,12 +86,12 @@ When you run `terraform apply`, you will be prompted to type `yes`. Type `yes` t
 
 There’s a handful of configurable parameters related to the Terraform deployment that you can alter by modifying the defaults in the `terraform.tfvars` file.
 
-|     Variable      |                                                             Description                                                              |                                                        Default                                                        |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| `region`          | The AWS region in which the Pravega cluster will be deployed                                                                         | `us-west-2`                                                                                                           |
-| `public_key_path` | The path to the SSH public key that you’ve generated                                                                                 | `~/.ssh/pravega_aws.pub`                                                                                              |
-| `ami`             | The [Amazon Machine Image (AWI)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) to be used by the cluster’s machines | `ami-9fa343e7`                                                                                                        |
-| `instance_types`  | The EC2 instance types used by the various components                                                                                | `i3.4xlarge` (BookKeeper bookies), `m5.large`(Controller), `t3.small` (ZooKeeper), `c5.4xlarge` (benchmarking client) |
+|     Variable      |                                                             Description                                                              |                                                                         Default                                                                         |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `region`          | The AWS region in which the Pravega cluster will be deployed                                                                         | `us-east-2`                                                                                                                                             |
+| `public_key_path` | The path to the SSH public key that you’ve generated                                                                                 | `~/.ssh/pravega_aws.pub`                                                                                                                                |
+| `ami`             | The [Amazon Machine Image (AWI)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) to be used by the cluster’s machines | `ami-0bb2449c2217cb9b0`                                                                                                                                 |
+| `instance_types`  | The EC2 instance types used by the various components                                                                                | `i3en.2xlarge` (Segment Store + Bookkeeper), `m5n.xlarge`(Controller), `t2.small` (ZooKeeper), `m5n.xlarge` (benchmarking client), `t2.large` (metrics) |
 
 If you modify the `public_key_path`, make sure that you point to the appropriate SSH key path when running the [Ansible playbook](#_RUNNING_THE_ANSIBLE_PLAYBOOK).
 

@@ -190,7 +190,7 @@ resource "aws_instance" "metrics" {
 # Change the EFS provisioned TP here
 resource "aws_efs_file_system" "tier2" {
   throughput_mode = "provisioned"
-  provisioned_throughput_in_mibps = 1000
+  provisioned_throughput_in_mibps = 100
   tags = {
     Name = "pravega-tier2"
   }
