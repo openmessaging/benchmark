@@ -28,11 +28,11 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
 
 public class RedisBenchmarkDriver implements BenchmarkDriver {
     JedisPool jedisPool;
@@ -80,7 +80,7 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
     }
 
     private void setupJedisConn() {
-        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        GenericObjectPoolConfig<Jedis> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setMaxTotal(this.clientConfig.jedisPoolMaxTotal);
         poolConfig.setMaxIdle(this.clientConfig.jedisPoolMaxIdle);
         if (this.clientConfig.redisPass != null) {
