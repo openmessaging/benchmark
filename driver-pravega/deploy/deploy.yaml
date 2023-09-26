@@ -98,20 +98,6 @@
         echo 'LANG=en_US.utf-8
               LC_ALL=en_US.utf-8' > /etc/environment
 
-#- name: Install nmon
-#  hosts: ["!tier2"]
-#  tags: ["nmon"]
-#  connection: ssh
-#  become: true
-#  tasks:
-#    - name: Download nmon
-#      unarchive:
-#        src: "http://sourceforge.net/projects/nmon/files/nmon16j.tar.gz"
-#        remote_src: yes
-#        dest: /tmp
-#    - command: cp /tmp/nmon_AMD64_ubuntu1804 /usr/local/bin/nmon
-#    - command: chmod a+x /usr/local/bin/nmon
-
 - name: Metrics installation
   hosts: ["metrics"]
   tags: ["metrics"]
@@ -120,13 +106,38 @@
   tasks:
     - name: Add Extras Repo
       shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
-    - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
-      with_items:
-        - docker
-    - systemd:
+      when:
+        - ansible_facts['distribution'] == 'RedHat'
+        - ansible_facts['distribution_major_version'] | int <= 7
+    - name: Docker repo
+      yum_repository:
+        name: docker
+        description: repo for docker
+        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
+        gpgcheck: no
+      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Create Docker repo dir
+      file:
+        path: "/etc/yum.repos.d/"
+        state: directory
+    - name: Add Docker Centos extras
+      copy:
+        dest: /etc/yum.repos.d/docker-ce.repo
+        content: |
+          [centos-extras]
+          name=Centos extras - $basearch
+          baseurl=http://mirror.centos.org/centos/7/extras/x86_64
+          enabled=1
+          gpgcheck=1
+          gpgkey=http://centos.org/keys/RPM-GPG-KEY-CentOS-7
+    - name: Installing docker
+      yum:
+        state: latest
+        pkg: ['slirp4netns', 'fuse-overlayfs', 'container-selinux', 'docker-ce']
+    - name: Start docker
+      service:
+        name: docker
         state: started
-        name: "docker"
         enabled: yes
 
 - name: Prometheus installation
@@ -192,7 +203,7 @@
   hosts: ["!tier2"]
   tags: ["node-exporter"]
   roles:
-    - cloudalchemy.node-exporter
+    - cloudalchemy.node_exporter
 
 - name: ZooKeeper setup
   hosts: zookeeper
@@ -304,7 +315,7 @@
         path: "{{ item.path }}"
         state: unmounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
+        - { path: "/mnt/journal", src: "/dev/nvme2n1" }
         - { path: "/mnt/storage", src: "/dev/nvme1n1" }
     - name: Format disks
       filesystem:
@@ -312,7 +323,7 @@
         dev: '{{ item }}'
         force: yes
       with_items:
-        - '/dev/nvme0n1'
+        - '/dev/nvme2n1'
         - '/dev/nvme1n1'
     - name: Mount disks
       mount:
@@ -322,7 +333,7 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "/dev/nvme0n1" }
+        - { path: "/mnt/journal", src: "/dev/nvme2n1" }
         - { path: "/mnt/storage", src: "/dev/nvme1n1" }
 
 - name: BookKeeper setup
@@ -350,7 +361,7 @@
         dest: "/opt/bookkeeper/bin/common.sh"
     - name: Format BookKeeper metadata in Zookeeper
       command: >
-        bin/bookkeeper shell metaformat -nonInteractive --force
+        bin/bookkeeper shell initnewcluster
       args:
         chdir: /opt/bookkeeper
       when: groups['bookkeeper'][0] == inventory_hostname
