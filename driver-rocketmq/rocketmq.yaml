@@ -19,5 +19,15 @@ driverClass: io.openmessaging.benchmark.driver.rocketmq.RocketMQBenchmarkDriver
 clusterName: DefaultCluster
 namesrvAddr: 127.0.0.1:9876
 vipChannelEnabled: false
+
+batchCQ: true
+autoBatch: true
+# batchMaxBytes: 32768
+# batchMaxDelayMs: 10
+# totalBatchMaxBytes: 33554432
+
+enableBackpressure: true
+backpressureConcurrency: 1024
+
 accessKey:
 secretKey:
