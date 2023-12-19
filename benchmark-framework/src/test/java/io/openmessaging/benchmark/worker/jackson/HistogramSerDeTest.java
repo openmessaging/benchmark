@@ -20,7 +20,6 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
-
 import org.HdrHistogram.Histogram;
 import org.junit.jupiter.api.Test;
 
@@ -64,10 +63,12 @@ class HistogramSerDeTest {
     byte[] serializeRandomHisto(int samples, int initialBufferSize) throws Exception {
         ByteBuffer inbuffer = ByteBuffer.allocate(initialBufferSize);
         Histogram inHisto = randomHisto(samples);
-        byte[] serialBytes = HistogramSerializer.toByteArray(HistogramSerializer.serializeHistogram(inHisto, inbuffer));
+        byte[] serialBytes =
+                HistogramSerializer.toByteArray(HistogramSerializer.serializeHistogram(inHisto, inbuffer));
 
         // check roundtrip
-        Histogram outHisto = Histogram.decodeFromCompressedByteBuffer(ByteBuffer.wrap(serialBytes), Long.MIN_VALUE);
+        Histogram outHisto =
+                Histogram.decodeFromCompressedByteBuffer(ByteBuffer.wrap(serialBytes), Long.MIN_VALUE);
         assertThat(inHisto).isEqualTo(outHisto);
 
         return serialBytes;
