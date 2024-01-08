@@ -9,6 +9,8 @@ This repository houses user-friendly, benchmarking suites relying on the AWS clo
 * [Pravega](https://pravega.io/)
 * [RabbitMQ](https://www.rabbitmq.com/)
 * [Redis](https://redis.com/)
+* [AWS S3](https://aws.amazon.com/s3/)
+* [AWS SNS/SQS](https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html)
 
 > More details could be found at the [official documentation of the OpenMessaging Benchmark Framework](http://openmessaging.cloud/docs/benchmarks/).
 
