@@ -47,12 +47,6 @@
         <module>driver-pulsar</module>
         <module>driver-kafka</module>
         <module>driver-rabbitmq</module>
-        <module>driver-artemis</module>
-        <module>driver-bookkeeper</module>
-        <module>driver-rocketmq</module>
-        <module>driver-nats</module>
-        <module>driver-nats-streaming</module>
-        <module>driver-nsq</module>
         <module>driver-jms</module>
         <module>driver-redis</module>
         <module>package</module>
