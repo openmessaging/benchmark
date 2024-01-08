@@ -49,6 +49,8 @@
         <module>driver-rabbitmq</module>
         <module>driver-jms</module>
         <module>driver-redis</module>
+        <module>driver-s3</module>
+        <module>driver-sns-sqs</module>
         <module>package</module>
         <module>docker</module>
         <module>tool</module>
