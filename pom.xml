@@ -51,7 +51,6 @@
         <module>driver-redis</module>
         <module>package</module>
         <module>docker</module>
-        <module>driver-kop</module>
         <module>tool</module>
     </modules>
 
