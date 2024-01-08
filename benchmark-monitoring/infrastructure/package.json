@@ -1,0 +1,33 @@
+{
+  "name": "benchmark-monitoring-cdk",
+  "version": "0.1.0",
+  "bin": {
+    "benchmark-monitoring": "bin/benchmark-monitoring.js"
+  },
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "devDependencies": {
+    "@aws-cdk/assert": "2.68.0",
+    "@types/node": "20.8.10",
+    "@typescript-eslint/eslint-plugin": "^5.50.0",
+    "@typescript-eslint/parser": "^5.49.0",
+    "aws-cdk": "^2.80.0",
+    "eslint": "^8.32.0",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "ts-node": "^9.1.1",
+    "typescript": "~4.5.4"
+  },
+  "dependencies": {
+    "@aws-solutions-constructs/aws-apigateway-sqs": "^2.47.0",
+    "aws-cdk-lib": "^2.118.0",
+    "cdk": "^2.118.0",
+    "constructs": "10.2.11",
+    "tslib": "^2.3.1"
+  }
+}

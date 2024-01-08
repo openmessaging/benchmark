@@ -1,0 +1,47 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+      "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+      "plugin:@typescript-eslint/recommended",
+      "airbnb-typescript/base",
+      "plugin:import/errors",
+      "plugin:import/warnings",
+      "plugin:import/typescript",
+      "plugin:import/recommended"
+  ],
+  "env": {
+      "browser": true,
+      "node": true,
+  },
+  "rules": {
+      "import/no-default-export": 0,
+      "interface-over-type-literal": 0,
+      "import-name": 0,
+      "object-literal-sort-keys": 0,
+      "interface-name": 0,
+      "import/prefer-default-export": "off",
+      "global-require": 0,
+      "class-methods-use-this": 0,
+      "@typescript-eslint/no-var-requires": 0,
+      "no-useless-constructor": "off",
+      "@typescript-eslint/no-useless-constructor": "error",
+      "no-empty-function": "off",
+      "@typescript-eslint/no-empty-function": "error",
+      "@typescript-eslint/comma-dangle": "off",
+      "import/no-extraneous-dependencies": "off",
+      "@typescript-eslint/semi": ["error", "never"],
+      "import/named": 0,
+      "import/order": 2
+  },
+  "overrides": [
+      {
+          "files": "src/**/*.spec.ts",
+          "rules": {
+              "@typescript-eslint/explicit-function-return-type": 0
+          }
+      }
+  ]
+}

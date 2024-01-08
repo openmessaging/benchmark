@@ -1,0 +1,36 @@
+﻿# dependencies
+*/node_modules
+node_modules
+
+# production
+*/build
+
+# tests
+*/coverage
+
+# misc
+.DS_Store
+.idea
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*npm-debug.log*
+
+# CDK asset staging directory
+infrastructure/.cdk.staging
+infrastructure/cdk.out
+infrastructure/parameters.json
+
+# TypeScript generated files
+*.js
+*.d.ts
+*/*.d.ts
+!lambda/src/types/*.d.ts
+
+# Snyk
+.iac-data/
+.dccache
+
+!**/babel.config.js
+!**/webpack.config.js
