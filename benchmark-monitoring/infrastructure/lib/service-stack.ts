@@ -1,4 +1,4 @@
-import { App, Duration, Stack } from 'aws-cdk-lib'
+import { App, Duration, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import {
   Tracing,
   Runtime,
@@ -12,6 +12,7 @@ import {
 } from 'aws-cdk-lib/aws-sqs'
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources'
 import {
+  ManagedPolicy,
   PolicyStatement,
   Role,
   ServicePrincipal,
@@ -22,6 +23,7 @@ import { addMonitoring } from '../modules/monitoring'
 import { addAlerting } from '../modules/alerting'
 import { IKey, Key } from 'aws-cdk-lib/aws-kms'
 import { ApiGatewayToSqs } from '@aws-solutions-constructs/aws-apigateway-sqs'
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb'
 
 interface DataIngestionLayer {
   sqsQueue: IQueue
@@ -36,6 +38,7 @@ export class ServiceStack extends Stack {
     const { sqsQueue, ingestionDeadLetterQueue } = this.createBenchmarkMonitoringDataIngestionLayer(kmsKey, props)
     const deadLetterQueue = this.createBenchmarkMonitoringLambdaDeadLetterQueue(props)
     const lambda = this.createBenchmarkMonitoringLambda(sqsQueue, kmsKey, deadLetterQueue, props)
+    this.createBenchmarkMonitoringDynamoDb(lambda, kmsKey, props)
     addMonitoring(this, sqsQueue, lambda, deadLetterQueue, ingestionDeadLetterQueue, props)
     addAlerting(this, lambda, deadLetterQueue, ingestionDeadLetterQueue, props)
   }
@@ -51,26 +54,23 @@ export class ServiceStack extends Stack {
   }
 
   private createBenchmarkMonitoringDataIngestionLayer(kmsKey: Key, props: BenchmarkMonitoringStackProps): DataIngestionLayer {
-    const { sqsQueue, deadLetterQueue } = new ApiGatewayToSqs(this, 'BenchmarkMonitoringDataIngestion', {
-      apiGatewayProps: {},
+    const { sqsQueue, deadLetterQueue, apiGatewayRole } = new ApiGatewayToSqs(this, 'BenchmarkMonitoringDataIngestion', {
       queueProps: {
         queueName: props.appName,
         visibilityTimeout: Duration.seconds(props.eventsVisibilityTimeoutSeconds),
         encryption: QueueEncryption.KMS,
-        encryptionMasterKey: kmsKey,
         dataKeyReuse: Duration.seconds(300),
         retentionPeriod: Duration.days(14),
       },
       deployDeadLetterQueue: true,
       maxReceiveCount: 10,
       allowCreateOperation: true,
-      createRequestTemplate: 'TODO',
-      enableEncryptionWithCustomerManagedKey: true,
       encryptionKey: kmsKey
     })
     if (!deadLetterQueue) {
       throw new Error('The ApiGatewayToSqs dependency did not yield a dead letter queue!')
     }
+    kmsKey.grantEncryptDecrypt(apiGatewayRole);
     return { sqsQueue, ingestionDeadLetterQueue: deadLetterQueue.queue }
   }
 
@@ -119,6 +119,10 @@ export class ServiceStack extends Stack {
       })
     )
 
+    iamRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
+    )
+
     const lambda = new LambdaFunction(
       this,
       'BenchmarkMonitoringLambda',
@@ -132,7 +136,6 @@ export class ServiceStack extends Stack {
         memorySize: 512,
         tracing: Tracing.ACTIVE,
         role: iamRole,
-        reservedConcurrentExecutions: props.reservedConcurrentExecutions,
         environment: {
           REGION: this.region,
           DEBUG: props.debug ? 'TRUE' : 'FALSE',
@@ -151,6 +154,25 @@ export class ServiceStack extends Stack {
     )
 
     return lambda
+  }
+
+  private createBenchmarkMonitoringDynamoDb(lambda: LambdaFunction, kmsKey: IKey, props: BenchmarkMonitoringStackProps) {
+    const table = new Table(this, 'BenchmarkMonitoringDynamoDbTable', {
+      tableName: props.appName,
+      encryption: TableEncryption.CUSTOMER_MANAGED,
+      encryptionKey: kmsKey,
+      partitionKey: {
+        name: 'experimentId',
+        type: AttributeType.STRING,
+      },
+      readCapacity: 1,
+      writeCapacity: 1,
+      billingMode: BillingMode.PROVISIONED,
+      removalPolicy: RemovalPolicy.DESTROY,
+    })
+
+    table.grantReadData(lambda)
+    table.grantWriteData(lambda)
   }
 }
 

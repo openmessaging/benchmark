@@ -13,10 +13,11 @@ const stackProps: BenchmarkMonitoringStackProps = {
   appName: 'benchmark-monitoring',
   maxBatchingWindow: Duration.minutes(1),
   batchSize: 100,
-  reservedConcurrentExecutions: 1,
   debug: true,
   functionTimeoutSeconds: 30,
   eventsVisibilityTimeoutSeconds: 30,
+  readCapacity: 1,
+  writeCapacity: 1,
   alertingEnabled: true
 }
 

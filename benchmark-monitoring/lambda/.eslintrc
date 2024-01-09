@@ -35,13 +35,5 @@
       "@typescript-eslint/semi": ["error", "never"],
       "import/named": 0,
       "import/order": 2
-  },
-  "overrides": [
-      {
-          "files": "src/**/*.spec.ts",
-          "rules": {
-              "@typescript-eslint/explicit-function-return-type": 0
-          }
-      }
-  ]
+  }
 }

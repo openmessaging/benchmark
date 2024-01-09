@@ -4,9 +4,10 @@ export interface BenchmarkMonitoringStackProps extends StackProps {
   appName: string
   maxBatchingWindow: Duration
   batchSize: number
-  reservedConcurrentExecutions: number
   debug: boolean
   functionTimeoutSeconds: number
   eventsVisibilityTimeoutSeconds: number
+  readCapacity: number
+  writeCapacity: number
   alertingEnabled: boolean
 }
