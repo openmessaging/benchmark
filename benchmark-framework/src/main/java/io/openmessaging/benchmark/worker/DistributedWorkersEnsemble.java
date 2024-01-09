@@ -36,6 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DistributedWorkersEnsemble implements Worker {
+    private static final int LEADER_WORKER_INDEX = 0;
+    private static final int TPC_H_MAP_COORDINATOR_WORKER_INDEX = 0;
+    private static final int TPC_H_REDUCE_COORDINATOR_WORKER_INDEX = 1;
     private final Thread shutdownHook = new Thread(this::stopAll);
     private final List<Worker> workers;
     private final List<Worker> producerWorkers;
@@ -47,7 +50,7 @@ public class DistributedWorkersEnsemble implements Worker {
     public DistributedWorkersEnsemble(List<Worker> workers, boolean extraConsumerWorkers) {
         Preconditions.checkArgument(workers.size() > 1);
         this.workers = unmodifiableList(workers);
-        leader = workers.get(0);
+        leader = workers.get(LEADER_WORKER_INDEX);
         int numberOfProducerWorkers = getNumberOfProducerWorkers(workers, extraConsumerWorkers);
         List<List<Worker>> partitions =
                 Lists.partition(Lists.reverse(workers), workers.size() - numberOfProducerWorkers);
@@ -275,6 +278,21 @@ public class DistributedWorkersEnsemble implements Worker {
                                 throw new RuntimeException(e);
                             }
                         });
+    }
+
+    @Override
+    public void createTpcHMapCoordinator() throws IOException {
+        this.producerWorkers
+                .get(TPC_H_MAP_COORDINATOR_WORKER_INDEX)
+                .createTpcHMapCoordinator();
+    }
+
+    @Override
+    public void createTpcHReduceCoordinator() throws IOException {
+        int index = TPC_H_REDUCE_COORDINATOR_WORKER_INDEX % this.producerWorkers.size();
+        this.workers
+                .get(index)
+                .createTpcHReduceCoordinator();
     }
 
     @Override

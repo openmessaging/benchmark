@@ -16,6 +16,8 @@ package io.openmessaging.benchmark;
 
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
 
+// TODO: Modify this model to include information that the experiment is a TPC-H experiment.
+// TODO: Modify this model to include references to S3 bucket prefixes (data, intermediate results, results).
 public class Workload {
     public String name;
 

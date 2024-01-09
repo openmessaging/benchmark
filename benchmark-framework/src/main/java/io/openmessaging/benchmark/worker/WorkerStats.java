@@ -162,6 +162,7 @@ public class WorkerStats {
         totalMessageSendErrors.increment();
     }
 
+    // TODO: Make this a completable future that sends the relevant data to AWS.
     public void recordProducerSuccess(
             long payloadLength, long intendedSendTimeNs, long sendTimeNs, long nowNs) {
         messagesSent.increment();
