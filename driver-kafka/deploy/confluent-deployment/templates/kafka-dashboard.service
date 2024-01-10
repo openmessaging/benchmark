@@ -1,0 +1,16 @@
+[Unit]
+Description=Kafka Dashboard
+After=docker.service
+Requires=docker.service
+After=prometheus.service
+Requires=prometheus.service
+ 
+[Service]
+ExecStartPre=/usr/bin/docker pull aloknnikhil/omb-kafka-dashboard:latest
+ExecStart=/usr/bin/docker run --restart=always --name=systemd_kafka_dashboard -p3000:3000 -e PROMETHEUS_URL=http://{{ hostvars[groups['prometheus'][0]].private_ip }}:9090/ aloknnikhil/omb-kafka-dashboard:latest
+ExecStop=/usr/bin/docker stop systemd_kafka_dashboard
+ExecStopPost=/usr/bin/docker rm -f systemd_kafka_dashboard
+ExecReload=/usr/bin/docker restart systemd_kafka_dashboard
+ 
+[Install]
+WantedBy=multi-user.target

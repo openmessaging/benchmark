@@ -1,0 +1,585 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+- name: Format and mount disks for Kafka and Controller hosts
+  hosts: kafka,controller
+  tags: restart_kafka
+  connection: ssh
+  become: true
+  tasks:
+    # TUNED-ADM FOR RHEL
+    # - command: >
+    #     tuned-adm profile latency-performance
+    # Unmount disks for changing from ext4 <=> xfs
+    # - name: Unmount disks
+    #   mount:
+    #     path: "{{ item.path }}"
+    #     src: "{{ item.src }}"
+    #     state: unmounted
+    #   with_items:
+    #     - { path: "/mnt/data-1", src: "/dev/nvme1n1" }
+    - name: Format disks
+      filesystem:
+        fstype: xfs
+        dev: '{{ item }}'
+      with_items:
+        - '/dev/nvme1n1'
+    - name: Mount disks
+      mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      with_items:
+        - { path: "/mnt/data-1", src: "/dev/nvme1n1" }
+    - name: Make sure there's no pre-existing logs directory
+      file: path=/mnt/data-1/logs state=absent
+    - name: Increase hard file descriptor limit
+      pam_limits:
+        domain: '*'
+        limit_type: 'hard'
+        limit_item: nofile
+        value: 500000
+    - name: Increase soft file descriptor limit
+      pam_limits:
+        domain: '*'
+        limit_type: 'soft'
+        limit_item: nofile
+        value: 500000
+    - name: Enable pam_limits.so
+      lineinfile:
+        path: /etc/pam.d/login
+        insertafter: EOF
+        line: 'session required pam_limits.so'
+    - name: set vm.max_map_count
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+    - name: Reboot the machine with all defaults
+      reboot:
+
+- name: Kafka and Controller setup
+  hosts: all
+  connection: ssh
+  tags: configure, clients, kafka, controller
+  become: true
+  vars:
+    jdkArch:
+      aarch64: aarch64
+      x86_64: x64
+  tasks:
+    - name: Remove sysstat
+      yum: pkg={{ item }} state=absent
+      with_items:
+        - sysstat
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+          - wget
+          - sysstat
+          - vim
+          - chrony
+          - git
+          - gcc
+          - make
+    - name: Install OpenJDK
+      yum: "name=https://download.oracle.com/java/17/latest/jdk-17_linux-{{ jdkArch[ansible_architecture] }}_bin.rpm"
+    - file: path=/opt/kafka state=absent
+    - file: path=/opt/kafka state=directory
+    - set_fact:
+        controllerQuorumVoters: []
+    - set_fact:
+        controllerQuorumVoters: "{{ controllerQuorumVoters + [ item_idx|string + '@' + item ]}}"
+      loop: "{{ groups['controller'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:9091') }}"
+      loop_control:
+        index_var: item_idx
+    - set_fact:
+        controllerServers: "{{ groups['controller'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:9091') | join(',') }}"
+        boostrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
+        sslbootstrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9093') | join(',') }}"
+        ccloudBootstrapServer: "{{ lookup('ini', 'bootstrap.servers type=properties file=ccloud.properties') }}"
+        ccloudJaasConfig: "{{ lookup('ini', 'sasl.jaas.config type=properties file=ccloud.properties') }}"
+        kafkaVersion: "3.6.0"
+    - debug:
+        msg:
+          - "Controller servers:           {{ controllerServers }}"
+          - "Controller Quorum Voters:     {{ controllerQuorumVoters | join(',') }}"
+          - "Boostrap servers:             PLAINTEXT://{{ boostrapServers }}"
+          - "SSL Bootstrap servers:        SSL://{{ sslbootstrapServers }}"
+          - "CCloud Bootstrap servers:     {{ ccloudBootstrapServer }}"
+          - "CCloud JAAS config:           {{ ccloudJaasConfig }}"
+    - name: Download Kafka packages
+      unarchive:
+        src: "http://archive.apache.org/dist/kafka/{{ kafkaVersion }}/kafka_2.13-{{ kafkaVersion }}.tgz"
+        remote_src: yes
+        dest: /opt/kafka
+        extra_opts: ["--strip-components=1"]
+#    - name: Download Kafka packages
+#      unarchive:
+#        src: "/tmp/kafka_2.13-7.5.0-0-ce.tgz"
+#        dest: "/opt/kafka"
+#        extra_opts: ["--strip-components=1"]
+    - set_fact:
+        privateIp: "{{ hostvars[inventory_hostname]['private_ip'] }}"
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+    - name: Generate UUID
+      shell: /opt/kafka/bin/kafka-storage.sh random-uuid
+      register: kafka_uuid_output
+      run_once: true
+    - set_fact:
+        kafkaUuid: "{{ kafka_uuid_output.stdout | trim }}"
+
+- name: Setup Controller
+  hosts: controller
+  connection: ssh
+  tags: configure, controller
+  become: true
+  tasks:
+    - set_fact:
+        nodeId: "{{ groups['controller'].index(inventory_hostname) }}"
+    - name: Setup JMX for Prometheus
+      copy:
+        src: "monitoring/jmx_exporter/jmx_prometheus_javaagent-0.13.0.jar"
+        dest: "/opt/kafka/jmx_prometheus_javaagent-0.13.0.jar"
+    - name: Configure JMX for Prometheus (Kafka)
+      template:
+        src: "monitoring/jmx_exporter/metrics.yml"
+        dest: "/opt/kafka/metrics.yml"
+    - name: Copy keystore
+      copy:
+        src: "templates/kafka.server.keystore.jks"
+        dest: "/opt/kafka/config/kafka.server.keystore.jks"
+    - name: Copy truststore
+      copy:
+        src: "templates/kafka.server.truststore.jks"
+        dest: "/opt/kafka/config/kafka.server.truststore.jks"
+    - name: Set up controller
+      template:
+        src: "templates/controller.properties"
+        dest: "/opt/kafka/config/controller.properties"
+    - template:
+        src: "templates/controller.service"
+        dest: "/etc/systemd/system/controller.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "controller"
+    - git:
+        repo: "https://github.com/sysstat/sysstat"
+        dest: "/opt/sysstat"
+    - name: Compile and install sysstat from source
+      shell: cd /opt/sysstat && ./configure && make -j `nproc` && sudo make install
+    - name: Format Controller log.dirs
+      shell: /opt/kafka/bin/kafka-storage.sh format -t {{ kafkaUuid }} -c /opt/kafka/config/controller.properties
+
+
+- name: Setup Kafka
+  hosts: kafka
+  connection: ssh
+  tags: configure, kafka
+  become: true
+  tasks:
+    - set_fact:
+        nodeId: "{{ groups['kafka'].index(inventory_hostname) + 1000 }}"
+    - name: Setup JMX for Prometheus
+      copy:
+        src: "monitoring/jmx_exporter/jmx_prometheus_javaagent-0.13.0.jar"
+        dest: "/opt/kafka/jmx_prometheus_javaagent-0.13.0.jar"
+    - name: Configure JMX for Prometheus (Kafka)
+      template:
+        src: "monitoring/jmx_exporter/metrics.yml"
+        dest: "/opt/kafka/metrics.yml"
+    - name: Copy keystore
+      copy:
+        src: "templates/kafka.server.keystore.jks"
+        dest: "/opt/kafka/config/kafka.server.keystore.jks"
+    - name: Copy truststore
+      copy:
+        src: "templates/kafka.server.truststore.jks"
+        dest: "/opt/kafka/config/kafka.server.truststore.jks"
+    - name: Set up broker
+      template:
+        src: "templates/server.properties"
+        dest: "/opt/kafka/config/server.properties"
+    - template:
+        src: "templates/kafka.service"
+        dest: "/etc/systemd/system/kafka.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "kafka"
+    - git:
+        repo: "https://github.com/sysstat/sysstat"
+        dest: "/opt/sysstat"
+    - name: Compile and install sysstat from source
+      shell: cd /opt/sysstat && ./configure && make -j `nproc` && sudo make install
+    - name: Format Kafka log.dirs
+      shell: /opt/kafka/bin/kafka-storage.sh format -t {{ kafkaUuid }} -c /opt/kafka/config/server.properties
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
+- name: Setup Benchmark client
+  hosts: client
+  connection: ssh
+  tags: configure,clients
+  become: true
+  tasks:
+    - file: path=/opt/benchmark state=absent
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+
+    - name: Get list of driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
+      register: drivers_list
+
+    - name: Configure Bootstrap Servers
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  bootstrap.servers='
+         line: '  bootstrap.servers={{ boostrapServers }}'
+      with_items: '{{ drivers_list.stdout_lines }}'
+
+    - name: Get list of ssl driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/ssl-*.yaml
+      register: ssl_drivers_list
+
+    - name: Configure SSL Bootstrap Servers
+      lineinfile:
+        dest: "{{ item }}"
+        regexp: "^  bootstrap.servers="
+        line: "  bootstrap.servers={{ sslbootstrapServers }}"
+      with_items: "{{ ssl_drivers_list.stdout_lines }}"
+
+    - name: Get list of ccloud driver config files
+      raw: ls -1 /opt/benchmark/driver-kafka/ccloud-*.yaml
+      register: ccloud_drivers_list
+
+    - name: Configure CCloud Bootstrap Servers
+      lineinfile:
+        dest: "{{ item }}"
+        regexp: "^  bootstrap.servers="
+        line: "  bootstrap.servers={{ ccloudBootstrapServer }}"
+      with_items: "{{ ccloud_drivers_list.stdout_lines }}"
+
+    - name: Configure CCloud JAAS Config
+      lineinfile:
+        dest: "{{ item }}"
+        regexp: "^  sasl.jaas.config="
+        line: "  sasl.jaas.config={{ ccloudJaasConfig }}"
+      with_items: "{{ ccloud_drivers_list.stdout_lines }}"
+
+    - name: Get list of jms driver config files
+      raw: ls -1 /opt/benchmark/driver-jms/kafka*.yaml
+      register: jms_drivers_list
+
+    - name: Configure JMS Bootstrap Servers
+      lineinfile:
+         dest: '{{ item }}'
+         regexp: '^  bootstrap.servers='
+         line: '  bootstrap.servers={{ boostrapServers }}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+
+    - name: Configure JMS Connection Factory
+      ansible.builtin.replace:
+         dest: '{{ item }}'
+         regexp: 'localhost\:9092'
+         replace: '{{ boostrapServers }}'
+      with_items: '{{ jms_drivers_list.stdout_lines }}'
+
+    - name: Setup JMX for Producer/Consumer clients
+      copy:
+        src: "monitoring/jmx_exporter/jmx_prometheus_javaagent-0.13.0.jar"
+        dest: "/opt/benchmark/jmx_prometheus_javaagent-0.13.0.jar"
+
+    - name: Configure JMX for Prometheus (Client)
+      template:
+        src: "monitoring/jmx_exporter/client.yml"
+        dest: "/opt/benchmark/metrics.yml"
+
+    - name: Configure benchmark-worker memory and JMX
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark-worker
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xms6G -Xmx{{ benchmarkWorkerMem }}G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB -javaagent:/opt/benchmark/jmx_prometheus_javaagent-0.13.0.jar=9090:/opt/benchmark/metrics.yml"'
+
+    - name: Configure memory
+      lineinfile:
+         dest: /opt/benchmark/bin/benchmark
+         regexp: '^JVM_MEM='
+         line: 'JVM_MEM="-Xmx{{ benchmarkCliMem }}G"'
+
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+
+    - name: Copy client truststore
+      copy:
+        src: "templates/kafka.client.truststore.jks"
+        dest: "/opt/benchmark/kafka.client.truststore.jks"
+
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+
+- name: Prometheus installation
+  hosts: prometheus
+  connection: ssh
+  tags: prometheus
+  become: true
+  tasks:
+    - set_fact:
+        prometheusVersion: "2.42.0"
+    - file: path=/opt/prometheus state=absent
+    - file: path=/opt/prometheus state=directory
+    - name: Download Prometheus Binary Package
+      unarchive:
+        src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheusVersion }}/prometheus-{{ prometheusVersion }}.linux-amd64.tar.gz"
+        remote_src: yes
+        dest: /opt/prometheus
+        extra_opts: ["--strip-components=1"]
+        group: root
+        owner: root
+    - set_fact:
+        private_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+- name: Prometheus setup
+  hosts: prometheus
+  connection: ssh
+  tags: prometheus
+  become: true
+  tasks:
+    - file:
+        path: "/opt/prometheus/{{ item }}"
+        state: directory
+        group: root
+        owner: root
+      with_items:
+        - data
+    - template:
+        src: "templates/prometheus.service"
+        dest: "/etc/systemd/system/prometheus.service"
+    - template:
+        src: "templates/kafka-dashboard.service"
+        dest: "/etc/systemd/system/kafka-dashboard.service"
+    - template:
+        src: "templates/prometheus.yml"
+        dest: "/opt/prometheus/prometheus.yml"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "prometheus"
+
+- name: Install Node Exporter
+  hosts: all
+  become: true
+  tasks:
+    - name: Add user node_exporter
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: no
+
+    - name: Download and extract
+      unarchive:
+        src: https://github.com/prometheus/node_exporter/releases/download/v1.0.1/node_exporter-1.0.1.linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy bin node_exporter to /usr/local/bin
+      copy:
+        src: /tmp/node_exporter-1.0.1.linux-amd64/node_exporter
+        remote_src: yes
+        dest: /usr/local/bin/
+        owner: node_exporter
+        group: node_exporter
+        mode: u+x,g+x,o+x
+
+- name: Configure Node Exporter on Client
+  hosts: client
+  become: true
+  tasks:
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter_client.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter for Client
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter --web.listen-address=:8000
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter_client
+        state: started
+        enabled: yes
+
+    - name: Check whether port 8000 is available
+      wait_for:
+        port: 8000
+        state: started
+        timeout: 5
+
+- name: Install Node Exporter on Controller
+  hosts: controller
+  become: true
+  tasks:
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter_controller.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter for Controller
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter --web.listen-address=:8000
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter_controller
+        state: started
+        enabled: yes
+
+    - name: Check whether port 8000 is available
+      wait_for:
+        port: 8000
+        state: started
+        timeout: 5
+
+- name: Install Node Exporter on Kafka
+  hosts: kafka
+  become: true
+  tasks:
+    - name: Create service node_exporter.service
+      blockinfile:
+        path: /etc/systemd/system/node_exporter_kafka.service
+        block: |
+          [Unit]
+          Description=Prometheus Node Exporter for Kafka
+          Wants=network-online.target
+          After=network-online.target
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          [Install]
+          WantedBy=multi-user.target
+        create: true
+
+    - name: systemctl daemon_reload
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and Enable node_exporter
+      service:
+        name: node_exporter_kafka
+        state: started
+        enabled: yes
+
+    - name: Check whether port 9100 is available
+      wait_for:
+        port: 9100
+        state: started
+        timeout: 5
+
+- name: Install jattach and async-profiler
+  hosts: all
+  become: true
+  vars:
+    profilerArch:
+      aarch64: arm64
+      x86_64: x64
+  tasks:
+    - name: Download and extract async-profiler
+      unarchive:
+        src: "https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.9/async-profiler-2.9-linux-{{ profilerArch[ansible_architecture] }}.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Download and install jattach
+      get_url:
+        url: https://github.com/apangin/jattach/releases/download/v1.5/jattach
+        dest: /usr/bin/jattach
+        mode: "0755"
+
+- name:  Hosts addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "Controller servers {{ item }}"
+      with_items: "{{ groups['controller'] }}"
+    - debug:
+        msg: "Kafka brokers {{ item }}"
+      with_items: "{{ groups['kafka'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['client'] }}"
+    - debug:
+        msg: "Prometheus clients http://{{ item }}:9090/"
+      with_items: "{{ groups['prometheus'] }}"

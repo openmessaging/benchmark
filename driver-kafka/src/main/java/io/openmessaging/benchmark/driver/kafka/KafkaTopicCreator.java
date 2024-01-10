@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.CreateTopicsOptions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.errors.TopicExistsException;
@@ -40,15 +41,23 @@ import org.apache.kafka.common.errors.TopicExistsException;
 @Slf4j
 @RequiredArgsConstructor
 class KafkaTopicCreator {
-    private static final int MAX_BATCH_SIZE = 500;
+    private static final int MAX_BATCH_SIZE = 1;
+    private static CreateTopicsOptions createTopicsOptions =
+            new CreateTopicsOptions().retryOnQuotaViolation(true);
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final AdminClient admin;
     private final Map<String, String> topicConfigs;
     private final short replicationFactor;
     private final int maxBatchSize;
 
-    KafkaTopicCreator(AdminClient admin, Map<String, String> topicConfigs, short replicationFactor) {
-        this(admin, topicConfigs, replicationFactor, MAX_BATCH_SIZE);
+    private final boolean skipCreateTopic;
+
+    KafkaTopicCreator(
+            AdminClient admin,
+            Map<String, String> topicConfigs,
+            short replicationFactor,
+            boolean skipCreateTopic) {
+        this(admin, topicConfigs, replicationFactor, MAX_BATCH_SIZE, skipCreateTopic);
     }
 
     CompletableFuture<Void> create(List<TopicInfo> topicInfos) {
@@ -56,6 +65,10 @@ class KafkaTopicCreator {
     }
 
     private void createBlocking(List<TopicInfo> topicInfos) {
+        if (skipCreateTopic) {
+            return;
+        }
+
         BlockingQueue<TopicInfo> queue = new ArrayBlockingQueue<>(topicInfos.size(), true, topicInfos);
         List<TopicInfo> batch = new ArrayList<>();
         AtomicInteger succeeded = new AtomicInteger();
@@ -95,7 +108,7 @@ class KafkaTopicCreator {
 
         List<NewTopic> newTopics = batch.stream().map(this::newTopic).collect(toList());
 
-        return admin.createTopics(newTopics).values().entrySet().stream()
+        return admin.createTopics(newTopics, createTopicsOptions).values().entrySet().stream()
                 .collect(toMap(e -> lookup.get(e.getKey()), e -> isSuccess(e.getValue())));
     }
 
@@ -113,7 +126,7 @@ class KafkaTopicCreator {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (ExecutionException e) {
-            log.debug(e.getMessage());
+            log.info("Error creating topic because: {}", e.getCause().toString());
             return e.getCause() instanceof TopicExistsException;
         }
         return true;

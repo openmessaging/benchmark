@@ -11,12 +11,29 @@ core/*.json
 *.retry
 *.pem
 *.hcl
+*.bak
 **/.terraform
 **/terraform.tfstate
 **/terraform.tfstate.backup
 **/*.lock.info
 .DS_Store
 .factorypath
+
+# Confluent deployment
+driver-kafka/deploy/confluent-deployment/ansible-config.yaml
+driver-kafka/deploy/confluent-deployment/terraform.tfvars
+driver-kafka/deploy/confluent-deployment/ccloud.properties
+driver-kafka/deploy/confluent-deployment/hosts.ini
+driver-kafka/deploy/confluent-deployment/templates/ca-cert
+driver-kafka/deploy/confluent-deployment/templates/ca-cert.srl
+driver-kafka/deploy/confluent-deployment/templates/ca-key
+driver-kafka/deploy/confluent-deployment/templates/cert-file
+driver-kafka/deploy/confluent-deployment/templates/cert-signed
+driver-kafka/deploy/confluent-deployment/templates/kafka.client.truststore.jks
+driver-kafka/deploy/confluent-deployment/templates/kafka.server.keystore.jks
+driver-kafka/deploy/confluent-deployment/templates/kafka.server.truststore.jks
+workloads/confluent-blog-workloads-*
+results/*
 
 # IntelliJ artifacts
 .idea/

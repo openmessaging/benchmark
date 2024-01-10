@@ -55,9 +55,10 @@ class KafkaTopicCreatorTest {
     @BeforeEach
     void beforeEach() {
         int maxBatchSize = 1;
-        topicCreator = new KafkaTopicCreator(admin, topicConfigs, replicationFactor, maxBatchSize);
+        topicCreator =
+                new KafkaTopicCreator(admin, topicConfigs, replicationFactor, maxBatchSize, false);
 
-        when(admin.createTopics(any())).thenAnswer(__ -> createTopicsResult);
+        when(admin.createTopics(any(), any())).thenAnswer(__ -> createTopicsResult);
     }
 
     @Test
@@ -68,7 +69,7 @@ class KafkaTopicCreatorTest {
 
         topicCreator.create(singletonList(topicInfo)).join();
 
-        verify(admin).createTopics(captor.capture());
+        verify(admin).createTopics(captor.capture(), any());
 
         List<List<NewTopic>> allValues = captor.getAllValues();
         assertThat(allValues).hasSize(1);
@@ -84,7 +85,7 @@ class KafkaTopicCreatorTest {
 
         topicCreator.create(singletonList(topicInfo)).join();
 
-        verify(admin).createTopics(captor.capture());
+        verify(admin).createTopics(captor.capture(), any());
 
         List<List<NewTopic>> allValues = captor.getAllValues();
         assertThat(allValues).hasSize(1);
@@ -103,7 +104,7 @@ class KafkaTopicCreatorTest {
 
         topicCreator.create(singletonList(topicInfo)).join();
 
-        verify(admin, times(2)).createTopics(captor.capture());
+        verify(admin, times(2)).createTopics(captor.capture(), any());
 
         List<List<NewTopic>> allValues = captor.getAllValues();
         assertThat(allValues).hasSize(2);

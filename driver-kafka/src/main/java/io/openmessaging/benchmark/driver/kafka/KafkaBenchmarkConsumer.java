@@ -23,6 +23,7 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -93,6 +94,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     public void close() throws Exception {
         closing = true;
         executor.shutdown();
+        executor.awaitTermination(120000, TimeUnit.MILLISECONDS);
         consumerTask.get();
         consumer.close();
     }

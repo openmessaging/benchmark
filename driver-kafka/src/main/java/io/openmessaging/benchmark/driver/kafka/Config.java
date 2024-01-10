@@ -18,9 +18,15 @@ public class Config {
 
     public String topicConfig;
 
+    public String topicPrefix;
+
     public String commonConfig;
 
     public String producerConfig;
 
     public String consumerConfig;
+
+    public boolean reset;
+
+    public boolean skipCreateTopic;
 }

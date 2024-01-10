@@ -1,0 +1,80 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+- name: Create CA and certificates
+  hosts: localhost
+  connection: local
+  become: false
+  vars:
+    root_ca_dir: "{{ playbook_dir }}/templates"
+
+  tasks:
+    - name: Check that Root CA directory {{ root_ca_dir }} exists
+      file:
+        path: "{{ root_ca_dir }}"
+        state: directory
+
+    - name: Delete files if already exists
+      file:
+        path: "{{ root_ca_dir }}/{{ item }}"
+        state: absent
+      with_items:
+        - ca-key
+        - ca-cert
+        - kafka.server.keystore.jks
+        - kafka.server.truststore.jks
+        - kafka.client.truststore.jks
+        - cert-signed
+
+    - name: 1. Generate the key and the certificate for each Kafka broker in the cluster
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: keytool -keystore kafka.server.keystore.jks -alias localhost -keyalg RSA -validity 365 -genkey -storepass test1234 -keypass test1234 -dname CN=confluent -ext SAN=DNS:localhost
+
+    - name: 2. Generate a CA that is simply a public-private key pair and certificate
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: openssl req -new -x509 -keyout ca-key -out ca-cert -days 3650 -batch -passout pass:test1234 -subj '/CN=confluent issuer'
+
+    - name: 3. Add the generated CA to the clients' truststore so that the clients can trust this CA
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: keytool -keystore kafka.client.truststore.jks -alias CARoot -importcert -file ca-cert -storepass test1234 -noprompt
+
+    - name: 4. Add the generated CA to the brokers’ truststore so that the brokers can trust this CA
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: keytool -keystore kafka.server.truststore.jks -alias CARoot -importcert -file ca-cert -storepass test1234 -noprompt
+
+    - name: 5. Export the certificate from the keystore
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: keytool -keystore kafka.server.keystore.jks -alias localhost -certreq -file cert-file -storepass test1234 -noprompt
+
+    - name: 6. Sign it with the CA
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 365 -CAcreateserial -passin pass:test1234
+
+    - name: 7. Import the certificate of the CA into the broker keystore
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: keytool -keystore kafka.server.keystore.jks -alias CARoot -importcert -file ca-cert -storepass test1234 -noprompt
+
+    - name: 7. Import the signed certificate into the broker keystore
+      command:
+        chdir: "{{ root_ca_dir }}"
+        cmd: keytool -keystore kafka.server.keystore.jks -alias localhost -importcert -file cert-signed -storepass test1234 -noprompt
+
+

@@ -31,20 +31,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.DeleteTopicsOptions;
+import org.apache.kafka.clients.admin.DeleteTopicsResult;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
+    private static DeleteTopicsOptions deleteTopicsOptions =
+            new DeleteTopicsOptions().retryOnQuotaViolation(true);
     private Config config;
 
     private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
@@ -83,10 +94,55 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         topicProperties.load(new StringReader(config.topicConfig));
 
         admin = AdminClient.create(commonProperties);
+
+        if (config.reset) {
+            deleteTopics();
+        }
+    }
+
+    private void deleteTopics() throws IOException {
+        boolean success = false;
+        int count = 0;
+
+        while (!success) {
+            // List existing topics
+            ListTopicsResult result = admin.listTopics();
+            try {
+                // Filter out topics by their prefix.
+                String prefix = getTopicNamePrefix();
+                Set<String> topics =
+                        result.names().get().stream()
+                                .filter(topic -> topic.startsWith(prefix))
+                                .collect(Collectors.toSet());
+                log.info("Deleting topics: {}", String.join(", ", topics));
+
+                // Delete all existing topics
+                DeleteTopicsResult deletes = admin.deleteTopics(topics, deleteTopicsOptions);
+                deletes.all().get();
+                log.info("Deleted {} topics...", topics.size());
+                success = true;
+            } catch (InterruptedException | ExecutionException e) {
+                if (count >= 10) {
+                    if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+                        log.info("Ignoring exception: {}", e.getCause().toString());
+                    } else {
+                        log.info("Failed to delete topics after multiple tries..");
+                        e.printStackTrace();
+                        throw new IOException(e);
+                    }
+                } else {
+                    log.info("Retrying after catching exception (try {}): {}", count, e.toString());
+                    count++;
+                }
+            }
+        }
     }
 
     @Override
     public String getTopicNamePrefix() {
+        if (config.topicPrefix != null && config.topicPrefix.length() > 0) {
+            return config.topicPrefix;
+        }
         return "test-topic";
     }
 
@@ -100,7 +156,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         @SuppressWarnings({"unchecked", "rawtypes"})
         Map<String, String> topicConfigs = new HashMap<>((Map) topicProperties);
         KafkaTopicCreator topicCreator =
-                new KafkaTopicCreator(admin, topicConfigs, config.replicationFactor);
+                new KafkaTopicCreator(
+                        admin, topicConfigs, config.replicationFactor, config.skipCreateTopic);
         return topicCreator.create(topicInfos);
     }
 
@@ -154,4 +211,6 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private static final ObjectMapper mapper =
             new ObjectMapper(new YAMLFactory())
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkDriver.class);
 }

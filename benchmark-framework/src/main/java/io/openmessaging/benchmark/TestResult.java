@@ -40,6 +40,7 @@ public class TestResult {
     public List<Double> publishLatency99pct = new ArrayList<>();
     public List<Double> publishLatency999pct = new ArrayList<>();
     public List<Double> publishLatency9999pct = new ArrayList<>();
+    public List<Double> publishLatency99999pct = new ArrayList<>();
     public List<Double> publishLatencyMax = new ArrayList<>();
 
     public List<Double> publishDelayLatencyAvg = new ArrayList<>();
@@ -49,6 +50,7 @@ public class TestResult {
     public List<Long> publishDelayLatency99pct = new ArrayList<>();
     public List<Long> publishDelayLatency999pct = new ArrayList<>();
     public List<Long> publishDelayLatency9999pct = new ArrayList<>();
+    public List<Long> publishDelayLatency99999pct = new ArrayList<>();
     public List<Long> publishDelayLatencyMax = new ArrayList<>();
 
     public double aggregatedPublishLatencyAvg;
@@ -58,6 +60,7 @@ public class TestResult {
     public double aggregatedPublishLatency99pct;
     public double aggregatedPublishLatency999pct;
     public double aggregatedPublishLatency9999pct;
+    public double aggregatedPublishLatency99999pct;
     public double aggregatedPublishLatencyMax;
 
     public double aggregatedPublishDelayLatencyAvg;
@@ -67,6 +70,7 @@ public class TestResult {
     public long aggregatedPublishDelayLatency99pct;
     public long aggregatedPublishDelayLatency999pct;
     public long aggregatedPublishDelayLatency9999pct;
+    public long aggregatedPublishDelayLatency99999pct;
     public long aggregatedPublishDelayLatencyMax;
 
     public Map<Double, Double> aggregatedPublishLatencyQuantiles = new TreeMap<>();
@@ -83,6 +87,7 @@ public class TestResult {
     public List<Double> endToEndLatency99pct = new ArrayList<>();
     public List<Double> endToEndLatency999pct = new ArrayList<>();
     public List<Double> endToEndLatency9999pct = new ArrayList<>();
+    public List<Double> endToEndLatency99999pct = new ArrayList<>();
     public List<Double> endToEndLatencyMax = new ArrayList<>();
 
     public Map<Double, Double> aggregatedEndToEndLatencyQuantiles = new TreeMap<>();
@@ -94,6 +99,7 @@ public class TestResult {
     public double aggregatedEndToEndLatency99pct;
     public double aggregatedEndToEndLatency999pct;
     public double aggregatedEndToEndLatency9999pct;
+    public double aggregatedEndToEndLatency99999pct;
     public double aggregatedEndToEndLatencyMax;
 
     public int getTopics() {
