@@ -140,6 +140,46 @@ resource "aws_instance" "client" {
   }
 }
 
+resource "aws_ebs_volume" "ebs_zookeeper" {
+  count             = "${var.num_instances["zookeeper"]}"
+
+  availability_zone = "us-west-2a"
+  size              = 30
+  type              = "gp3"
+
+  tags = {
+    Name            = "zookeeper_ebs_${count.index}"
+  }
+}
+
+resource "aws_ebs_volume" "ebs_kafka" {
+  count             = "${var.num_instances["kafka"]}"
+
+  availability_zone = "us-west-2a"
+  size              = 40
+  type              = "gp3"
+
+  tags = {
+    Name            = "kafka_ebs_${count.index}"
+  }
+}
+
+resource "aws_volume_attachment" "ebs_attachment_zk" {
+  count       = "${var.num_instances["zookeeper"]}"
+
+  instance_id = aws_instance.zookeeper[count.index].id
+  volume_id   = aws_ebs_volume.ebs_zookeeper[count.index].id
+  device_name = "/dev/sdh"
+}
+
+resource "aws_volume_attachment" "ebs_attachment_kafka" {
+  count       = "${var.num_instances["kafka"]}"
+
+  instance_id = aws_instance.kafka[count.index].id
+  volume_id   = aws_ebs_volume.ebs_kafka[count.index].id
+  device_name = "/dev/sdh"
+}
+
 output "kafka_ssh_host" {
   value = "${aws_instance.kafka.0.public_ip}"
 }

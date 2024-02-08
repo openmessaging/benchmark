@@ -73,7 +73,7 @@ public class WorkloadGenerator implements AutoCloseable {
                 worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
         log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
 
-        // TODO: Consumers need to be aware of TPC-H context to be able to apply generic TPC-H logic in messageReceived.
+        // TO DO: Consumers should be aware of TPC-H context to be able to apply generic TPC-H logic in messageReceived.
         createConsumers(topics);
         createProducers(topics);
 
@@ -96,7 +96,7 @@ public class WorkloadGenerator implements AutoCloseable {
                     });
         }
 
-        // TODO: Execute below code only if not in TPC-H context.
+        // TO DO: Execute below code only if not in TPC-H context.
         final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
 
         ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
@@ -138,14 +138,14 @@ public class WorkloadGenerator implements AutoCloseable {
                         }
                     });
         }
-        // TODO: Execute above code only if not in TPC-H context.
+        // T ODO: Execute above code only if not in TPC-H context.
 
-        // TODO: If in TPC-H context, parse TPC-H parameters from `workload` and launch Map- and Reduce coordinators.
+        // TO DO: If in TPC-H context, parse TPC-H parameters from `workload` and launch Map- and Reduce coordinators.
 
         worker.resetStats();
         log.info("----- Starting benchmark traffic ({}m)------", workload.testDurationMinutes);
 
-        // TODO: Wait until TPC-H query results are present in S3.
+        // TO DO: Wait until TPC-H query results are present in S3.
         TestResult result = printAndCollectStats(workload.testDurationMinutes, TimeUnit.MINUTES);
         runCompleted = true;
 

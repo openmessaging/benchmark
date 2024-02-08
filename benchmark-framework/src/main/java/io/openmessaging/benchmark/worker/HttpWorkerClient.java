@@ -60,7 +60,7 @@ public class HttpWorkerClient implements Worker {
     private final String host;
 
     public HttpWorkerClient(String host) {
-        this(asyncHttpClient(Dsl.config().setReadTimeout(600000).setRequestTimeout(600000)), host);
+        this(asyncHttpClient(Dsl.config().setReadTimeout(1200000).setRequestTimeout(1200000)), host);
     }
 
     HttpWorkerClient(AsyncHttpClient httpClient, String host) {
@@ -77,80 +77,145 @@ public class HttpWorkerClient implements Worker {
     @SuppressWarnings("unchecked")
     @Override
     public List<String> createTopics(TopicsInfo topicsInfo) throws IOException {
-        return (List<String>) post(CREATE_TOPICS, writer.writeValueAsBytes(topicsInfo), List.class);
+        try {
+            return (List<String>) post(CREATE_TOPICS, writer.writeValueAsBytes(topicsInfo), List.class);
+        } catch (Exception e) {
+            log.error("Exception occurred while creating topics", e);
+            throw e;
+        }
     }
 
     @Override
     public void createProducers(List<String> topics) throws IOException {
-        sendPost(CREATE_PRODUCERS, writer.writeValueAsBytes(topics));
+        try {
+            sendPost(CREATE_PRODUCERS, writer.writeValueAsBytes(topics));
+        } catch (Exception e) {
+            log.error("Exception occurred while creating producers", e);
+            throw e;
+        }
     }
 
     @Override
     public void createConsumers(ConsumerAssignment consumerAssignment) throws IOException {
-        sendPost(CREATE_CONSUMERS, writer.writeValueAsBytes(consumerAssignment));
+        try {
+            sendPost(CREATE_CONSUMERS, writer.writeValueAsBytes(consumerAssignment));
+        } catch (Exception e) {
+            log.error("Exception occurred while creating consumers", e);
+            throw e;
+        }
     }
 
     @Override
     public void probeProducers() throws IOException {
-        sendPost(PROBE_PRODUCERS);
+        try {
+            sendPost(PROBE_PRODUCERS);
+        } catch (Exception e) {
+            log.error("Exception occurred while probing producers", e);
+            throw e;
+        }
     }
 
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         log.debug(
                 "Setting worker assigned publish rate to {} msgs/sec", producerWorkAssignment.publishRate);
-        sendPost(START_LOAD, writer.writeValueAsBytes(producerWorkAssignment));
+        try {
+            sendPost(START_LOAD, writer.writeValueAsBytes(producerWorkAssignment));
+        } catch (Exception e) {
+            log.error("Exception occurred while starting load", e);
+            throw e;
+        }
     }
 
     @Override
     public void adjustPublishRate(double publishRate) throws IOException {
         log.debug("Adjusting worker publish rate to {} msgs/sec", publishRate);
-        sendPost(ADJUST_PUBLISH_RATE, writer.writeValueAsBytes(publishRate));
+        try {
+            sendPost(ADJUST_PUBLISH_RATE, writer.writeValueAsBytes(publishRate));
+        } catch (Exception e) {
+            log.error("Exception occurred while adjusting publish rate", e);
+            throw e;
+        }
     }
 
     @Override
     public void pauseConsumers() throws IOException {
-        sendPost(PAUSE_CONSUMERS);
+        try {
+            sendPost(PAUSE_CONSUMERS);
+        } catch (Exception e) {
+            log.error("Exception occurred while pausing consumers", e);
+            throw e;
+        }
     }
 
     @Override
     public void resumeConsumers() throws IOException {
-        sendPost(RESUME_CONSUMERS);
+        try {
+            sendPost(RESUME_CONSUMERS);
+        } catch (Exception e) {
+            log.error("Exception occurred while resuming consumers", e);
+            throw e;
+        }
     }
 
     @Override
     public CountersStats getCountersStats() throws IOException {
-        return get(COUNTERS_STATS, CountersStats.class);
+        try {
+            return get(COUNTERS_STATS, CountersStats.class);
+        } catch (Exception e) {
+            log.error("Exception occurred while getting counters stats", e);
+            throw e;
+        }
     }
 
     @Override
     public PeriodStats getPeriodStats() throws IOException {
-        return get(PERIOD_STATS, PeriodStats.class);
+        try {
+            return get(PERIOD_STATS, PeriodStats.class);
+        } catch (Exception e) {
+            log.error("Exception occurred while getting period stats", e);
+            throw e;
+        }
     }
 
     @Override
     public CumulativeLatencies getCumulativeLatencies() throws IOException {
-        return get(CUMULATIVE_LATENCIES, CumulativeLatencies.class);
+        try {
+            return get(CUMULATIVE_LATENCIES, CumulativeLatencies.class);
+        } catch (Exception e) {
+            log.error("Exception occurred while getting cumulative latencies", e);
+            throw e;
+        }
     }
 
     @Override
     public void resetStats() throws IOException {
-        sendPost(RESET_STATS);
+        try {
+            sendPost(RESET_STATS);
+        } catch (Exception e) {
+            log.error("Exception occurred while resetting stats", e);
+            throw e;
+        }
     }
 
     @Override
     public void createTpcHMapCoordinator() throws IOException {
-        sendPost(CREATE_TPC_H_MAP_COORDINATOR); // TODO: Add body here if needed.
+        sendPost(CREATE_TPC_H_MAP_COORDINATOR); // TO DO: Add body here if needed.
     }
 
     @Override
     public void createTpcHReduceCoordinator() throws IOException {
-        sendPost(CREATE_TPC_H_REDUCE_COORDINATOR); // TODO: Add body here if needed.
+        sendPost(CREATE_TPC_H_REDUCE_COORDINATOR); // TO DO: Add body here if needed.
     }
 
     @Override
     public void stopAll() {
-        sendPost(STOP_ALL);
+        try {
+            sendPost(STOP_ALL);
+        } catch (Exception e) {
+            log.error("Exception occurred while stopping all workers", e);
+            throw e;
+        }
     }
 
     @Override

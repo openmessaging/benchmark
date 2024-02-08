@@ -12,15 +12,8 @@
 # limitations under the License.
 #
 
-numWorkers: 8
-image: rubentewierik/benchmark-framework:latest
-imagePullPolicy: Always
-workload: workloads/1-topic-16-partitions-1kb.yaml
-driver: driver-pulsar/pulsar.yaml
 
-# Resource Configurations
-driverMemoryRequest: 512Mi
-driverMemoryLimit: 2048Mi
-
-#workersMemoryRequest: 512Mi
-#workersMemoryLimit: 2048Mi
+workers:
+{% for worker in groups['client'] %}
+  - http://{{ hostvars[worker].private_ip }}:8080
+{% endfor %}

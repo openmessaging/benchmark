@@ -155,12 +155,12 @@ public class WorkerHandler {
 
     private void handleCreateTpcHMapCoordinator(Context ctx) throws Exception {
         ConsumerAssignment consumerAssignment = mapper.readValue(ctx.body(), ConsumerAssignment.class);
-        localWorker.createTpcHMapCoordinator(); // TODO: Update this code.
+        localWorker.createTpcHMapCoordinator(); // TO DO: Update this code.
     }
 
     private void handleCreateTpcHReduceCoordinator(Context ctx) throws Exception {
         ConsumerAssignment consumerAssignment = mapper.readValue(ctx.body(), ConsumerAssignment.class);
-        localWorker.createTpcHReduceCoordinator(); // TODO: Update this code.
+        localWorker.createTpcHReduceCoordinator(); // TO DO: Update this code.
     }
 
     private static final Logger log = LoggerFactory.getLogger(WorkerHandler.class);

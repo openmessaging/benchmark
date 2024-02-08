@@ -254,6 +254,7 @@
                         <exclude>**/*.pyc</exclude>
                         <exclude>**/.pydevproject</exclude>
                         <exclude>.github/**</exclude>
+                        <exclude>benchmark-monitoring/**</exclude>
                     </excludes>
                     <mapping>
                         <benchmark>SCRIPT_STYLE</benchmark>

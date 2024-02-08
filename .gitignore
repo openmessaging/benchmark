@@ -9,6 +9,7 @@ target
 core/*.json
 *.json
 !benchmark-monitoring/**/*.json
+!**/**deploy/*.json
 *.retry
 *.pem
 *.hcl
