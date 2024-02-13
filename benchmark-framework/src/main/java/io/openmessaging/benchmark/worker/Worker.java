@@ -34,7 +34,7 @@ public interface Worker extends AutoCloseable {
 
     void createConsumers(ConsumerAssignment consumerAssignment) throws IOException;
 
-    void probeProducers() throws IOException;
+    void probeProducers(ProducerWorkAssignment producerWorkAssignment) throws IOException;
 
     void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException;
 

@@ -187,10 +187,17 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
-    public void probeProducers() throws IOException {
+    public void probeProducers(ProducerWorkAssignment producerWorkAssignment) throws IOException {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        int payloadCount = producerWorkAssignment.payloadData.size();
+        KeyDistributor keyDistributor = KeyDistributor.build(producerWorkAssignment.keyDistributorType);
         producers.forEach(
                 producer ->
-                        producer.sendAsync(Optional.of("key"), new byte[10]).thenRun(stats::recordMessageSent));
+                        producer
+                                .sendAsync(
+                                        Optional.ofNullable(keyDistributor.next()),
+                                        producerWorkAssignment.payloadData.get(r.nextInt(payloadCount)))
+                                .thenRun(stats::recordMessageSent));
     }
 
     private void submitProducersToExecutor(
