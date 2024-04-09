@@ -219,3 +219,93 @@ cd driver-kafka/deploy/confluent-deployment
 terraform destroy
 ```
 
+# Troubleshooting
+
+## Could not find matching plugin: ''sudo''
+
+```
+task path: /Users/myuser/git/omb-internal-10x/driver-kafka/deploy/confluent-deployment/deploy.yaml:15
+fatal: [18.117.187.18]: FAILED! => {
+    "msg": "Invalid become method specified, could not find matching plugin: ''sudo''. Use `ansible-doc -t become -l` to list available plugins."
+}
+```
+
+This error means that ansible can't find the local (ie on the machine running the ansible script) sudo plugin.
+
+To resulve this, update the `driver-kafka/deploy/confluent-deployment/ansible.cfg` as described in the comments in that file, taking into account the version of the sudo plugin that you have available in your installation.
+
+You can find the plugin version using `ansible-doc -t become -l`.  If the output contains `sudo` then the version is the older style and the config file should look like:
+
+```
+[defaults]
+host_key_checking=false
+private_key_file=~/.ssh/omb
+timeout=60
+inventory = hosts.ini
+
+[privilege_escalation]
+become=true
+become_method='sudo'
+become_user='root'
+
+```
+
+If the output only contains `ansible.builtin.sudo` and not `sudo`, then the version is the newer style, and the configuration needs updating to be:
+
+```
+[defaults]
+host_key_checking=false
+private_key_file=~/.ssh/omb
+timeout=60
+inventory = hosts.ini
+
+[privilege_escalation]
+become=true
+become_exe=sudo
+become_user='root'
+
+[sudo_become_plugin]
+executable = sudo
+user = root
+```
+
+If you still see `Invalid become method specified, could not find matching plugin: ''sudo''.` it may be because your python and ansible environments are misconfigured.  The following steps, to run using `virtualenv` can be followed to set up a consistent environment:
+
+```
+pyenv install 3.9.15
+virtualenv venv --python=/Users/myuser/.pyenv/versions/3.9.15/bin/python
+source venv/bin/activate
+python --version
+pip install ansible
+```
+
+## Could not find or access...
+
+The step `TASK [Copy benchmark code]` throws the following error when running `ansible-playbook deploy.yaml --extra-vars "@ansible-config.yaml"`
+
+```
+fatal: [52.15.93.212]: FAILED! => {"changed": false, "msg": "Could not find or access '../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz'\nSearched in:\n\t/Users/myuser/Coding/omb-internal-10x/driver-kafka/deploy/confluent-deployment/files/../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz\n\t/Users/myuser/Coding/omb-internal-10x/driver-kafka/deploy/confluent-deployment/../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz\n\t/Users/myuser/Coding/omb-internal-10x/driver-kafka/deploy/confluent-deployment/files/../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz\n\t/Users/myuser/Coding/omb-internal-10x/driver-kafka/deploy/confluent-deployment/../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz on the Ansible Controller.\nIf you are using a module and expect the file to exist on the remote, see the remote_src option"}
+An exception occurred during task execution. To see the full traceback, use -vvv. The error was: If you are using a module and expect the file to exist on the remote, see the remote_src option
+
+```
+
+Run
+
+```
+mvn spotless:apply (may not be needed)
+mvn clean install -Dlicense.skip=true
+```
+
+and then rerun `ansible-playbook deploy.yaml --extra-vars "@ansible-config.yaml"`
+
+## Error unpacking rpm package
+
+```
+"msg": "Error unpacking rpm package 2000:jdk-17-17.0.10-11.x86_64\n",
+"rc": 1,
+"results": [
+    "Loaded plugins: priorities, update-motd, versionlock\nExamining /home/ec2-user/.ansible/tmp/ansible-tmp-1705925072.712148-70493-89997865592259/jdk-17_linux-x64_binxocyZ4.rpm: 2000:jdk-17-17.0.10-11.x86_64\nMarking /home/ec2-user/.ansible/tmp/ansible-tmp-1705925072.712148-70493-89997865592259/jdk-17_linux-x64_binxocyZ4.rpm to be installed\nResolving Dependencies\n--> Running transaction check\n---> Package jdk-17.x86_64 2000:17.0.10-11 will be installed\n--> Finished Dependency Resolution\n\nDependencies Resolved\n\n================================================================================\n Package   Arch      Version               Repository                      Size\n================================================================================\nInstalling:\n jdk-17    x86_64    2000:17.0.10-11       /jdk-17_linux-x64_binxocyZ4    303 M\n\nTransaction Summary\n================================================================================\nInstall  1 Package\n\nTotal size: 303 M\nInstalled size: 303 M\nDownloading packages:\nRunning transaction check\nRunning transaction test\nTransaction test succeeded\nRunning transaction\n  Installing : 2000:jdk-17-17.0.10-11.x86_64                                1/1 \nerror: unpacking of archive failed on file /usr/lib/jvm/jdk-17-oracle-x64/jmods/java.base.jmod;65ae59d5: cpio: read\n  Verifying  : 2000:jdk-17-17.0.10-11.x86_64                                1/1 \n\nFailed:\n  jdk-17.x86_64 2000:17.0.10-11                                                 \n\nComplete!\n"
+]
+```
+
+This is a transient error - try re-running `ansible-playbook deploy.yaml --extra-vars "@ansible-config.yaml"`
