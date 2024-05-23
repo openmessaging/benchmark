@@ -8,6 +8,7 @@ instance_types = {
 #   "kafka"     = "i3en.6xlarge"
 #   "zookeeper" = "i3en.2xlarge"
 #   "client"    = "m5n.8xlarge"
+  "gateway"   = "m5.xlarge"
   "kafka"     = "i3en.2xlarge"
   "zookeeper" = "i3en.2xlarge"
   "client"    = "m5n.8xlarge"
@@ -15,6 +16,7 @@ instance_types = {
 
 num_instances = {
   "client"    = 4
+  "gateway"   = 3
   "kafka"     = 3
   "zookeeper" = 3
 }
