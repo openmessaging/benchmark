@@ -145,6 +145,21 @@ resource "aws_instance" "kafka" {
   }
 }
 
+resource "aws_instance" "gateway" {
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["gateway"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["gateway"]}"
+
+  tags = {
+    Name      = "gateway_${count.index}"
+    Benchmark = "Gateway"
+  }
+}
+
+
 resource "aws_instance" "client" {
   ami                    = "${var.ami}"
   instance_type          = "${var.instance_types["client"]}"
@@ -181,6 +196,9 @@ ${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip
 ${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
 ${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
 ${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+${aws_instance.gateway.0.public_ip} private_ip=${aws_instance.gateway.0.private_ip}
+${aws_instance.gateway.1.public_ip} private_ip=${aws_instance.gateway.1.private_ip}
+${aws_instance.gateway.2.public_ip} private_ip=${aws_instance.gateway.2.private_ip}
 
 [zookeeper]
 ${aws_instance.zookeeper.0.public_ip} private_ip=${aws_instance.zookeeper.0.private_ip}
@@ -191,6 +209,11 @@ ${aws_instance.zookeeper.2.public_ip} private_ip=${aws_instance.zookeeper.2.priv
 ${aws_instance.kafka.0.public_ip} private_ip=${aws_instance.kafka.0.private_ip}
 ${aws_instance.kafka.1.public_ip} private_ip=${aws_instance.kafka.1.private_ip}
 ${aws_instance.kafka.2.public_ip} private_ip=${aws_instance.kafka.2.private_ip}
+
+[gateway]
+${aws_instance.gateway.0.public_ip} private_ip=${aws_instance.gateway.0.private_ip}
+${aws_instance.gateway.1.public_ip} private_ip=${aws_instance.gateway.1.private_ip}
+${aws_instance.gateway.2.public_ip} private_ip=${aws_instance.gateway.2.private_ip}
 
 [client]
 ${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip}

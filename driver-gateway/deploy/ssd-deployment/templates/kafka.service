@@ -1,0 +1,16 @@
+[Unit]
+Description=Kafka
+After=network.target
+
+[Service]
+ExecStart=/opt/kafka/bin/kafka-server-start.sh config/server.properties
+Environment='KAFKA_HEAP_OPTS=-Xms16g -Xmx16g -XX:MetaspaceSize=96m'
+Environment='KAFKA_JVM_PERFORMANCE_OPTS=-server -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ParallelRefProcEnabled -XX:+AggressiveOpts -XX:+DoEscapeAnalysis -XX:ParallelGCThreads=12 -XX:ConcGCThreads=12 -XX:+DisableExplicitGC -XX:-ResizePLAB -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -Djava.awt.headless=true'
+WorkingDirectory=/opt/kafka
+RestartSec=1s
+Restart=on-failure
+Type=simple
+LimitNOFILE=300000
+
+[Install]
+WantedBy=multi-user.target

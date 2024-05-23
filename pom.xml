@@ -46,6 +46,7 @@
         <module>driver-pravega</module>
         <module>driver-pulsar</module>
         <module>driver-kafka</module>
+        <module>driver-gateway</module>
         <module>driver-rabbitmq</module>
         <module>driver-artemis</module>
         <module>driver-bookkeeper</module>
@@ -257,6 +258,7 @@
                         <exclude>NOTICE</exclude>
                         <exclude>payload/**</exclude>
                         <exclude>**/*.pyc</exclude>
+                        <exclude>**/*.sh</exclude>
                         <exclude>**/.pydevproject</exclude>
                         <exclude>.github/**</exclude>
                     </excludes>

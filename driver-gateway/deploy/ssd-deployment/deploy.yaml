@@ -103,10 +103,11 @@
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         bootstrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
+        gatewayServers: "{{ groups['gateway'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:6969') | join(',') }}"
         kafkaVersion: "3.6.1"
       tags: [client-code]
     - debug:
-        msg: "zookeeper servers: {{ zookeeperServers }}\nbootstrap servers: {{ bootstrapServers }}"
+        msg: "zookeeper servers: {{ zookeeperServers }}\nbootstrap servers: {{ bootstrapServers }}\ngateway servers: {{ gatewayServers }}"
     - name: Download Kafka package
       unarchive:
         src: "http://archive.apache.org/dist/kafka/{{ kafkaVersion }}/kafka_2.13-{{ kafkaVersion }}.tgz"
@@ -161,6 +162,41 @@
         name: "kafka"
       tags: [restart-kafka]
 
+- name: Setup Gateway
+  hosts: gateway
+  connection: ssh
+  become: true
+  tasks:
+    - name: "Check if docker-ce file exists"
+      stat:
+        path: /etc/yum.repos.d/docker-ce.repo
+      register: stat_result
+    - block:
+        - name: "Make sure yum-utils pkg is installed"
+          dnf:
+            name: yum-utils
+            state: latest
+        - name: "Install the Docker Community Edition Repository"
+          command: >
+            yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+          register: ycm
+        - name: "Enable and run Docer CE"
+          service:
+            name: docker
+            state: started
+            enabled: yes
+      when: not stat_result.stat.exists
+    - name: Gateway container
+      community.docker.docker_container:
+        name: gateway
+        state: present
+        image: conduktor/conduktor-gateway:3.0.4
+        restart_policy: on-failure
+        env:
+          KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}'"
+          GATEWAY_ADVERTISED_HOST: "{{ privateIp }}"
+
+
 - name: Chrony setup
   hosts: client
   connection: ssh
@@ -200,7 +236,7 @@
       lineinfile:
          dest: '{{ item }}'
          regexp: '^  bootstrap.servers='
-         line: '  bootstrap.servers={{ bootstrapServers }}'
+         line: '  bootstrap.servers={{ gatewayServers }}'
       with_items: '{{ drivers_list.stdout_lines }}'
       tags: [client-code]
 
@@ -212,14 +248,14 @@
       lineinfile:
          dest: '{{ item }}'
          regexp: '^  bootstrap.servers='
-         line: '  bootstrap.servers={{ bootstrapServers }}'
+         line: '  bootstrap.servers={{ gatewayServers }}'
       with_items: '{{ jms_drivers_list.stdout_lines }}'
 
     - name: Configure JMS Connection Factory
       ansible.builtin.replace:
          dest: '{{ item }}'
          regexp: 'localhost\:9092'
-         replace: '{{ bootstrapServers }}'
+         replace: '{{ gatewayServers }}'
       with_items: '{{ jms_drivers_list.stdout_lines }}'
 
     - name: Configure memory
