@@ -196,6 +196,9 @@ ${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip
 ${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
 ${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
 ${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+${aws_instance.gateway.0.public_ip} private_ip=${aws_instance.gateway.0.private_ip}
+${aws_instance.gateway.1.public_ip} private_ip=${aws_instance.gateway.1.private_ip}
+${aws_instance.gateway.2.public_ip} private_ip=${aws_instance.gateway.2.private_ip}
 
 [zookeeper]
 ${aws_instance.zookeeper.0.public_ip} private_ip=${aws_instance.zookeeper.0.private_ip}
