@@ -1,5 +1,6 @@
 provider "aws" {
   region  = "${var.region}"
+  profile = "${var.profile}"
   version = "3.50"
 }
 
@@ -27,6 +28,8 @@ variable "key_name" {
 }
 
 variable "region" {}
+
+variable "profile" {}
 
 variable "ami" {}
 
@@ -78,6 +81,13 @@ resource "aws_security_group" "benchmark_security_group" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = -1
+    to_port = -1
+    protocol = "icmp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -155,4 +165,37 @@ output "kafka_ssh_host" {
 
 output "client_ssh_host" {
   value = "${aws_instance.client.0.public_ip}"
+}
+
+resource "local_file" "inventory" {
+  filename = "./inventory.ini"
+  content = <<EOF
+[all]
+${aws_instance.zookeeper.0.public_ip} private_ip=${aws_instance.zookeeper.0.private_ip}
+${aws_instance.zookeeper.1.public_ip} private_ip=${aws_instance.zookeeper.1.private_ip}
+${aws_instance.zookeeper.2.public_ip} private_ip=${aws_instance.zookeeper.2.private_ip}
+${aws_instance.kafka.0.public_ip} private_ip=${aws_instance.kafka.0.private_ip}
+${aws_instance.kafka.1.public_ip} private_ip=${aws_instance.kafka.1.private_ip}
+${aws_instance.kafka.2.public_ip} private_ip=${aws_instance.kafka.2.private_ip}
+${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip}
+${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
+${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
+${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+
+[zookeeper]
+${aws_instance.zookeeper.0.public_ip} private_ip=${aws_instance.zookeeper.0.private_ip}
+${aws_instance.zookeeper.1.public_ip} private_ip=${aws_instance.zookeeper.1.private_ip}
+${aws_instance.zookeeper.2.public_ip} private_ip=${aws_instance.zookeeper.2.private_ip}
+
+[kafka]
+${aws_instance.kafka.0.public_ip} private_ip=${aws_instance.kafka.0.private_ip}
+${aws_instance.kafka.1.public_ip} private_ip=${aws_instance.kafka.1.private_ip}
+${aws_instance.kafka.2.public_ip} private_ip=${aws_instance.kafka.2.private_ip}
+
+[client]
+${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip}
+${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
+${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
+${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+  EOF
 }
