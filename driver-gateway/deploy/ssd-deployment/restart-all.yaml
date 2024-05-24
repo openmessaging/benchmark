@@ -1,0 +1,101 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+- name: Stop clients
+  hosts: client
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop service benchmark-worker, if running
+      ansible.builtin.systemd_service:
+        name: benchmark-worker
+        state: stopped
+
+- name: Stop gateway
+  hosts: gateway
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop service gateway, if running
+      community.docker.docker_container:
+        name: gateway
+        state: stopped
+
+- name: Stop kafka
+  hosts: kafka
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop service kafka, if running
+      ansible.builtin.systemd_service:
+        name: kafka
+        state: stopped
+
+- name: Stop zookeeper
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop service zookeeper, if running
+      ansible.builtin.systemd_service:
+        name: zookeeper
+        state: stopped
+
+- name: Start zookeeper
+  hosts: zookeeper
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start service zookeeper
+      ansible.builtin.systemd_service:
+        name: zookeeper
+        state: started
+
+- name: Start kafka
+  hosts: kafka
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start service kafka
+      ansible.builtin.systemd_service:
+        name: kafka
+        state: started
+
+- name: Start gateway
+  hosts: gateway
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start service gateway
+      community.docker.docker_container:
+        name: gateway
+        state: started
+
+- name: Start clients
+  hosts: client
+  connection: ssh
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start service benchmark-worker
+      ansible.builtin.systemd_service:
+        name: benchmark-worker
+        state: started

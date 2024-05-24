@@ -127,7 +127,7 @@ resource "aws_instance" "zookeeper" {
 
   tags = {
     Name      = "zk_${count.index}"
-    Benchmark = "Kafka"
+    Benchmark = "Gateway"
   }
 }
 
@@ -141,7 +141,7 @@ resource "aws_instance" "kafka" {
 
   tags = {
     Name      = "kafka_${count.index}"
-    Benchmark = "Kafka"
+    Benchmark = "Gateway"
   }
 }
 

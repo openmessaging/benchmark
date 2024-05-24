@@ -94,10 +94,11 @@
       yum: pkg={{ item }} state=latest
       with_items:
           - wget
-          - java-11-openjdk
+          - java-17-openjdk
           - sysstat
           - vim
           - chrony
+          - nmap
     - file: path=/opt/kafka state=absent
     - file: path=/opt/kafka state=directory
     - set_fact:
@@ -180,22 +181,38 @@
           command: >
             yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
           register: ycm
-        - name: "Enable and run Docer CE"
+        - name: "Install Docker"
+          dnf:
+            name: docker-ce
+            state: latest
+        - name: "Enable and run Docker CE"
           service:
             name: docker
             state: started
             enabled: yes
       when: not stat_result.stat.exists
-    - name: Gateway container
+    - name: "Gateway container"
       community.docker.docker_container:
         name: gateway
-        state: present
+        state: started
         image: conduktor/conduktor-gateway:3.0.4
         restart_policy: on-failure
         env:
-          KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}'"
+          KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}"
           GATEWAY_ADVERTISED_HOST: "{{ privateIp }}"
-
+          GATEWAY_HTTP_PORT: "8888"
+          GATEWAY_PORT_START: "6969"
+          GATEWAY_PORT_COUNT: "3"
+        published_ports:
+          - "8888:8888"
+          - "6969:6969"
+          - "6970:6970"
+          - "6971:6971"
+        healthcheck:
+          test: "curl --fail http://localhost:8888/health"
+          interval: 30s
+          retries: 3
+          timeout: 10s
 
 - name: Chrony setup
   hosts: client
@@ -227,18 +244,31 @@
       tags: [client-code]
     - shell: tuned-adm profile latency-performance
 
-    - name: Get list of driver config files
-      raw: ls -1 /opt/benchmark/driver-kafka/*.yaml
+    - name: Get list of kafka driver config files
+      raw: ls -1 /opt/benchmark/driver-gateway/kafka-*.yaml
       register: drivers_list
       tags: [client-code]
 
-    - name: Configure Bootstrap Servers
+    - name: Configure Kafka Bootstrap Servers
       lineinfile:
-         dest: '{{ item }}'
-         regexp: '^  bootstrap.servers='
-         line: '  bootstrap.servers={{ gatewayServers }}'
+        dest: '{{ item }}'
+        regexp: '^  bootstrap.servers='
+        line: '  bootstrap.servers={{ bootstrapServers }}'
       with_items: '{{ drivers_list.stdout_lines }}'
       tags: [client-code]
+
+    - name: Get list of gateway driver config files
+      raw: ls -1 /opt/benchmark/driver-gateway/gateway-*.yaml
+      register: gateway_drivers_list
+      tags: [client-code]
+
+    - name: Configure Gateway Bootstrap Servers
+      lineinfile:
+        dest: '{{ item }}'
+        regexp: '^  bootstrap.servers='
+        line: '  bootstrap.servers={{ gatewayServers }}'
+      with_items: '{{ gateway_drivers_list.stdout_lines }}'
+      tags: [ client-code ]
 
     - name: Get list of jms driver config files
       raw: ls -1 /opt/benchmark/driver-jms/kafka*.yaml
