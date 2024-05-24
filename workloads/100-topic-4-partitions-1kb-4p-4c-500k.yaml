@@ -12,10 +12,10 @@
 # limitations under the License.
 #
 
-name: 500k rate 4 producers and 4 consumers on 100 topic with 16 partitions
+name: 500k rate 4 producers and 4 consumers on 100 topic with 4 partitions
 
 topics: 100
-partitionsPerTopic: 16
+partitionsPerTopic: 4
 
 messageSize: 1024
 useRandomizedPayloads: true
