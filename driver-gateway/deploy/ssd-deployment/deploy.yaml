@@ -204,7 +204,7 @@
       community.docker.docker_container:
         name: gateway
         state: started
-        image: conduktor/conduktor-gateway:3.0.4
+        image: "{{ lookup('ansible.builtin.env', 'GATEWAY_IMAGE', default='conduktor/conduktor-gateway:3.0.4') }}"
         restart_policy: on-failure
         env:
           KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}"
