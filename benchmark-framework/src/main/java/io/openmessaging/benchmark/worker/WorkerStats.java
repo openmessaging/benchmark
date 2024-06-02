@@ -36,6 +36,12 @@ public class WorkerStats {
             new Recorder(TimeUnit.HOURS.toMicros(12), 5);
     private final OpStatsLogger endToEndLatencyStats;
 
+    private final Recorder consumeLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+    private final Recorder consumeCumulativeLatencyRecorder =
+            new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+    private final OpStatsLogger consumeLatencyStats;
+
+
     private final LongAdder messagesSent = new LongAdder();
     private final LongAdder messageSendErrors = new LongAdder();
     private final LongAdder bytesSent = new LongAdder();
@@ -75,6 +81,7 @@ public class WorkerStats {
         this.messagesReceivedCounter = consumerStatsLogger.getCounter("messages_recv");
         this.bytesReceivedCounter = consumerStatsLogger.getCounter("bytes_recv");
         this.endToEndLatencyStats = consumerStatsLogger.getOpStatsLogger("e2e_latency");
+        this.consumeLatencyStats = consumerStatsLogger.getOpStatsLogger("consume_latency");
     }
 
     public StatsLogger getStatsLogger() {
@@ -99,6 +106,12 @@ public class WorkerStats {
         }
     }
 
+    public void recordBatchReceived(int size, long latency) {
+        consumeCumulativeLatencyRecorder.recordValue(latency);
+        consumeLatencyRecorder.recordValue(latency);
+        consumeLatencyStats.registerSuccessfulEvent(latency, TimeUnit.MICROSECONDS);
+    }
+
     public PeriodStats toPeriodStats() {
         PeriodStats stats = new PeriodStats();
 
@@ -116,6 +129,7 @@ public class WorkerStats {
         stats.publishLatency = publishLatencyRecorder.getIntervalHistogram();
         stats.publishDelayLatency = publishDelayLatencyRecorder.getIntervalHistogram();
         stats.endToEndLatency = endToEndLatencyRecorder.getIntervalHistogram();
+        stats.consumeLatency = consumeLatencyRecorder.getIntervalHistogram();
         return stats;
     }
 
@@ -124,6 +138,7 @@ public class WorkerStats {
         latencies.publishLatency = cumulativePublishLatencyRecorder.getIntervalHistogram();
         latencies.publishDelayLatency = cumulativePublishDelayLatencyRecorder.getIntervalHistogram();
         latencies.endToEndLatency = endToEndCumulativeLatencyRecorder.getIntervalHistogram();
+        latencies.consumeLatency = consumeCumulativeLatencyRecorder.getIntervalHistogram();
         return latencies;
     }
 
@@ -142,6 +157,8 @@ public class WorkerStats {
         cumulativePublishDelayLatencyRecorder.reset();
         endToEndLatencyRecorder.reset();
         endToEndCumulativeLatencyRecorder.reset();
+        consumeLatencyRecorder.reset();
+        consumeCumulativeLatencyRecorder.reset();
     }
 
     public void reset() {

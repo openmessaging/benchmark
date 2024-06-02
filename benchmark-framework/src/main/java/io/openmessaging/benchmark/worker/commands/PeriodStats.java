@@ -34,6 +34,8 @@ public class PeriodStats {
     public Histogram publishDelayLatency = new Histogram(SECONDS.toMicros(60), 5);
     public Histogram endToEndLatency = new Histogram(HOURS.toMicros(12), 5);
 
+    public Histogram consumeLatency = new Histogram(HOURS.toMicros(12), 5);
+
     public PeriodStats plus(PeriodStats toAdd) {
         PeriodStats result = new PeriodStats();
 
@@ -48,6 +50,7 @@ public class PeriodStats {
         result.publishLatency.add(this.publishLatency);
         result.publishDelayLatency.add(this.publishDelayLatency);
         result.endToEndLatency.add(this.endToEndLatency);
+        result.consumeLatency.add(this.consumeLatency);
 
         result.messagesSent += toAdd.messagesSent;
         result.messageSendErrors += toAdd.messageSendErrors;
@@ -60,6 +63,7 @@ public class PeriodStats {
         result.publishLatency.add(toAdd.publishLatency);
         result.publishDelayLatency.add(toAdd.publishDelayLatency);
         result.endToEndLatency.add(toAdd.endToEndLatency);
+        result.consumeLatency.add(toAdd.consumeLatency);
 
         return result;
     }

@@ -66,6 +66,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                         () -> {
                             while (!closing) {
                                 try {
+                                    long now = System.currentTimeMillis();
                                     ConsumerRecords<String, byte[]> records =
                                             consumer.poll(Duration.ofMillis(pollTimeoutMs));
 
@@ -82,6 +83,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
                                         // Async commit all messages polled so far
                                         consumer.commitAsync(offsetMap, null);
                                     }
+                                    callback.batchReceived(records.count(), System.currentTimeMillis() - now);
                                 } catch (Exception e) {
                                     log.error("exception occur while consuming message", e);
                                 }

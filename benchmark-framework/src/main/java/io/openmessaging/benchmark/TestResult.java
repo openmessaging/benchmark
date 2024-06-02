@@ -96,6 +96,29 @@ public class TestResult {
     public double aggregatedEndToEndLatency9999pct;
     public double aggregatedEndToEndLatencyMax;
 
+    // Consume latencies
+    // Latencies are expressed in milliseconds (without decimals)
+
+    public List<Double> consumeLatencyAvg = new ArrayList<>();
+    public List<Double> consumeLatency50pct = new ArrayList<>();
+    public List<Double> consumeLatency75pct = new ArrayList<>();
+    public List<Double> consumeLatency95pct = new ArrayList<>();
+    public List<Double> consumeLatency99pct = new ArrayList<>();
+    public List<Double> consumeLatency999pct = new ArrayList<>();
+    public List<Double> consumeLatency9999pct = new ArrayList<>();
+    public List<Double> consumeLatencyMax = new ArrayList<>();
+
+    public Map<Double, Double> aggregatedConsumeLatencyQuantiles = new TreeMap<>();
+
+    public double aggregatedConsumeLatencyAvg;
+    public double aggregatedConsumeLatency50pct;
+    public double aggregatedConsumeLatency75pct;
+    public double aggregatedConsumeLatency95pct;
+    public double aggregatedConsumeLatency99pct;
+    public double aggregatedConsumeLatency999pct;
+    public double aggregatedConsumeLatency9999pct;
+    public double aggregatedConsumeLatencyMax;
+
     public int getTopics() {
         return topics;
     }

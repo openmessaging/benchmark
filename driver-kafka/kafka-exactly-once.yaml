@@ -17,10 +17,10 @@ name: Kafka-exactly-once
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
-replicationFactor: 3
+replicationFactor: 1
 
 topicConfig: |
-  min.insync.replicas=2
+  min.insync.replicas=1
 
 commonConfig: |
   bootstrap.servers=localhost:9092

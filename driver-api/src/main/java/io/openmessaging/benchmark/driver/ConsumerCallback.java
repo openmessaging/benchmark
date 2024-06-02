@@ -33,4 +33,6 @@ public interface ConsumerCallback {
      * @param publishTimestamp the publish timestamp in milliseconds
      */
     void messageReceived(ByteBuffer payload, long publishTimestamp);
+
+    void batchReceived(int size, long latency);
 }
