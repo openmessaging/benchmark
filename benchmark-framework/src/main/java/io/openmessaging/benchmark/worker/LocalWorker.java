@@ -248,12 +248,12 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     @Override
-    public void batchReceived(int size, long latency) {
-        internalBatchReceived(size, latency);
+    public void batchReceived(int size, long latencyMillis) {
+        internalBatchReceived(size, latencyMillis);
     }
 
-    private void internalBatchReceived(int size, long latency) {
-        stats.recordBatchReceived(size, latency);
+    private void internalBatchReceived(int size, long latencyMillis) {
+        stats.recordBatchReceived(size, TimeUnit.MILLISECONDS.toMicros(latencyMillis));
     }
 
     @Override

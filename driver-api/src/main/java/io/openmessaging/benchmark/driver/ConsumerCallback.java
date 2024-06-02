@@ -34,5 +34,5 @@ public interface ConsumerCallback {
      */
     void messageReceived(ByteBuffer payload, long publishTimestamp);
 
-    void batchReceived(int size, long latency);
+    void batchReceived(int size, long latencyMillis);
 }
