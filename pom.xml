@@ -352,7 +352,13 @@
                 <version>${maven.surefire.plugin.version}</version>
                 <configuration>
                     <!-- Required by system-lambda test dependency -->
-                    <argLine>--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                    <!-- Required by Netty for optimized direct byte buffer access -->
+                    <!-- Required by Pulsar client for optimized direct byte buffer access and optimized checksum calculation -->
+                    <argLine>--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED
+                        -Dio.netty.tryReflectionSetAccessible=true
+                        --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+                        -Dorg.apache.pulsar.shade.io.netty.tryReflectionSetAccessible=true
+                        --add-opens java.base/java.util.zip=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
             <plugin>
