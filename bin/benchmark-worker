@@ -26,5 +26,12 @@ fi
 
 JVM_MEM="${HEAP_OPTS} -XX:+UseG1GC"
 JVM_GC_LOG=" -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime  -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=64m  -Xloggc:/dev/shm/benchmark-client-gc_%p.log"
-
-exec java -server -cp $CLASSPATH $JVM_MEM io.openmessaging.benchmark.worker.BenchmarkWorker $*
+# Required by Netty for optimized direct byte buffer access
+JVM_OPTS="$JVM_OPTS -Dio.netty.tryReflectionSetAccessible=true"
+JVM_OPTS="$JVM_OPTS --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/jdk.internal.misc=ALL-UNNAMED"
+# Set io.netty.tryReflectionSetAccessible in Pulsar's shaded client
+JVM_OPTS="$JVM_OPTS -Dorg.apache.pulsar.shade.io.netty.tryReflectionSetAccessible=true"
+# Required by Pulsar client optimized checksum calculation on other than Linux x86_64 platforms
+# reflection access to java.util.zip.CRC32C
+JVM_OPTS="$JVM_OPTS --add-opens java.base/java.util.zip=ALL-UNNAMED"
+exec java -server -cp $CLASSPATH $JVM_MEM $JVM_OPTS io.openmessaging.benchmark.worker.BenchmarkWorker "$@"
