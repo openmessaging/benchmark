@@ -71,7 +71,11 @@ public class WorkloadGenerator implements AutoCloseable {
         Timer timer = new Timer();
         List<String> topics =
                 worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
-        log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
+        log.info(
+                "Created {} topics in {} ms, topics: [{}]",
+                topics.size(),
+                timer.elapsedMillis(),
+                String.join(",", topics));
 
         createConsumers(topics);
         createProducers(topics);
