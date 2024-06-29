@@ -3,13 +3,16 @@
 For instructions on running the OpenMessaging benchmarks for Pulsar, see the [official documentation](http://openmessaging.cloud/docs/benchmarks/pulsar/).
 
 ## Supplement to the official documentation
-
-Before you run `ansible-playbook` with `terraform-inventory`, you must set the environment variable `TF_STATE`. i.e. the completed command should be:
+For Ansible to have access to the inventory defined in the Terraform configuration, the Terraform Collection for Ansible is required.
+Install it with the following command ([source](https://mdawar.dev/blog/ansible-terraform-inventory)):
+```bash
+ansible-galaxy collection install cloud.terraform
+```
 
 ```bash
-TF_STATE=. ansible-playbook \
+ansible-playbook \
   --user ec2-user \
-  --inventory `which terraform-inventory` \
+  --inventory terraform.yaml \
   deploy.yaml
 ```
 
@@ -20,17 +23,9 @@ The Ansible deployment script supports flexible configuration with a variable fi
 ```bash
 TF_STATE=. ansible-playbook \
   --user ec2-user \
-  --inventory `which terraform-inventory` \
+  --inventory terraform.yaml \
   -e @extra_vars.yaml \
   deploy.yaml
-```
-
-For example, if you changed the AWS instance type, the two SSD device paths might not be `/dev/nvme1n1` and `/dev/nvme2n1`. In this case, you can configure them like
-
-```yaml
-disk_dev:
-  - /path/to/disk1
-  - /path/to/disk2
 ```
 
 See more explanations in [the example variable file](./deploy/ssd/extra_vars.yaml).
@@ -56,9 +51,9 @@ It will download KoP and MoP from the given URLs. Then, the configuration templa
 You can change the configuration files and then restart the cluster by executing the following command.
 
 ```bash
-TF_STATE=. ansible-playbook \
+ansible-playbook \
   --user ec2-user \
-  --inventory `which terraform-inventory` \
+  --inventory terraform.yaml \
   -e @extra_vars.yaml \
   restart-brokers.yaml
 ```

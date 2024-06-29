@@ -2,11 +2,15 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 3.0"
+      version = "~> 5.56"
     }
     random = {
       source  = "hashicorp/random"
       version = "3.1"
+    }
+    ansible = {
+      source = "ansible/ansible"
+      version = "1.3.0"
     }
   }
 }
@@ -33,6 +37,7 @@ variable "key_name" {
 variable "region" {}
 variable "az" {}
 variable "ami" {}
+variable "spot" {}
 variable "instance_types" {}
 variable "num_instances" {}
 
@@ -129,7 +134,16 @@ resource "aws_instance" "zookeeper" {
   vpc_security_group_ids = [
   aws_security_group.benchmark_security_group.id]
   count = var.num_instances["zookeeper"]
-
+  dynamic "instance_market_options" {
+     for_each = var.spot ? [1] : []
+     content {
+         market_type = "spot"
+         spot_options {
+           max_price = 0.5
+         }
+       }
+   }
+  
   tags = {
     Name = "zk-${count.index}"
   }
@@ -143,6 +157,15 @@ resource "aws_instance" "pulsar" {
   vpc_security_group_ids = [
   aws_security_group.benchmark_security_group.id]
   count = var.num_instances["pulsar"]
+  dynamic "instance_market_options" {
+     for_each = var.spot ? [1] : []
+     content {
+         market_type = "spot"
+         spot_options {
+           max_price = 0.7
+         }
+     }
+  }
 
   tags = {
     Name = "pulsar-${count.index}"
@@ -157,6 +180,15 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = [
   aws_security_group.benchmark_security_group.id]
   count = var.num_instances["client"]
+  dynamic "instance_market_options" {
+     for_each = var.spot ? [1] : []
+     content {
+         market_type = "spot"
+         spot_options {
+           max_price = 0.9
+         }
+     }
+  }
 
   tags = {
     Name = "pulsar-client-${count.index}"
@@ -171,9 +203,72 @@ resource "aws_instance" "prometheus" {
   vpc_security_group_ids = [
   aws_security_group.benchmark_security_group.id]
   count = var.num_instances["prometheus"]
+  dynamic "instance_market_options" {
+     for_each = var.spot ? [1] : []
+     content {
+         market_type = "spot"
+         spot_options {
+           max_price = 0.09
+         }
+     }
+  }
 
   tags = {
     Name = "prometheus-${count.index}"
+  }
+}
+
+# Inventory host resource.
+resource "ansible_host" "zookeeper" {
+  name = "zk-${count.index}"
+  groups = ["zookeeper"] # Groups this host is part of.
+  count = var.num_instances["zookeeper"]
+
+  variables = {
+    # Connection vars.
+    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_host = aws_instance.zookeeper[count.index].public_ip
+
+    # Custom vars that we might use in roles/tasks.
+  }
+}
+resource "ansible_host" "pulsar" {
+  name = "pulsar-${count.index}"
+  groups = ["pulsar"] # Groups this host is part of.
+  count = var.num_instances["pulsar"]
+
+  variables = {
+    # Connection vars.
+    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_host = aws_instance.pulsar[count.index].public_ip
+
+    # Custom vars that we might use in roles/tasks.
+  }
+}
+resource "ansible_host" "client" {
+  name = "client-${count.index}"
+  groups = ["client"] # Groups this host is part of.
+  count = var.num_instances["client"]
+
+  variables = {
+    # Connection vars.
+    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_host = aws_instance.client[count.index].public_ip
+
+    # Custom vars that we might use in roles/tasks.
+  }
+}
+resource "ansible_host" "prometheus" {
+  name = "prometheus-${count.index}"
+  groups = ["prometheus"] # Groups this host is part of.
+  count = var.num_instances["prometheus"]
+
+  variables = {
+    # Connection vars.
+    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_host = aws_instance.prometheus[count.index].public_ip
+
+    # Custom vars that we might use in roles/tasks.
   }
 }
 
