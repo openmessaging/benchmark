@@ -26,10 +26,9 @@
         pulsar_version: "{{ pulsar_version | default('2.11.0') }}"
         node_exporter_version: "{{ node_exporter_version | default('1.2.2') }}"
         prometheus_version: "{{ prometheus_version | default('2.31.1') }}"
-        disk_dev: "{{ disk_dev | default(['/dev/nvme1n1', '/dev/nvme2n1']) }}"
     - set_fact:
         pulsar_binary:
-          src: "https://downloads.apache.org/pulsar/pulsar-{{ pulsar_version }}/apache-pulsar-{{ pulsar_version }}-bin.tar.gz"
+          src: "https://archive.apache.org/dist/pulsar/pulsar-{{ pulsar_version }}/apache-pulsar-{{ pulsar_version }}-bin.tar.gz"
           remote: yes
       when: pulsar_binary is not defined
     - set_fact:
@@ -48,13 +47,27 @@
   connection: ssh
   become: true
   tasks:
+    - name: Initialize empty list for devices
+      set_fact:
+        storage_devices: []
+      no_log: true
+
+    - name: Get NVMe devices
+      set_fact:
+        storage_devices: "{{ storage_devices + ['/dev/' ~ item.key ] }}"
+      with_dict: "{{ ansible_devices }}"
+      when: "item.value.host.startswith('Non-Volatile memory controller:') and not item.value.partitions"
+
+    - name: Show device names
+      debug: var=storage_devices
+
     - name: Format disks
       filesystem:
         fstype: xfs
         dev: '{{ item }}'
       with_items:
-        - "{{ disk_dev[0] }}"
-        - "{{ disk_dev[1] }}"
+        - "{{ storage_devices[0] }}"
+        - "{{ storage_devices[1] }}"
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -63,21 +76,35 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/zookeeper/logs", src: "{{ disk_dev[0] }}" }
-        - { path: "/mnt/zookeeper/data", src: "{{ disk_dev[1] }}" }
+        - { path: "/mnt/zookeeper/logs", src: "{{ storage_devices[0] }}" }
+        - { path: "/mnt/zookeeper/data", src: "{{ storage_devices[1] }}" }
 
 - name: Format and mount disks for Pulsar/BookKeeper hosts
   hosts: pulsar
   connection: ssh
   become: true
   tasks:
+    - name: Initialize empty list for devices
+      set_fact:
+        storage_devices: []
+      no_log: true
+
+    - name: Get NVMe devices
+      set_fact:
+        storage_devices: "{{ storage_devices + ['/dev/' ~ item.key ] }}"
+      with_dict: "{{ ansible_devices }}"
+      when: "item.value.host.startswith('Non-Volatile memory controller:') and not item.value.partitions"
+
+    - name: Show device names
+      debug: var=storage_devices
+
     - name: Format disks
       filesystem:
          fstype: xfs
          dev: '{{ item }}'
       with_items:
-        - "{{ disk_dev[0] }}"
-        - "{{ disk_dev[1] }}"
+        - "{{ storage_devices[0] }}"
+        - "{{ storage_devices[1] }}"
     - name: Mount disks
       mount:
         path: "{{ item.path }}"
@@ -86,8 +113,8 @@
         opts: defaults,noatime,nodiscard
         state: mounted
       with_items:
-        - { path: "/mnt/journal", src: "{{ disk_dev[0] }}" }
-        - { path: "/mnt/storage", src: "{{ disk_dev[1] }}" }
+        - { path: "/mnt/journal", src: "{{ storage_devices[0] }}" }
+        - { path: "/mnt/storage", src: "{{ storage_devices[1] }}" }
 
 - name: Install Node exporter on Brokers to collect system metrics
   hosts: pulsar
