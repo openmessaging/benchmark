@@ -50,6 +50,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
     private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
+    private String topicPrefix;
     private Properties topicProperties;
     private Properties producerProperties;
     private Properties consumerProperties;
@@ -82,12 +83,14 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         topicProperties = new Properties();
         topicProperties.load(new StringReader(config.topicConfig));
 
+        topicPrefix = topicProperties.getProperty("prefix", "test-topic");
+
         admin = AdminClient.create(commonProperties);
     }
 
     @Override
     public String getTopicNamePrefix() {
-        return "test-topic";
+        return topicPrefix;
     }
 
     @Override
