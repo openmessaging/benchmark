@@ -6,7 +6,7 @@ NOTE: This is a slightly modified version of Apache Kafka Benchmarks for Condukt
 
 Pre-requisites:
 - terraform 1.8+ (older version may also work)
-- ansible 2.16+ (older version may also work)
+- ansible 2.16 (older version may also work)
 - AWS CLI setup with account with permission on EC2, VPC and API Gateway
 
 1. Create an SSH key named `kafka-aws` in `~/.ssh/` with `ssh-keygen -f ~/.ssh/kafka_aws` **without passphrase**
