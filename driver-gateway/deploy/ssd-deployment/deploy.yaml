@@ -146,6 +146,14 @@
   become: true
   tags: [zookeeper]
   tasks:
+    - file: path=/opt/kafka state=absent
+    - file: path=/opt/kafka state=directory
+    - name: Download Kafka package
+      unarchive:
+        src: "http://archive.apache.org/dist/kafka/{{ kafkaVersion }}/kafka_2.13-{{ kafkaVersion }}.tgz"
+        remote_src: yes
+        dest: /opt/kafka
+        extra_opts: [ "--strip-components=1" ]
     - set_fact:
         zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
     - template:
@@ -250,7 +258,7 @@
       register: shell_result
     - name: "debug"
       debug:
-        msg: shell_result.stdout
+        msg: "{{ shell_result.stdout }}"
 
 - name: Chrony setup
   hosts: client
