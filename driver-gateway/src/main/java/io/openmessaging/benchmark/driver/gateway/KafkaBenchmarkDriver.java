@@ -11,12 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.openmessaging.benchmark.driver.kafka;
+package io.openmessaging.benchmark.driver.gateway;
 
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
@@ -42,9 +43,12 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
+    private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkDriver.class);
     private Config config;
 
     private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
@@ -60,6 +64,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, Config.class);
+
+        log.info("Driver configuration: {}", config);
 
         Properties commonProperties = new Properties();
         commonProperties.load(new StringReader(config.commonConfig));
@@ -83,7 +89,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         topicProperties = new Properties();
         topicProperties.load(new StringReader(config.topicConfig));
 
-        topicPrefix = topicProperties.getProperty("prefix", "test-topic");
+        topicPrefix = config.topicPrefix.orElse("test-topic");
 
         admin = AdminClient.create(commonProperties);
     }
@@ -156,5 +162,6 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     private static final ObjectMapper mapper =
             new ObjectMapper(new YAMLFactory())
+                    .registerModule(new Jdk8Module())
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 }
