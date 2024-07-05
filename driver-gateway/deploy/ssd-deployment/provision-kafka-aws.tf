@@ -63,13 +63,8 @@ resource "aws_vpc" "benchmark_vpc" {
 }
 
 resource "aws_kms_key" "benchmark_key" {
-  key_usage = "ENCRYPT_DECRYPT"
-  description             = "Benchmark symmetric encryption KMS key for gateway"
-}
-
-resource "aws_kms_alias" "benchmark_key" {
-  name          = "alias/benchmark-key"
-  target_key_id = aws_kms_key.benchmark_key.key_id
+  key_usage   = "ENCRYPT_DECRYPT"
+  description = "Benchmark symmetric encryption KMS key for gateway"
 }
 
 resource "aws_kms_key_policy" "benchmark_key" {
