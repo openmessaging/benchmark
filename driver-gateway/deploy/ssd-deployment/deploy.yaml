@@ -267,11 +267,13 @@
           retries: 3
           timeout: 10s
     - name: "List interceptors"
+      ignore_errors: true
       shell: |
-        sleep 10 # wait for gateway to start
+        sleep 30 # wait for gateway to start
         curl -u admin:conduktor http://localhost:8888/admin/interceptors/v1/all
       register: shell_result
     - name: "debug"
+      ignore_errors: true
       debug:
         msg: "{{ shell_result.stdout }}"
 
