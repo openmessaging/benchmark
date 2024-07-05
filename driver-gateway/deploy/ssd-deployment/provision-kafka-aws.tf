@@ -266,3 +266,10 @@ ${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip
 ${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
   EOF
 }
+
+resource "local_file" "tf_ansible_vars_file" {
+  filename = "./tf_ansible_vars_file.yml"
+  content = <<-EOF
+tf_kms_arn: ${aws_kms_key.benchmark_key.arn}
+  EOF
+}

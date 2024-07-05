@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -89,7 +90,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         topicProperties = new Properties();
         topicProperties.load(new StringReader(config.topicConfig));
 
-        topicPrefix = config.topicPrefix.orElse("test-topic");
+        topicPrefix = Optional.ofNullable(config.topicPrefix).orElse("test-topic");
 
         admin = AdminClient.create(commonProperties);
     }

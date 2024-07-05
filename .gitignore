@@ -11,6 +11,8 @@ core/*.json
 *.retry
 *.pem
 *.hcl
+**/inventory.txt
+**/tf_ansible_vars_file.yml
 **/.terraform
 **/terraform.tfstate
 **/terraform.tfstate.backup

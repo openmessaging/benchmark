@@ -196,7 +196,20 @@
   connection: ssh
   become: true
   tags: [gateway]
+  vars_files:
+    - ./tf_ansible_vars_file.yml
   tasks:
+    - name: Check mandatory variables imported from Terraform
+      assert:
+        that:
+          - tf_kms_arn is defined
+        fail_msg: "tf_* variable usually defined in '../tf_ansible_vars_file.yml' is missing"
+    - name: Check mandatory environment variables are set
+      assert:
+        that:
+          - lookup('ansible.builtin.env', 'ENCRYPT_ACCESS_KEY') is defined
+          - lookup('ansible.builtin.env', 'ENCRYPT_SECRET_KEY') is defined
+        fail_msg: "'ENCRYPT_* environment variable are missing"
     - name: "Check if docker-ce file exists"
       stat:
         path: /etc/yum.repos.d/docker-ce.repo
@@ -254,7 +267,9 @@
           retries: 3
           timeout: 10s
     - name: "List interceptors"
-      shell: curl -u admin:conduktor http://localhost:8888/admin/interceptors/v1/all
+      shell: |
+        sleep 10 # wait for gateway to start
+        curl -u admin:conduktor http://localhost:8888/admin/interceptors/v1/all
       register: shell_result
     - name: "debug"
       debug:

@@ -36,7 +36,7 @@ Configuration:
   Loggers:
     logger:
       - name: io.openmessaging.benchmark
-        level: debug
+        level: info
       - name: io.openmessaging.benchmark.driver.gateway
         level: debug
     Root:

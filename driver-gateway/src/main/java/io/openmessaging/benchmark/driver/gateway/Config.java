@@ -13,13 +13,10 @@
  */
 package io.openmessaging.benchmark.driver.gateway;
 
-
-import java.util.Optional;
-
 public class Config {
     public short replicationFactor;
 
-    public Optional<String> topicPrefix;
+    public String topicPrefix;
 
     public String topicConfig;
 

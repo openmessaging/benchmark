@@ -2,6 +2,7 @@
 
 echo "Installing Python 3 for Ansible"
 yum install -y python3
+pip3 install pygal==3.0.0 # for graph generation, newer versions are not compatible with the current code
 
 echo "Installing Docker"
 yum install -y yum-utils
