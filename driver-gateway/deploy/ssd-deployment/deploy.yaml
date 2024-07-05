@@ -100,16 +100,16 @@
   connection: ssh
   become: true
   tasks:
-# already installed in cloud init of all instances
-#    - name: Install RPM packages
-#      yum: pkg={{ item }} state=latest
-#      with_items:
-#        - wget
-#        - java-17-openjdk
-#        - sysstat
-#        - vim
-#        - chrony
-#        - nmap
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - python3
+        - wget
+        - java-17-openjdk
+        - sysstat
+        - vim
+        - chrony
+        - nmap
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         bootstrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
