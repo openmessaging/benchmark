@@ -1,11 +1,22 @@
+terraform {
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = "5.56.1"
+      }
+      random = {
+        source  = "hashicorp/random"
+        version = "3.1"
+      }
+    }
+
+}
 provider "aws" {
   region  = "${var.region}"
   profile = "${var.profile}"
-  version = "5.56.1"
 }
 
 provider "random" {
-  version = "3.1"
 }
 
 data "aws_caller_identity" "current" {}
