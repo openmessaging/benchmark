@@ -10,4 +10,4 @@ yum-config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.r
 yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 echo "Install other common tools"
-yum install -y git jq wget java-17-openjdk sysstat vim chrony nmap yum-utils
+yum install -y git jq wget java-17-openjdk sysstat vim chrony nmap

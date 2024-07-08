@@ -101,6 +101,7 @@
   become: true
   tasks:
     - name: Install RPM packages
+      update_cache: true
       yum: pkg={{ item }} state=latest
       with_items:
         - python3
@@ -110,6 +111,8 @@
         - vim
         - chrony
         - nmap
+      retries: 3
+      delay: 3
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         bootstrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
