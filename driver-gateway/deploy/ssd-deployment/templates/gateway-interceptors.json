@@ -20,5 +20,21 @@
         }
       }
     }
+  },
+  {
+    "name": "full-decrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.DecryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "full-encrypt.*",
+      "kmsConfig": {
+        "aws": {
+          "basicCredentials": {
+            "accessKey": "{{ lookup('ansible.builtin.env', 'ENCRYPT_ACCESS_KEY') }}",
+            "secretKey": "{{ lookup('ansible.builtin.env', 'ENCRYPT_SECRET_KEY') }}"
+          }
+        }
+      }
+    }
   }
 ]
