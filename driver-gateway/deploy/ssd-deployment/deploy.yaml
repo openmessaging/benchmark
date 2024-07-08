@@ -101,8 +101,7 @@
   become: true
   tasks:
     - name: Install RPM packages
-      update_cache: true
-      yum: pkg={{ item }} state=latest
+      yum: pkg={{ item }} state=installed
       with_items:
         - python3
         - wget
