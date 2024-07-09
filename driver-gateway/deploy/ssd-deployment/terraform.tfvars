@@ -1,8 +1,8 @@
 public_key_path = "~/.ssh/kafka_aws.pub"
 region          = "us-west-2"
-profile         = "benchmark"
 az              = "us-west-2a"
-ami             = "ami-08970fb2e5767e3b8" // RHEL-8
+ami             = "ami-08970fb2e5767e3b8" // RHEL-8.6.0_HVM-20220503-x86_64-2-Hourly2-GP2
+#ami             = "ami-0b0b4a49742d64899" // RHEL-8.6.0_HVM-20240521-x86_64-58-Hourly2-GP3
 
 instance_types = {
   "gateway"   = "m5n.xlarge" # 16.0 GiB	4 vCPUs	EBS only Up to 25 Gigabit

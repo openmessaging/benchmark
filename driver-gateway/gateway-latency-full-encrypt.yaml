@@ -13,11 +13,13 @@
 #
 
 
-name: Gateway Latency
+name: Gateway Latency Full Encryption
 driverClass: io.openmessaging.benchmark.driver.gateway.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
 replicationFactor: 3
+
+topicPrefix: full-encrypt
 
 topicConfig: |
   min.insync.replicas=2

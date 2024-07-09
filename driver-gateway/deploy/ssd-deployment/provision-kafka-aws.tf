@@ -1,12 +1,24 @@
+terraform {
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = "5.56.1"
+      }
+      random = {
+        source  = "hashicorp/random"
+        version = "3.1"
+      }
+    }
+
+}
 provider "aws" {
   region  = "${var.region}"
-  profile = "${var.profile}"
-  version = "3.50"
 }
 
 provider "random" {
-  version = "3.1"
 }
+
+data "aws_caller_identity" "current" {}
 
 variable "public_key_path" {
   description = <<DESCRIPTION
@@ -29,8 +41,6 @@ variable "key_name" {
 
 variable "region" {}
 
-variable "profile" {}
-
 variable "ami" {}
 
 variable "az" {}
@@ -50,6 +60,39 @@ resource "aws_vpc" "benchmark_vpc" {
   tags = {
     Name = "Kafka_Benchmark_VPC_${random_id.hash.hex}"
   }
+}
+
+resource "aws_kms_key" "benchmark_key" {
+  key_usage   = "ENCRYPT_DECRYPT"
+  description = "Benchmark symmetric encryption KMS key for gateway"
+}
+
+resource "aws_kms_key_policy" "benchmark_key" {
+  key_id = aws_kms_key.benchmark_key.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Id      = "benchmark-key-default-1"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        },
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_caller_identity.current.arn
+        },
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # Create an internet gateway to give our subnet access to the outside world
@@ -124,6 +167,7 @@ resource "aws_instance" "zookeeper" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["zookeeper"]}"
+  user_data              = file("${path.module}/templates/init.sh")
 
   tags = {
     Name      = "zk_${count.index}"
@@ -138,6 +182,7 @@ resource "aws_instance" "kafka" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["kafka"]}"
+  user_data              = file("${path.module}/templates/init.sh")
 
   tags = {
     Name      = "kafka_${count.index}"
@@ -152,6 +197,7 @@ resource "aws_instance" "gateway" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["gateway"]}"
+  user_data              = file("${path.module}/templates/init.sh")
 
   tags = {
     Name      = "gateway_${count.index}"
@@ -167,6 +213,7 @@ resource "aws_instance" "client" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
+  user_data              = file("${path.module}/templates/init.sh")
 
   tags = {
     Name      = "kafka_client_${count.index}"
@@ -220,5 +267,12 @@ ${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip
 ${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
 ${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
 ${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+  EOF
+}
+
+resource "local_file" "tf_ansible_vars_file" {
+  filename = "./tf_ansible_vars_file.yml"
+  content = <<-EOF
+tf_kms_arn: ${aws_kms_key.benchmark_key.arn}
   EOF
 }

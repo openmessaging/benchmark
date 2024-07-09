@@ -15,7 +15,7 @@
 # Kafka driver profile that is configuring to sync all
 # published messages to disk to achieve durability
 name: Kafka
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+driverClass: io.openmessaging.benchmark.driver.gateway.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
 replicationFactor: 3

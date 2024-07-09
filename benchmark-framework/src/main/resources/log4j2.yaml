@@ -33,7 +33,12 @@ Configuration:
           size: 100MB
       DefaultRollOverStrategy:
         max: 10
-  Loggers: 
+  Loggers:
+    logger:
+      - name: io.openmessaging.benchmark
+        level: info
+      - name: io.openmessaging.benchmark.driver.gateway
+        level: debug
     Root:
       level: info
       additivity: false

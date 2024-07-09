@@ -15,6 +15,7 @@
 - name: Wait till reachable
   hosts: all
   gather_facts: no # important
+  tags: [always]
   tasks:
     - name: Wait for all instances to become reachable
       wait_for_connection:
@@ -94,48 +95,67 @@
         - { path: "/mnt/zookeeper/logs", src: "/dev/nvme1n1" }
         - { path: "/mnt/zookeeper/data", src: "/dev/nvme2n1" }
 
-- name: Kafka setup
+- name: Global setup
   hosts: all
   connection: ssh
   become: true
   tasks:
     - name: Install RPM packages
-      yum: pkg={{ item }} state=latest
+      yum: pkg={{ item }} state=installed
       with_items:
-          - wget
-          - java-17-openjdk
-          - sysstat
-          - vim
-          - chrony
-          - nmap
-    - file: path=/opt/kafka state=absent
-    - file: path=/opt/kafka state=directory
+        - python3
+        - wget
+        - java-17-openjdk
+        - sysstat
+        - vim
+        - chrony
+        - nmap
+      retries: 3
+      delay: 3
     - set_fact:
         zookeeperServers: "{{ groups['zookeeper'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | map('regex_replace', '^(.*)$', '\\1:2181') | join(',') }}"
         bootstrapServers: "{{ groups['kafka'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:9092') | join(',') }}"
         gatewayServers: "{{ groups['gateway'] | map('extract', hostvars, ['private_ip']) | map('regex_replace', '^(.*)$', '\\1:6969') | join(',') }}"
+        privateIp: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
         kafkaVersion: "3.6.1"
-      tags: [client-code]
+      tags: [ always, client-code ]
     - debug:
         msg: "zookeeper servers: {{ zookeeperServers }}\nbootstrap servers: {{ bootstrapServers }}\ngateway servers: {{ gatewayServers }}"
+    - name: Change locale to en_US.utf-8
+      shell: |
+        echo 'LANG=en_US.utf-8
+              LC_ALL=en_US.utf-8' > /etc/environment
+
+- name: Kafka setup
+  hosts: kafka
+  connection: ssh
+  become: true
+  tags: [kafka]
+  tasks:
+    - file: path=/opt/kafka state=absent
+    - file: path=/opt/kafka state=directory
     - name: Download Kafka package
       unarchive:
         src: "http://archive.apache.org/dist/kafka/{{ kafkaVersion }}/kafka_2.13-{{ kafkaVersion }}.tgz"
         remote_src: yes
         dest: /opt/kafka
         extra_opts: ["--strip-components=1"]
-    - set_fact:
-        privateIp: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-    - name: Change locale to en_US.utf-8
-      shell: |
-        echo 'LANG=en_US.utf-8
-              LC_ALL=en_US.utf-8' > /etc/environment
+
 
 - name: Setup ZooKeeper
   hosts: zookeeper
   connection: ssh
   become: true
+  tags: [zookeeper]
   tasks:
+    - file: path=/opt/kafka state=absent
+    - file: path=/opt/kafka state=directory
+    - name: Download Kafka package
+      unarchive:
+        src: "http://archive.apache.org/dist/kafka/{{ kafkaVersion }}/kafka_2.13-{{ kafkaVersion }}.tgz"
+        remote_src: yes
+        dest: /opt/kafka
+        extra_opts: [ "--strip-components=1" ]
     - set_fact:
         zid: "{{ groups['zookeeper'].index(inventory_hostname) }}"
     - template:
@@ -156,6 +176,7 @@
   hosts: kafka
   connection: ssh
   become: true
+  tags: [kafka]
   tasks:
     - set_fact:
         brokerId: "{{ groups['kafka'].index(inventory_hostname) }}"
@@ -176,7 +197,21 @@
   hosts: gateway
   connection: ssh
   become: true
+  tags: [gateway]
+  vars_files:
+    - ./tf_ansible_vars_file.yml
   tasks:
+    - name: Check mandatory variables imported from Terraform
+      assert:
+        that:
+          - tf_kms_arn is defined
+        fail_msg: "tf_* variable usually defined in '../tf_ansible_vars_file.yml' is missing"
+    - name: Check mandatory environment variables are set
+      assert:
+        that:
+          - lookup('ansible.builtin.env', 'ENCRYPT_ACCESS_KEY') is defined
+          - lookup('ansible.builtin.env', 'ENCRYPT_SECRET_KEY') is defined
+        fail_msg: "'ENCRYPT_* environment variable are missing"
     - name: "Check if docker-ce file exists"
       stat:
         path: /etc/yum.repos.d/docker-ce.repo
@@ -188,30 +223,43 @@
             state: latest
         - name: "Install the Docker Community Edition Repository"
           command: >
-            yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+            yum-config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
           register: ycm
         - name: "Install Docker"
           dnf:
             name: docker-ce
             state: latest
-        - name: "Enable and run Docker CE"
-          service:
-            name: docker
-            state: started
-            enabled: yes
       when: not stat_result.stat.exists
+    - name: "Enable and run Docker CE"
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - name: "Copy interceptors config"
+      template:
+        src: "templates/gateway-interceptors.json"
+        dest: "/opt/gateway-interceptors.json"
     - name: "Gateway container"
       community.docker.docker_container:
         name: gateway
         state: started
         image: "{{ lookup('ansible.builtin.env', 'GATEWAY_IMAGE', default='conduktor/conduktor-gateway:3.0.4') }}"
         restart_policy: on-failure
+        volumes:
+          - "/opt/gateway-interceptors.json:/opt/interceptors.json"
         env:
+          LOG4J2_IO_CONDUKTOR_PROXY_SERVICE_LEVEL: "DEBUG"
+          LOG4J2_IO_CONDUKTOR_PROXY_NETWORK_LEVEL: "DEBUG"
+          LOG4J2_IO_NETTY_LEVEL: "INFO"
           KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}"
           GATEWAY_ADVERTISED_HOST: "{{ privateIp }}"
           GATEWAY_HTTP_PORT: "8888"
           GATEWAY_PORT_START: "6969"
           GATEWAY_PORT_COUNT: "3"
+          ENCRYPT_ACCESS_KEY: "{{ lookup('ansible.builtin.env', 'ENCRYPT_ACCESS_KEY') }}"
+          ENCRYPT_SECRET_KEY: "{{ lookup('ansible.builtin.env', 'ENCRYPT_SECRET_KEY') }}"
+          GATEWAY_INTERCEPTOR_CONFIG_LOCATION: "/opt/interceptors.json"
+          GATEWAY_ADMIN_API_USERS: "[{username: admin, password: conduktor, admin: true}]"
         published_ports:
           - "8888:8888"
           - "6969:6969"
@@ -222,6 +270,16 @@
           interval: 30s
           retries: 3
           timeout: 10s
+    - name: "List interceptors"
+      ignore_errors: true
+      shell: |
+        sleep 30 # wait for gateway to start
+        curl -u admin:conduktor http://localhost:8888/admin/interceptors/v1/all
+      register: shell_result
+    - name: "debug"
+      ignore_errors: true
+      debug:
+        msg: "{{ shell_result.stdout }}"
 
 - name: Chrony setup
   hosts: client

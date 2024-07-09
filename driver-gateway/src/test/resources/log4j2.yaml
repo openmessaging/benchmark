@@ -24,7 +24,7 @@ Configuration:
         Pattern: "%d{HH:mm:ss.SSS} [%t] %-4level %c{1} - %msg%n"
   Loggers:
     Logger:
-      name: io.openmessaging.benchmark.driver.kafka
+      name: io.openmessaging.benchmark.driver.gateway
       level: debug
     Root:
       level: info

@@ -14,7 +14,7 @@
 
 
 name: Gateway Throughput
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+driverClass: io.openmessaging.benchmark.driver.gateway.KafkaBenchmarkDriver
 
 # Kafka client-specific configuration
 replicationFactor: 3
