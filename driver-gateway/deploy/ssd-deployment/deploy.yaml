@@ -248,7 +248,7 @@
         volumes:
           - "/opt/gateway-interceptors.json:/opt/interceptors.json"
         env:
-          LOG4J2_IO_CONDUKTOR_LEVEL: "DEBUG"
+          LOG4J2_IO_CONDUKTOR_LEVEL: "INFO"
           KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}"
           GATEWAY_ADVERTISED_HOST: "{{ privateIp }}"
           GATEWAY_HTTP_PORT: "8888"
