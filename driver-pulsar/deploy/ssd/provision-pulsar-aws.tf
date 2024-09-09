@@ -37,12 +37,18 @@ variable "key_name" {
 variable "region" {}
 variable "az" {}
 variable "ami" {}
+variable "user" {}
 variable "spot" {}
 variable "instance_types" {}
 variable "num_instances" {}
 
 provider "aws" {
   region = var.region
+  default_tags {
+   tags = {
+      Project = "pulsar-benchmark"
+   }
+  }
 }
 
 # Create a VPC to launch our instances into
@@ -139,7 +145,7 @@ resource "aws_instance" "zookeeper" {
      content {
          market_type = "spot"
          spot_options {
-           max_price = 0.5
+           max_price = 3.0
          }
        }
    }
@@ -162,7 +168,7 @@ resource "aws_instance" "pulsar" {
      content {
          market_type = "spot"
          spot_options {
-           max_price = 0.7
+           max_price = 3.0
          }
      }
   }
@@ -185,7 +191,7 @@ resource "aws_instance" "client" {
      content {
          market_type = "spot"
          spot_options {
-           max_price = 0.9
+           max_price = 3.0
          }
      }
   }
@@ -226,7 +232,7 @@ resource "ansible_host" "zookeeper" {
 
   variables = {
     # Connection vars.
-    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_user = var.user # Default user depends on the OS.
     ansible_host = aws_instance.zookeeper[count.index].public_ip
 
     # Custom vars that we might use in roles/tasks.
@@ -239,7 +245,7 @@ resource "ansible_host" "pulsar" {
 
   variables = {
     # Connection vars.
-    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_user = var.user # Default user depends on the OS.
     ansible_host = aws_instance.pulsar[count.index].public_ip
 
     # Custom vars that we might use in roles/tasks.
@@ -252,7 +258,7 @@ resource "ansible_host" "client" {
 
   variables = {
     # Connection vars.
-    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_user = var.user # Default user depends on the OS.
     ansible_host = aws_instance.client[count.index].public_ip
 
     # Custom vars that we might use in roles/tasks.
@@ -265,7 +271,7 @@ resource "ansible_host" "prometheus" {
 
   variables = {
     # Connection vars.
-    ansible_user = "ec2-user" # Default user depends on the OS.
+    ansible_user = var.user # Default user depends on the OS.
     ansible_host = aws_instance.prometheus[count.index].public_ip
 
     # Custom vars that we might use in roles/tasks.

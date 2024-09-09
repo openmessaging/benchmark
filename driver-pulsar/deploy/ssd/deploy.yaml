@@ -56,7 +56,7 @@
       set_fact:
         storage_devices: "{{ storage_devices + ['/dev/' ~ item.key ] }}"
       with_dict: "{{ ansible_devices }}"
-      when: "item.value.host.startswith('Non-Volatile memory controller:') and not item.value.partitions"
+      when: "item.key.startswith('nvme') and not item.value.partitions"
 
     - name: Show device names
       debug: var=storage_devices
@@ -93,7 +93,7 @@
       set_fact:
         storage_devices: "{{ storage_devices + ['/dev/' ~ item.key ] }}"
       with_dict: "{{ ansible_devices }}"
-      when: "item.value.host.startswith('Non-Volatile memory controller:') and not item.value.partitions"
+      when: "item.key.startswith('nvme') and not item.value.partitions"
 
     - name: Show device names
       debug: var=storage_devices
@@ -179,19 +179,39 @@
   connection: ssh
   become: true
   tasks:
+    - name: Install Tuned packages
+      ansible.builtin.package:
+        state: latest
+        update_cache: true
+        name:
+          - tuned
+    - name: Enable Tuned
+      service: name=tuned state=started enabled=yes
     - name: Set performance profile
       command: tuned-adm profile latency-performance
-    - name: Install RPM packages
-      yum:
+    - name: Install packages
+      ansible.builtin.package:
         state: latest
-        pkg:
+        name:
           - wget
-          - java-17-openjdk
-          - java-17-openjdk-devel
           - sysstat
           - vim
           - chrony
-      when: ansible_facts['distribution'] == 'RedHat'
+    - name: Install java on RedHat/CentOS
+      ansible.builtin.package:
+        state: latest
+        name:
+          - java-17-openjdk
+          - java-17-openjdk-devel
+      when:
+        - ansible_facts['distribution'] == 'RedHat' or ansible_facts['distribution'] == 'CentOS'
+    - name: Install java on Debain/Ubuntu
+      ansible.builtin.package:
+        state: latest
+        name:
+          - openjdk-17-jdk
+      when:
+        - ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
     - file: path=/opt/pulsar state=absent
     - file: path=/opt/pulsar state=directory
     - name: Download Pulsar binary package
@@ -467,27 +487,9 @@
   connection: ssh
   become: true
   tasks:
-    - name: Add Extras Repo
-      shell: yum-config-manager --enable rhui-REGION-rhel-server-extras
-      when:
-        - ansible_facts['distribution'] == 'RedHat'
-        - ansible_facts['distribution_major_version'] | int <= 7
-    - name: Docker repo
-      yum_repository:
-        name: docker
-        description: repo for docker
-        baseurl: "https://download.docker.com/linux/centos/{{ ansible_facts['distribution_major_version'] }}/x86_64/stable/"
-        gpgcheck: no
-      when: ansible_facts['distribution'] == 'RedHat'
-    - name: Installing docker
-      yum:
-        state: latest
-        pkg: ['docker-ce']
-    - name: Start docker
-      service:
-        name: docker
-        state: started
-        enabled: yes
+    - name: Install docker
+      include_role:
+        name: geerlingguy.docker
     - file: path=/opt/prometheus state=absent
     - file: path=/opt/prometheus state=directory
     - name: Download Prometheus Binary Package

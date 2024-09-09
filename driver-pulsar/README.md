@@ -7,6 +7,7 @@ For Ansible to have access to the inventory defined in the Terraform configurati
 Install it with the following command ([source](https://mdawar.dev/blog/ansible-terraform-inventory)):
 ```bash
 ansible-galaxy collection install cloud.terraform
+ansible-galaxy role install geerlingguy.docker
 ```
 
 ```bash
