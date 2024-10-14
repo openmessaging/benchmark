@@ -26,7 +26,7 @@
     <artifactId>benchmark-framework</artifactId>
 
     <properties>
-        <jetty.version>9.4.42.v20210604</jetty.version>
+        <jetty.version>9.4.55.v20240627</jetty.version>
     </properties>
 
     <dependencies>
