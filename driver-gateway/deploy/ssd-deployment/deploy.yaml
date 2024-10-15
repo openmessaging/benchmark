@@ -244,8 +244,8 @@
     - name: "Private registry login"
       community.docker.docker_login:
         registry_url: "{{ lookup('ansible.builtin.env', 'REGISTRY_URL', default='harbor.cdkt.dev') }}"
-        username:  "{{ lookup('ansible.builtin.env', 'REGISTRY_USERNAME' }}"
-        password: "{{ lookup('ansible.builtin.env', 'REGISTRY_PASSWORD' }}"
+        username:  "{{ lookup('ansible.builtin.env', 'REGISTRY_USERNAME') }}"
+        password: "{{ lookup('ansible.builtin.env', 'REGISTRY_PASSWORD') }}"
     - name: "Gateway container"
       community.docker.docker_container:
         name: gateway
