@@ -211,7 +211,9 @@
         that:
           - lookup('ansible.builtin.env', 'ENCRYPT_ACCESS_KEY') is defined
           - lookup('ansible.builtin.env', 'ENCRYPT_SECRET_KEY') is defined
-        fail_msg: "'ENCRYPT_* environment variable are missing"
+          - lookup('ansible.builtin.env', 'REGISTRY_USERNAME') is defined
+          - lookup('ansible.builtin.env', 'REGISTRY_PASSWORD') is defined
+        fail_msg: "'ENCRYPT_* or REGISTRY_* environment variable are missing"
     - name: "Check if docker-ce file exists"
       stat:
         path: /etc/yum.repos.d/docker-ce.repo
@@ -239,6 +241,11 @@
       template:
         src: "templates/gateway-interceptors.json"
         dest: "/opt/gateway-interceptors.json"
+    - name: "Private registry login"
+      community.docker.docker_login:
+        registry_url: "{{ lookup('ansible.builtin.env', 'REGISTRY_URL', default='harbor.cdkt.dev') }}"
+        username:  "{{ lookup('ansible.builtin.env', 'REGISTRY_USERNAME') }}"
+        password: "{{ lookup('ansible.builtin.env', 'REGISTRY_PASSWORD') }}"
     - name: "Gateway container"
       community.docker.docker_container:
         name: gateway
