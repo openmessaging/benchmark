@@ -15,7 +15,7 @@
       },
       "recordValue": {
         "payload": {
-          "keySecretId": "{{ tf_kms_arn }}",
+          "keySecretId": "aws-kms://{{ tf_kms_arn }}",
           "algorithm": "AES128_GCM"
         }
       }
