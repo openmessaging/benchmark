@@ -16,6 +16,7 @@ Pre-requisites:
 5. Create the infrastructure with `terraform apply`
    1. You can change the value of num_instances using -var='num_instances={"client"=5, "gateway"=4, "kafka"=2}'
    2. You might also need to change the AWS profile with -var='aws_profile=your_profile'
+   3. With SSO the session does expire so you might need to run `aws sso login --profile your_profile` before running terraform
 6. Export your harbor creds https://harbor.cdkt.dev/
    1. Click your name in the top right corner and select User Profile then take your username and CLI secret
    2. export REGISTRY_USERNAME=Ben_Starmer-Smith
