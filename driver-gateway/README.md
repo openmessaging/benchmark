@@ -19,8 +19,8 @@ Pre-requisites:
    3. With SSO the session does expire so you might need to run `aws sso login --profile your_profile` before running terraform
 6. Export your harbor creds https://harbor.cdkt.dev/
    1. Click your name in the top right corner and select User Profile then take your username and CLI secret
-   2. export REGISTRY_USERNAME=Ben_Starmer-Smith
-   3. export REGISTRY_PASSWORD=<CLI Secret>
+   2. export REGISTRY_USERNAME=<registry login>
+   3. export REGISTRY_PASSWORD=<registry api token>
 7. Setup nodes with `ansible-playbook --user ec2-user --inventory-file inventory.ini deploy.yaml`
 8. Connect to one benchmark worker node with `ssh -i ~/.ssh/kafka_aws ec2-user@$(terraform output client_ssh_host | tr -d '"')`
 9.  Go to benchmark directory with `cd /opt/benchmark`
