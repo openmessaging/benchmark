@@ -13,6 +13,7 @@ terraform {
 }
 provider "aws" {
   region  = "${var.region}"
+  profile = "${var.profile}"
 }
 
 provider "random" {
@@ -40,6 +41,8 @@ variable "key_name" {
 }
 
 variable "region" {}
+
+variable "profile" {}
 
 variable "ami" {}
 
