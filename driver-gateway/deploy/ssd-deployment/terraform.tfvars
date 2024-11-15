@@ -1,7 +1,7 @@
 public_key_path = "~/.ssh/kafka_aws.pub"
 region          = "us-west-2"
 az              = "us-west-2a"
-profile         = "cdk-dev"
+profile         = ""
 ami             = "ami-04a616933df665b44" // RHEL-9.0.0_HVM-20220513-x86_64-0-Hourly2-GP2	
 #ami             = "ami-08970fb2e5767e3b8" // RHEL-8.6.0_HVM-20220503-x86_64-2-Hourly2-GP2
 #ami             = "ami-0b0b4a49742d64899" // RHEL-8.6.0_HVM-20240521-x86_64-58-Hourly2-GP3
