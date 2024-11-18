@@ -307,6 +307,10 @@
   connection: ssh
   become: true
   tasks:
+    - name: Install pygal
+      pip:
+        name: pygal
+        state: present
     - file: path=/opt/benchmark state=absent
       tags: [client-code]
     - name: Copy benchmark code
