@@ -67,8 +67,10 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         commonProperties.load(new StringReader(config.commonConfig));
 
         if (commonProperties.containsKey(KAFKA_CLIENT_ID)) {
-            commonProperties.put(KAFKA_CLIENT_ID, applyZoneId(commonProperties.getProperty(KAFKA_CLIENT_ID),
-                    System.getProperty(ZONE_ID_CONFIG)));
+            commonProperties.put(
+                    KAFKA_CLIENT_ID,
+                    applyZoneId(
+                            commonProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
         }
 
         producerProperties = new Properties();
