@@ -45,6 +45,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
+    private static final String ZONE_ID_CONFIG = "zone.id";
+    private static final String ZONE_ID_TEMPLATE = "{zone.id}";
+    private static final String KAFKA_CLIENT_ID = "client.id";
     private Config config;
 
     private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
@@ -62,6 +65,13 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
         Properties commonProperties = new Properties();
         commonProperties.load(new StringReader(config.commonConfig));
+
+        if (commonProperties.containsKey(KAFKA_CLIENT_ID)) {
+            commonProperties.put(
+                    KAFKA_CLIENT_ID,
+                    applyZoneId(
+                            commonProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
+        }
 
         producerProperties = new Properties();
         commonProperties.forEach((key, value) -> producerProperties.put(key, value));
@@ -149,6 +159,10 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
             consumer.close();
         }
         admin.close();
+    }
+
+    private static String applyZoneId(String clientId, String zoneId) {
+        return clientId.replace(ZONE_ID_TEMPLATE, zoneId);
     }
 
     private static final ObjectMapper mapper =
