@@ -122,7 +122,7 @@
         <dependency>
             <groupId>org.asynchttpclient</groupId>
             <artifactId>async-http-client</artifactId>
-            <version>2.12.3</version>
+            <version>3.0.1</version>
         </dependency>
         <!-- set jetty version to be consistent across all transitive dependencies  -->
         <dependency>
