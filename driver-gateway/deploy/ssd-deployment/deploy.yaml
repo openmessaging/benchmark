@@ -256,8 +256,8 @@
         volumes:
           - "/opt/gateway-interceptors.json:/opt/interceptors.json"
         env:
-          LOG4J2_IO_CONDUKTOR_PROXY_SERVICE_LEVEL: "DEBUG"
-          LOG4J2_IO_CONDUKTOR_PROXY_NETWORK_LEVEL: "DEBUG"
+          LOG4J2_IO_CONDUKTOR_PROXY_SERVICE_LEVEL: "INFO"
+          LOG4J2_IO_CONDUKTOR_PROXY_NETWORK_LEVEL: "INFO"
           LOG4J2_IO_NETTY_LEVEL: "INFO"
           KAFKA_BOOTSTRAP_SERVERS: "{{ bootstrapServers }}"
           GATEWAY_ADVERTISED_HOST: "{{ privateIp }}"
