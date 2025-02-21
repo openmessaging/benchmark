@@ -107,7 +107,7 @@ resource "aws_kms_key_policy" "benchmark_key" {
 # Create an internet gateway to give our subnet access to the outside world
 resource "aws_internet_gateway" "kafka" {
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
-  tags = aws_instance.client
+  tags = var.common_tags
 }
 
 # Grant the VPC internet access on its main route table
