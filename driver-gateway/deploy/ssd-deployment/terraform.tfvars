@@ -19,3 +19,10 @@ num_instances = {
   "kafka"     = 3
   "zookeeper" = 3
 }
+
+common_tags = {
+  CostCenter  = "Benchmarking"
+  Benchmark   = "Gateway"
+  Project     = "GatewayBenchmark"
+  CreatedBy   = "Terraform"
+}
