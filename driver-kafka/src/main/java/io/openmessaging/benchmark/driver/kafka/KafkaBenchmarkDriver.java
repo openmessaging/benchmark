@@ -53,9 +53,10 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
     private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
-    private Properties topicProperties;
-    private Properties producerProperties;
-    private Properties consumerProperties;
+    // Visible for testing
+    Properties topicProperties;
+    Properties producerProperties;
+    Properties consumerProperties;
 
     private AdminClient admin;
 
@@ -76,6 +77,14 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         producerProperties = new Properties();
         commonProperties.forEach((key, value) -> producerProperties.put(key, value));
         producerProperties.load(new StringReader(config.producerConfig));
+
+        if (producerProperties.containsKey(KAFKA_CLIENT_ID)) {
+            producerProperties.put(
+                    KAFKA_CLIENT_ID,
+                    applyZoneId(
+                            producerProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
+        }
+
         producerProperties.put(
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         producerProperties.put(
@@ -84,6 +93,14 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         consumerProperties = new Properties();
         commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
         consumerProperties.load(new StringReader(config.consumerConfig));
+
+        if (consumerProperties.containsKey(KAFKA_CLIENT_ID)) {
+            consumerProperties.put(
+                    KAFKA_CLIENT_ID,
+                    applyZoneId(
+                            consumerProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
+        }
+
         consumerProperties.put(
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProperties.put(
@@ -165,7 +182,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         return clientId.replace(ZONE_ID_TEMPLATE, zoneId);
     }
 
-    private static final ObjectMapper mapper =
+    // Visible for testing
+    static final ObjectMapper mapper =
             new ObjectMapper(new YAMLFactory())
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 }
