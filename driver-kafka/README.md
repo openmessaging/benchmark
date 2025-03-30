@@ -13,7 +13,7 @@ TODO: Document these changes.
 
 ### Zone-aware workers
 
-To pass a zone/rack ID (e.g. cloud region availability zone name) to the Kafka clients (producer, consumer) client-id configuration, use the system property `zone.id`, and use the template `{zone.id}` on the `client.id` config, either on the `commonConfig`, `producerConfig`, or `consumerConfig` Driver values.
+To pass a zone/rack ID (e.g. cloud region availability zone name) to the Kafka clients (producer, consumer) client-id configuration, use the system property `zone.id`, and use the template `{zone.id}` on the `client.id` or `client.rack` configs, either on the `commonConfig`, `producerConfig`, or `consumerConfig` Driver values.
 
 When running workers, pass the `zone.id`:
 
@@ -27,16 +27,19 @@ Then pass the `client.id` template:
 commonConfig: |
   bootstrap.servers=localhost:9092
   client.id=omb-client_az={zone.id}
+  client.rack=omb-client_az={zone.id}
 ```
 
-This generates producer and consumer `client.id=omb-client_az=value`
+This generates producer and consumer `client.id=omb-client_az=value` and `client.rack=omb-client_az=value`
 
 ```yaml
 producerConfig: |
   client.id=omb-producer_az={zone.id}
+  client.rack=omb-producer_az={zone.id}
 consumerConfig: |
   auto.offset.reset=earliest
   client.id=omb-consumer_az={zone.id}
+  client.rack=omb-consumer_az={zone.id}
 ```
 
-This generates producer `client.id=omb-producer_az=value` and consumer `client.id=omb-consumer_az=value`
+This generates producer `client.id=omb-producer_az=value` and `client.rack=omb-producer_az=value`; consumer `client.id=omb-consumer_az=value` and `client.rack=omb-consumer_az=value`

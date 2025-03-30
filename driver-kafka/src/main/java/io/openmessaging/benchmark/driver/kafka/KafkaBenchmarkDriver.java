@@ -48,6 +48,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private static final String ZONE_ID_CONFIG = "zone.id";
     private static final String ZONE_ID_TEMPLATE = "{zone.id}";
     private static final String KAFKA_CLIENT_ID = "client.id";
+    private static final String KAFKA_CLIENT_RACK = "client.rack";
     private Config config;
 
     private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
@@ -67,23 +68,15 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         Properties commonProperties = new Properties();
         commonProperties.load(new StringReader(config.commonConfig));
 
-        if (commonProperties.containsKey(KAFKA_CLIENT_ID)) {
-            commonProperties.put(
-                    KAFKA_CLIENT_ID,
-                    applyZoneId(
-                            commonProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
-        }
+        applyZoneIdIfNeeded(commonProperties, KAFKA_CLIENT_ID);
+        applyZoneIdIfNeeded(commonProperties, KAFKA_CLIENT_RACK);
 
         producerProperties = new Properties();
         commonProperties.forEach((key, value) -> producerProperties.put(key, value));
         producerProperties.load(new StringReader(config.producerConfig));
 
-        if (producerProperties.containsKey(KAFKA_CLIENT_ID)) {
-            producerProperties.put(
-                    KAFKA_CLIENT_ID,
-                    applyZoneId(
-                            producerProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
-        }
+        applyZoneIdIfNeeded(producerProperties, KAFKA_CLIENT_ID);
+        applyZoneIdIfNeeded(producerProperties, KAFKA_CLIENT_RACK);
 
         producerProperties.put(
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -94,12 +87,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
         consumerProperties.load(new StringReader(config.consumerConfig));
 
-        if (consumerProperties.containsKey(KAFKA_CLIENT_ID)) {
-            consumerProperties.put(
-                    KAFKA_CLIENT_ID,
-                    applyZoneId(
-                            consumerProperties.getProperty(KAFKA_CLIENT_ID), System.getProperty(ZONE_ID_CONFIG)));
-        }
+        applyZoneIdIfNeeded(consumerProperties, KAFKA_CLIENT_ID);
+        applyZoneIdIfNeeded(consumerProperties, KAFKA_CLIENT_RACK);
 
         consumerProperties.put(
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
@@ -110,6 +99,15 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         topicProperties.load(new StringReader(config.topicConfig));
 
         admin = AdminClient.create(commonProperties);
+    }
+
+    private static void applyZoneIdIfNeeded(Properties props, String propKey) {
+        if (props.containsKey(propKey)) {
+            props.put(
+                propKey,
+                applyZoneId(
+                    props.getProperty(propKey), System.getProperty(ZONE_ID_CONFIG)));
+        }
     }
 
     @Override
@@ -178,8 +176,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         admin.close();
     }
 
-    private static String applyZoneId(String clientId, String zoneId) {
-        return clientId.replace(ZONE_ID_TEMPLATE, zoneId);
+    private static String applyZoneId(String propValue, String zoneId) {
+        return propValue.replace(ZONE_ID_TEMPLATE, zoneId);
     }
 
     // Visible for testing

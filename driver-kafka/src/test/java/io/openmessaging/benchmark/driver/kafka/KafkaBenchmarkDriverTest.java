@@ -69,4 +69,50 @@ class KafkaBenchmarkDriverTest {
             }
         }
     }
+
+    @ParameterizedTest
+    @CsvSource({
+        "client.rack=test_az={zone.id},\"\",\"\",test_az=az0,test_az=az0",
+        "client.rack=test_az={zone.id},client.rack=prod_az={zone.id},client.rack=cons_az={zone.id},prod_az=az0,cons_az=az0",
+        "\"\",client.rack=prod_az={zone.id},client.rack=cons_az={zone.id},prod_az=az0,cons_az=az0",
+        "\"\",client.rack=prod_az={zone.id},\"\",prod_az=az0,",
+        "\"\",\"\",client.rack=cons_az={zone.id},,cons_az=az0"
+    })
+    void testInitClientRackWithZoneId(
+        String commonConfig,
+        String producerConfig,
+        String consumerConfig,
+        String producerClientRack,
+        String consumerClientRack)
+        throws Exception {
+        // Given these configs
+        final Path configPath = tempDir.resolve("config");
+        Config config = new Config();
+        config.replicationFactor = 1;
+        config.commonConfig = "bootstrap.servers=localhost:9092\n" + commonConfig;
+        config.producerConfig = producerConfig;
+        config.consumerConfig = consumerConfig;
+        config.topicConfig = "";
+
+        // and the system property set for zone id
+        System.setProperty("zone.id", "az0");
+
+        try (KafkaBenchmarkDriver driver = new KafkaBenchmarkDriver()) {
+            // When initializing kafka driver
+            Files.write(configPath, KafkaBenchmarkDriver.mapper.writeValueAsBytes(config));
+            driver.initialize(configPath.toFile(), null);
+
+            // Then
+            if (producerClientRack != null) {
+                assertThat(driver.producerProperties).containsEntry("client.rack", producerClientRack);
+            } else {
+                assertThat(driver.producerProperties).doesNotContainKey("client.rack");
+            }
+            if (consumerClientRack != null) {
+                assertThat(driver.consumerProperties).containsEntry("client.rack", consumerClientRack);
+            } else {
+                assertThat(driver.consumerProperties).doesNotContainKey("client.rack");
+            }
+        }
+    }
 }
