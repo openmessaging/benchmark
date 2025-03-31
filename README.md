@@ -1,4 +1,7 @@
-# OpenMessaging Benchmark Framework
+# Fork of the OpenMessaging Benchmark Framework that uses sapmachine 17 docker image
+
+This fork is used to update the outdated offical docker hub image openmessaging/openmessaging-benchmark with sapmachine:17.
+Find more in [./docker/README.md](./docker/README.md).
 
 [![Build](https://github.com/openmessaging/benchmark/actions/workflows/pr-build-and-test.yml/badge.svg)](https://github.com/openmessaging/benchmark/actions/workflows/pr-build-and-test.yml)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
@@ -27,7 +30,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 
 Requirements:
 
-* JDK 8
+* JDK 17
 * Maven 3.8.6+
 
 Common build actions:
