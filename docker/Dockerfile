@@ -12,7 +12,7 @@
 # limitations under the License.
 #
 
-FROM openjdk:8-jdk
+FROM sapmachine:17
 
 ARG BENCHMARK_TARBALL
 
