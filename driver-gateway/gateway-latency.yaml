@@ -23,7 +23,7 @@ topicConfig: |
   min.insync.replicas=2
 
 commonConfig: |
-  bootstrap.servers=localhost:9092
+  bootstrap.servers=conduktor-gateway:6969
 
 producerConfig: |
   acks=all
