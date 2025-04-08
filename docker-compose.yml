@@ -1,0 +1,108 @@
+services:
+  zookeeper:
+    image: "confluentinc/cp-zookeeper:latest"
+    container_name: openmessaging-benchmark-zookeeper
+    restart: always
+    ports:
+      - "22181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    healthcheck:
+      test: echo srvr | nc zookeeper 2181 || exit 1
+      retries: 20
+      interval: 10s
+  kafka-1:
+    image: "confluentinc/cp-kafka:latest"
+    container_name: openmessaging-benchmark-kafka-1
+    restart: always
+    ports:
+      - "19092:19092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENERS: "INTERNAL://kafka-1:9092,EXTERNAL://:19092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-1:9092,EXTERNAL://localhost:19092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_BROKER_ID: 1
+    healthcheck:
+      test: nc -zv kafka-1 9092 || exit 1
+      interval: 10s
+      retries: 25
+      start_period: 20s
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+  kafka-2:
+    image: confluentinc/cp-kafka
+    container_name: openmessaging-benchmark-kafka-2
+    hostname: kafka-2
+    ports:
+      - 19093:19093
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENERS: "INTERNAL://kafka-2:9093,EXTERNAL://:19093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-2:9093,EXTERNAL://localhost:19093"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_BROKER_ID: 2
+    healthcheck:
+      test: nc -zv kafka-2 9093 || exit 1
+      interval: 10s
+      retries: 25
+      start_period: 20s
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+  kafka-3:
+    image: confluentinc/cp-kafka
+    container_name: openmessaging-benchmark-kafka-3
+    hostname: kafka-3
+    ports:
+      - 19094:19094
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENERS: "INTERNAL://kafka-3:9094,EXTERNAL://:19094"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-3:9094,EXTERNAL://localhost:19094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_BROKER_ID: 3
+    healthcheck:
+      test: nc -zv kafka-3 9094 || exit 1
+      interval: 10s
+      retries: 25
+      start_period: 20s
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+
+  conduktor-gateway:
+    image: harbor.cdkt.dev/conduktor/conduktor-gateway:3.8.0-rc1
+    hostname: conduktor-gateway
+    container_name: openmessaging-benchmark-conduktor-gateway
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9093,kafka-3:9094
+      JAVA_OPTS: "-XX:UseSVE=0"
+      VAULT_TOKEN: vault-plaintext-root-token
+    ports:
+      - "8888:8888"
+      - "6969:6969"
+    healthcheck:
+      test: curl localhost:8888/health
+      interval: 5s
+      retries: 25
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+  kafka-client:
+      image: confluentinc/cp-kafka:latest
+      hostname: kafka-client
+      container_name: openmessaging-benchmark-kafka-client
+      command: sleep infinity
+      volumes:
+      - ${PWD}:${PWD}
+      - ~/.m2:$HOME/.m2
+      working_dir: ${PWD}
