@@ -16,8 +16,13 @@ FROM sapmachine:17
 
 ARG BENCHMARK_TARBALL
 
+# Using ADD instead of COPY because ${BENCHMARK_TARBALL} is an archive that needs to be extracted
 ADD ${BENCHMARK_TARBALL} /
 
 RUN mv openmessaging-benchmark-* /benchmark
 
 WORKDIR /benchmark
+
+# Install vim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y vim=2:9.1.0016-1ubuntu7.8 tzdata=2025b-0ubuntu0.24.04 && rm -rf /var/lib/apt/lists/*
