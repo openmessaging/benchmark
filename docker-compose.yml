@@ -74,7 +74,26 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
-
+  vault:
+    image: hashicorp/vault
+    container_name: openmessaging-benchmark-vault
+    healthcheck:
+      test: nc -zv 0.0.0.0 8200
+      interval: 5s
+      retries: 25
+    hostname: vault
+    environment:
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_DEV_ROOT_TOKEN_ID: vault-plaintext-root-token
+    ports:
+    - 8200:8200
+    command:
+    - sh
+    - -c
+    - (while ! nc -z 127.0.0.1 8200; do sleep 1; echo 'waiting for vault service ...';
+      done; export VAULT_ADDR='http://0.0.0.0:8200';vault secrets enable transit;
+      vault secrets enable -version=1 kv; vault secrets enable totp ) & vault server
+      -dev -dev-listen-address=0.0.0.0:8200
   conduktor-gateway:
     image: harbor.cdkt.dev/conduktor/conduktor-gateway:3.8.0-rc1
     hostname: conduktor-gateway
@@ -83,6 +102,10 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9093,kafka-3:9094
       JAVA_OPTS: "-XX:UseSVE=0"
       VAULT_TOKEN: vault-plaintext-root-token
+      tf_kms_arn: AWS_KMS_ARN
+      ENCRYPT_ACCESS_KEY: DEV-ACCESS-KEY
+      ENCRYPT_SECRET_KEY: DEV-SECRET-KEY
+      GATEWAY_INTERCEPTOR_CONFIG_LOCATION: "/templates/local-gateway-interceptors.json"
     ports:
       - "8888:8888"
       - "6969:6969"
@@ -90,6 +113,8 @@ services:
       test: curl localhost:8888/health
       interval: 5s
       retries: 25
+    volumes:
+    - ./driver-gateway/deploy/ssd-deployment/templates:/templates:ro
     depends_on:
       kafka-1:
         condition: service_healthy
@@ -104,5 +129,5 @@ services:
       command: sleep infinity
       volumes:
       - ${PWD}:${PWD}
-      - ~/.m2:$HOME/.m2
+      - ~/.m2:$HOME/.m2:ro
       working_dir: ${PWD}

@@ -1,0 +1,188 @@
+[
+  {
+    "name": "recordkey-full-encrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.EncryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "recordkey-fe.*",
+      "kmsConfig": {
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      },
+      "recordValue": {
+        "payload": {
+          "keySecretId": "vault-kms://vault:8200/transit/keys/fe-username-{{record.key}}",
+          "algorithm": "AES128_GCM"
+        }
+      }
+    }
+  },
+  {
+    "name": "recordkey-full-decrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.DecryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "recordkey-fe.*",
+      "kmsConfig": {
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "gatewaykms-full-encrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.EncryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "gatewaykms-fe.*",
+      "recordValue": {
+        "payload": {
+          "keySecretId": "gateway-kms://fe-username-{{record.key}}",
+          "algorithm": "AES128_GCM"
+        }
+      },
+      "kmsConfig": {
+        "gateway": {
+          "masterKeyId": "vault-kms://vault:8200/transit/keys/fe-master-key",
+          "maxKeys" : 10000000
+        },
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "gatewaykms-full-decrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.DecryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "gatewaykms-fe.*",
+      "kmsConfig": {
+        "gateway": {
+          "masterKeyId": "vault-kms://vault:8200/transit/keys/fe-master-key",
+          "maxKeys" : 10000000
+        },
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "gatewaykms-field-level-encrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.EncryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "gatewaykms-fle.*",
+      "recordValue": {
+        "fields": [
+          {
+            "fieldName": "password",
+            "keySecretId": "gateway-kms://fle-username-{{record.key}}",
+            "algorithm": "AES128_GCM"
+          },
+          {
+            "fieldName": "visa",
+            "keySecretId": "gateway-kms://fle-username-{{record.key}}",
+            "algorithm": "AES128_GCM"
+          },
+          {
+            "fieldName": "mobile",
+            "keySecretId": "gateway-kms://fle-username-{{record.key}}",
+            "algorithm": "AES128_GCM"
+          }
+        ]
+      },
+      "kmsConfig": {
+        "gateway": {
+          "masterKeyId": "vault-kms://vault:8200/transit/keys/fle-master-key",
+          "maxKeys" : 10000000
+        },
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "gatewaykms-field-level-decrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.DecryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "gatewaykms-fle.*",
+      "kmsConfig": {
+        "gateway": {
+          "masterKeyId": "vault-kms://vault:8200/transit/keys/fle-master-key",
+          "maxKeys" : 10000000
+        },
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "recordkey-field-level-encrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.EncryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "recordkey-fle.*",
+      "recordValue": {
+        "fields": [
+          {
+            "fieldName": "password",
+            "keySecretId": "vault-kms://vault:8200/transit/keys/fle-username-{{record.key}}",
+            "algorithm": "AES128_GCM"
+          },
+          {
+            "fieldName": "visa",
+            "keySecretId": "vault-kms://vault:8200/transit/keys/fle-username-{{record.key}}",
+            "algorithm": "AES128_GCM"
+          },
+          {
+            "fieldName": "mobile",
+            "keySecretId": "vault-kms://vault:8200/transit/keys/fle-username-{{record.key}}",
+            "algorithm": "AES128_GCM"
+          }
+        ]
+      },
+      "kmsConfig": {
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "recordkey-field-level-decrypt",
+    "pluginClass": "io.conduktor.gateway.interceptor.DecryptPlugin",
+    "priority": 100,
+    "config": {
+      "topic": "recordkey-fle.*",
+      "kmsConfig": {
+        "vault": {
+          "uri": "http://vault:8200",
+          "token": "my-vault-token",
+          "version": 1
+        }
+      }
+    }
+  }
+]

@@ -89,7 +89,7 @@ public class HttpWorkerClient implements Worker {
     }
 
     @Override
-    public void probeProducers() throws IOException {
+    public void probeProducers(byte[] payloadData) throws IOException {
         sendPost(PROBE_PRODUCERS);
     }
 
