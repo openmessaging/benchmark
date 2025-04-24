@@ -24,3 +24,10 @@ COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-b
 RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1
 RUN rm /openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz
 WORKDIR /benchmark
+
+# Install vim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y vim=2:9.1.0016-1ubuntu7.8 tzdata=2025b-0ubuntu0.24.04 && rm -rf /var/lib/apt/lists/*
+
+# Start a shell by default
+CMD ["/bin/bash"]
