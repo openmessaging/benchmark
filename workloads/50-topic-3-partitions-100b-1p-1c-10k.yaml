@@ -12,15 +12,24 @@
 # limitations under the License.
 #
 
-name: 1 topic / 3 partition / 100b / 3 producers
+name: 10k rate 1 producer and 1 consumer on 50 topics with 3 partitions
 
-topics: 1
+topics: 50
 partitionsPerTopic: 3
+
 messageSize: 100
-payloadFile: "payload/payload-100b.data"
+useRandomizedPayloads: true
+randomBytesRatio: 0.5
+randomizedPayloadPoolSize: 100
+
 subscriptionsPerTopic: 1
 consumerPerSubscription: 1
-producersPerTopic: 3
-producerRate: 0
+producersPerTopic: 1
+
+# Discover max-sustainable rate
+producerRate: 10000
+
 consumerBacklogSizeGB: 0
-testDurationMinutes: 10
+testDurationMinutes: 5
+
+

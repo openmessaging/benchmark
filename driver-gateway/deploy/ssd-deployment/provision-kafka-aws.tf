@@ -1,12 +1,25 @@
+terraform {
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = "5.56.1"
+      }
+      random = {
+        source  = "hashicorp/random"
+        version = "3.1"
+      }
+    }
+
+}
 provider "aws" {
   region  = "${var.region}"
-  profile = "${var.profile}"
-  version = "3.50"
+  profile = var.profile != "" ? var.profile : null
 }
 
 provider "random" {
-  version = "3.1"
 }
+
+data "aws_caller_identity" "current" {}
 
 variable "public_key_path" {
   description = <<DESCRIPTION
@@ -25,6 +38,11 @@ resource "random_id" "hash" {
 variable "key_name" {
   default     = "kafka-benchmark-key"
   description = "Desired name prefix for the AWS key pair"
+}
+
+variable "common_tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
 }
 
 variable "region" {}
@@ -47,14 +65,49 @@ variable "num_instances" {
 resource "aws_vpc" "benchmark_vpc" {
   cidr_block = "10.0.0.0/16"
 
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Kafka_Benchmark_VPC_${random_id.hash.hex}"
-  }
+  })
+}
+
+resource "aws_kms_key" "benchmark_key" {
+  key_usage   = "ENCRYPT_DECRYPT"
+  description = "Benchmark symmetric encryption KMS key for gateway"
+  tags = var.common_tags
+}
+
+resource "aws_kms_key_policy" "benchmark_key" {
+  key_id = aws_kms_key.benchmark_key.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Id      = "benchmark-key-default-1"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        },
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_caller_identity.current.arn
+        },
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # Create an internet gateway to give our subnet access to the outside world
 resource "aws_internet_gateway" "kafka" {
   vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  tags = var.common_tags
 }
 
 # Grant the VPC internet access on its main route table
@@ -70,6 +123,7 @@ resource "aws_subnet" "benchmark_subnet" {
   cidr_block              = "10.0.0.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "${var.az}"
+  tags = var.common_tags
 }
 
 resource "aws_security_group" "benchmark_security_group" {
@@ -107,14 +161,17 @@ resource "aws_security_group" "benchmark_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Benchmark-Security-Group-${random_id.hash.hex}"
-  }
+  })
 }
 
 resource "aws_key_pair" "auth" {
   key_name   = "${var.key_name}-${random_id.hash.hex}"
   public_key = "${file(var.public_key_path)}"
+  tags = merge(var.common_tags, {
+    Name = "${var.key_name}-${random_id.hash.hex}"
+  })
 }
 
 resource "aws_instance" "zookeeper" {
@@ -124,11 +181,11 @@ resource "aws_instance" "zookeeper" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["zookeeper"]}"
-
-  tags = {
-    Name      = "zk_${count.index}"
-    Benchmark = "Kafka"
-  }
+  user_data              = file("${path.module}/templates/init.sh")
+  tags = merge(var.common_tags, {
+    Name         = "zk_${count.index}"
+    InstanceType = "Zookeeper"
+  })
 }
 
 resource "aws_instance" "kafka" {
@@ -138,12 +195,29 @@ resource "aws_instance" "kafka" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["kafka"]}"
+  user_data              = file("${path.module}/templates/init.sh")
 
-  tags = {
-    Name      = "kafka_${count.index}"
-    Benchmark = "Kafka"
-  }
+  tags = merge(var.common_tags, {
+    Name         = "kafka_${count.index}"
+    InstanceType = "Kafka"
+  })
 }
+
+resource "aws_instance" "gateway" {
+  ami                    = "${var.ami}"
+  instance_type          = "${var.instance_types["gateway"]}"
+  key_name               = "${aws_key_pair.auth.id}"
+  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = "${var.num_instances["gateway"]}"
+  user_data              = file("${path.module}/templates/init.sh")
+
+  tags = merge(var.common_tags, {
+    Name         = "gateway_${count.index}"
+    InstanceType = "Gateway"
+  })
+}
+
 
 resource "aws_instance" "client" {
   ami                    = "${var.ami}"
@@ -152,10 +226,11 @@ resource "aws_instance" "client" {
   subnet_id              = "${aws_subnet.benchmark_subnet.id}"
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
+  user_data              = file("${path.module}/templates/init.sh")
 
   tags = {
-    Name      = "kafka_client_${count.index}"
-    Benchmark = "Kafka"
+    Name         = "kafka_client_${count.index}"
+    InstanceType = "Kafka Client"
   }
 }
 
@@ -181,6 +256,9 @@ ${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip
 ${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
 ${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
 ${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+${aws_instance.gateway.0.public_ip} private_ip=${aws_instance.gateway.0.private_ip}
+${aws_instance.gateway.1.public_ip} private_ip=${aws_instance.gateway.1.private_ip}
+${aws_instance.gateway.2.public_ip} private_ip=${aws_instance.gateway.2.private_ip}
 
 [zookeeper]
 ${aws_instance.zookeeper.0.public_ip} private_ip=${aws_instance.zookeeper.0.private_ip}
@@ -192,10 +270,22 @@ ${aws_instance.kafka.0.public_ip} private_ip=${aws_instance.kafka.0.private_ip}
 ${aws_instance.kafka.1.public_ip} private_ip=${aws_instance.kafka.1.private_ip}
 ${aws_instance.kafka.2.public_ip} private_ip=${aws_instance.kafka.2.private_ip}
 
+[gateway]
+${aws_instance.gateway.0.public_ip} private_ip=${aws_instance.gateway.0.private_ip}
+${aws_instance.gateway.1.public_ip} private_ip=${aws_instance.gateway.1.private_ip}
+${aws_instance.gateway.2.public_ip} private_ip=${aws_instance.gateway.2.private_ip}
+
 [client]
 ${aws_instance.client.0.public_ip} private_ip=${aws_instance.client.0.private_ip}
 ${aws_instance.client.1.public_ip} private_ip=${aws_instance.client.1.private_ip}
 ${aws_instance.client.2.public_ip} private_ip=${aws_instance.client.2.private_ip}
 ${aws_instance.client.3.public_ip} private_ip=${aws_instance.client.3.private_ip}
+  EOF
+}
+
+resource "local_file" "tf_ansible_vars_file" {
+  filename = "./tf_ansible_vars_file.yml"
+  content = <<-EOF
+tf_kms_arn: ${aws_kms_key.benchmark_key.arn}
   EOF
 }

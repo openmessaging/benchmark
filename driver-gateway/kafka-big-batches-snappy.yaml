@@ -12,15 +12,26 @@
 # limitations under the License.
 #
 
-name: 1 topic / 3 partition / 100b / 3 producers
 
-topics: 1
-partitionsPerTopic: 3
-messageSize: 100
-payloadFile: "payload/payload-100b.data"
-subscriptionsPerTopic: 1
-consumerPerSubscription: 1
-producersPerTopic: 3
-producerRate: 0
-consumerBacklogSizeGB: 0
-testDurationMinutes: 10
+name: Kafka
+driverClass: io.openmessaging.benchmark.driver.gateway.KafkaBenchmarkDriver
+
+# Kafka client-specific configuration
+replicationFactor: 3
+
+topicConfig: |
+  min.insync.replicas=2
+
+commonConfig: |
+  bootstrap.servers=localhost:9092
+
+producerConfig: |
+  acks=all
+  linger.ms=200
+  batch.size=1048576
+  compression.type=snappy
+
+consumerConfig: |
+  auto.offset.reset=earliest
+  enable.auto.commit=false
+  max.partition.fetch.bytes=10485760

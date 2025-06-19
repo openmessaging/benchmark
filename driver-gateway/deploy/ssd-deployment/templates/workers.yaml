@@ -12,15 +12,8 @@
 # limitations under the License.
 #
 
-name: 1 topic / 3 partition / 100b / 3 producers
 
-topics: 1
-partitionsPerTopic: 3
-messageSize: 100
-payloadFile: "payload/payload-100b.data"
-subscriptionsPerTopic: 1
-consumerPerSubscription: 1
-producersPerTopic: 3
-producerRate: 0
-consumerBacklogSizeGB: 0
-testDurationMinutes: 10
+workers:
+{% for worker in groups['client'] %}
+  - http://{{ hostvars[worker].private_ip }}:8080
+{% endfor %}
