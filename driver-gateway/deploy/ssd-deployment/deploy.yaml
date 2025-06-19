@@ -268,6 +268,7 @@
           ENCRYPT_SECRET_KEY: "{{ lookup('ansible.builtin.env', 'ENCRYPT_SECRET_KEY') }}"
           GATEWAY_INTERCEPTOR_CONFIG_LOCATION: "/opt/interceptors.json"
           GATEWAY_ADMIN_API_USERS: "[{username: admin, password: conduktor, admin: true}]"
+          GATEWAY_ACL_ENABLED: "false"
         published_ports:
           - "8888:8888"
           - "6969:6969"
