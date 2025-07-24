@@ -12,7 +12,7 @@
 # limitations under the License.
 #
 
-FROM sapmachine:17
+FROM eclipse-temurin:17
 
 ARG BENCHMARK_TARBALL
 
@@ -25,7 +25,7 @@ WORKDIR /benchmark
 
 # Install vim
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y vim=2:9.1.0016-1ubuntu7.8 tzdata=2025b-0ubuntu0.24.04 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y vim tzdata && rm -rf /var/lib/apt/lists/*
 
 # Start a shell by default
 CMD ["/bin/bash"]

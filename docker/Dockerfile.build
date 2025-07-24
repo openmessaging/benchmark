@@ -13,13 +13,13 @@
 #
 
 # Build the Project
-FROM maven:3.9.9-sapmachine-17 as build
+FROM maven:3.9.9-eclipse-temurin-17 as build
 COPY . /benchmark
 WORKDIR /benchmark
 RUN mvn install
 
 # Create the benchmark image
-FROM sapmachine:17
+FROM eclipse-temurin:17
 COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz /
 RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1
 RUN rm /openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz
@@ -27,7 +27,7 @@ WORKDIR /benchmark
 
 # Install vim
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y vim=2:9.1.0016-1ubuntu7.8 tzdata=2025b-0ubuntu0.24.04 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y vim tzdata && rm -rf /var/lib/apt/lists/*
 
 # Start a shell by default
 CMD ["/bin/bash"]
