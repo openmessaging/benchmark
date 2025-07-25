@@ -12,12 +12,20 @@
 # limitations under the License.
 #
 
-FROM openjdk:8-jdk
+FROM eclipse-temurin:17
 
 ARG BENCHMARK_TARBALL
 
+# Using ADD instead of COPY because ${BENCHMARK_TARBALL} is an archive that needs to be extracted
 ADD ${BENCHMARK_TARBALL} /
 
 RUN mv openmessaging-benchmark-* /benchmark
 
 WORKDIR /benchmark
+
+# Install vim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y vim tzdata && rm -rf /var/lib/apt/lists/*
+
+# Start a shell by default
+CMD ["/bin/bash"]
