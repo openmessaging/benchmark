@@ -15,81 +15,65 @@ package io.openmessaging.benchmark.worker.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.HdrHistogram.Histogram;
 import org.junit.jupiter.api.Test;
 
 class PeriodStatsTest {
 
     @Test
     void plus() {
-        PeriodStats one = new PeriodStats();
-        one.messagesSent = 1;
-        one.messageSendErrors = 2;
-        one.bytesSent = 3;
-        one.messagesReceived = 4;
-        one.bytesReceived = 5;
-        one.totalMessagesSent = 6;
-        one.totalMessageSendErrors = 7;
-        one.totalMessagesReceived = 8;
-        PeriodStats two = new PeriodStats();
-        two.messagesSent = 10;
-        two.messageSendErrors = 20;
-        two.bytesSent = 30;
-        two.messagesReceived = 40;
-        two.bytesReceived = 50;
-        two.totalMessagesSent = 60;
-        two.totalMessageSendErrors = 70;
-        two.totalMessagesReceived = 80;
+        PeriodStats one =
+                new PeriodStats(
+                        1, 2, 3, 4, 5, 6, 7, 8, new Histogram(5), new Histogram(5), new Histogram(5));
+        PeriodStats two =
+                new PeriodStats(
+                        10, 20, 30, 40, 50, 60, 70, 80, new Histogram(5), new Histogram(5), new Histogram(5));
+
         PeriodStats result = one.plus(two);
         assertThat(result)
                 .satisfies(
                         r -> {
-                            assertThat(r.messagesSent).isEqualTo(11);
-                            assertThat(r.messageSendErrors).isEqualTo(22);
-                            assertThat(r.bytesSent).isEqualTo(33);
-                            assertThat(r.messagesReceived).isEqualTo(44);
-                            assertThat(r.bytesReceived).isEqualTo(55);
-                            assertThat(r.totalMessagesSent).isEqualTo(66);
-                            assertThat(r.totalMessageSendErrors).isEqualTo(77);
-                            assertThat(r.totalMessagesReceived).isEqualTo(88);
+                            assertThat(r.messagesSent()).isEqualTo(11);
+                            assertThat(r.messageSendErrors()).isEqualTo(22);
+                            assertThat(r.bytesSent()).isEqualTo(33);
+                            assertThat(r.messagesReceived()).isEqualTo(44);
+                            assertThat(r.bytesReceived()).isEqualTo(55);
+                            assertThat(r.totalMessagesSent()).isEqualTo(66);
+                            assertThat(r.totalMessageSendErrors()).isEqualTo(77);
+                            assertThat(r.totalMessagesReceived()).isEqualTo(88);
 
-                            two.publishLatency.add(one.publishLatency);
-                            two.publishDelayLatency.add(one.publishDelayLatency);
-                            two.endToEndLatency.add(one.endToEndLatency);
+                            two.publishLatency().add(one.publishLatency());
+                            two.publishDelayLatency().add(one.publishDelayLatency());
+                            two.endToEndLatency().add(one.endToEndLatency());
 
-                            assertThat(r.publishLatency).isEqualTo(two.publishLatency);
-                            assertThat(r.publishDelayLatency).isEqualTo(two.publishDelayLatency);
-                            assertThat(r.endToEndLatency).isEqualTo(two.endToEndLatency);
+                            assertThat(r.publishLatency()).isEqualTo(two.publishLatency());
+                            assertThat(r.publishDelayLatency()).isEqualTo(two.publishDelayLatency());
+                            assertThat(r.endToEndLatency()).isEqualTo(two.endToEndLatency());
                         });
     }
 
     @Test
     void zeroPlus() {
         PeriodStats one = new PeriodStats();
-        PeriodStats two = new PeriodStats();
-        two.messagesSent = 10;
-        two.messageSendErrors = 20;
-        two.bytesSent = 30;
-        two.messagesReceived = 40;
-        two.bytesReceived = 50;
-        two.totalMessagesSent = 60;
-        two.totalMessageSendErrors = 70;
-        two.totalMessagesReceived = 80;
+        PeriodStats two =
+                new PeriodStats(
+                        10, 20, 30, 40, 50, 60, 70, 80, new Histogram(5), new Histogram(5), new Histogram(5));
         PeriodStats result = one.plus(two);
         assertThat(result)
                 .satisfies(
                         r -> {
-                            assertThat(r.messagesSent).isEqualTo(10);
-                            assertThat(r.messageSendErrors).isEqualTo(20);
-                            assertThat(r.bytesSent).isEqualTo(30);
-                            assertThat(r.messagesReceived).isEqualTo(40);
-                            assertThat(r.bytesReceived).isEqualTo(50);
-                            assertThat(r.totalMessagesSent).isEqualTo(60);
-                            assertThat(r.totalMessageSendErrors).isEqualTo(70);
-                            assertThat(r.totalMessagesReceived).isEqualTo(80);
+                            assertThat(r.messagesSent()).isEqualTo(10);
+                            assertThat(r.messageSendErrors()).isEqualTo(20);
+                            assertThat(r.bytesSent()).isEqualTo(30);
+                            assertThat(r.messagesReceived()).isEqualTo(40);
+                            assertThat(r.bytesReceived()).isEqualTo(50);
+                            assertThat(r.totalMessagesSent()).isEqualTo(60);
+                            assertThat(r.totalMessageSendErrors()).isEqualTo(70);
+                            assertThat(r.totalMessagesReceived()).isEqualTo(80);
 
-                            assertThat(r.publishLatency).isEqualTo(two.publishLatency);
-                            assertThat(r.publishDelayLatency).isEqualTo(two.publishDelayLatency);
-                            assertThat(r.endToEndLatency).isEqualTo(two.endToEndLatency);
+                            assertThat(r.publishLatency()).isEqualTo(two.publishLatency());
+                            assertThat(r.publishDelayLatency()).isEqualTo(two.publishDelayLatency());
+                            assertThat(r.endToEndLatency()).isEqualTo(two.endToEndLatency());
                         });
     }
 }

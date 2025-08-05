@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.rocketmq;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import org.apache.rocketmq.client.consumer.MQPushConsumer;
 

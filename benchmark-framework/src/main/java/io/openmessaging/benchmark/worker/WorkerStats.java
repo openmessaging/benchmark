@@ -13,11 +13,9 @@
  */
 package io.openmessaging.benchmark.worker;
 
-
 import io.openmessaging.benchmark.worker.commands.CountersStats;
 import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import org.HdrHistogram.Recorder;
@@ -90,7 +88,7 @@ public class WorkerStats {
         totalMessagesReceived.increment();
         messagesReceivedCounter.inc();
         bytesReceived.add(payloadLength);
-        bytesReceivedCounter.add(payloadLength);
+        bytesReceivedCounter.addCount(payloadLength);
 
         if (endToEndLatencyMicros > 0) {
             endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
@@ -100,23 +98,18 @@ public class WorkerStats {
     }
 
     public PeriodStats toPeriodStats() {
-        PeriodStats stats = new PeriodStats();
-
-        stats.messagesSent = messagesSent.sumThenReset();
-        stats.messageSendErrors = messageSendErrors.sumThenReset();
-        stats.bytesSent = bytesSent.sumThenReset();
-
-        stats.messagesReceived = messagesReceived.sumThenReset();
-        stats.bytesReceived = bytesReceived.sumThenReset();
-
-        stats.totalMessagesSent = totalMessagesSent.sum();
-        stats.totalMessageSendErrors = totalMessageSendErrors.sum();
-        stats.totalMessagesReceived = totalMessagesReceived.sum();
-
-        stats.publishLatency = publishLatencyRecorder.getIntervalHistogram();
-        stats.publishDelayLatency = publishDelayLatencyRecorder.getIntervalHistogram();
-        stats.endToEndLatency = endToEndLatencyRecorder.getIntervalHistogram();
-        return stats;
+        return new PeriodStats(
+                messagesSent.sumThenReset(),
+                messageSendErrors.sumThenReset(),
+                bytesSent.sumThenReset(),
+                messagesReceived.sumThenReset(),
+                bytesReceived.sumThenReset(),
+                totalMessagesSent.sum(),
+                totalMessageSendErrors.sum(),
+                totalMessagesReceived.sum(),
+                publishLatencyRecorder.getIntervalHistogram(),
+                publishDelayLatencyRecorder.getIntervalHistogram(),
+                endToEndLatencyRecorder.getIntervalHistogram());
     }
 
     public CumulativeLatencies toCumulativeLatencies() {
@@ -127,12 +120,9 @@ public class WorkerStats {
         return latencies;
     }
 
-    public CountersStats toCountersStats() throws IOException {
-        CountersStats stats = new CountersStats();
-        stats.messagesSent = totalMessagesSent.sum();
-        stats.messageSendErrors = totalMessageSendErrors.sum();
-        stats.messagesReceived = totalMessagesReceived.sum();
-        return stats;
+    public CountersStats toCountersStats() {
+        return new CountersStats(
+                totalMessagesSent.sum(), totalMessageSendErrors.sum(), totalMessagesReceived.sum());
     }
 
     public void resetLatencies() {
@@ -168,7 +158,7 @@ public class WorkerStats {
         totalMessagesSent.increment();
         messagesSentCounter.inc();
         bytesSent.add(payloadLength);
-        bytesSentCounter.add(payloadLength);
+        bytesSentCounter.addCount(payloadLength);
 
         final long latencyMicros =
                 Math.min(highestTrackableValue, TimeUnit.NANOSECONDS.toMicros(nowNs - sendTimeNs));

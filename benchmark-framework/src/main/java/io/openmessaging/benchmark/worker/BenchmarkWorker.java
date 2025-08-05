@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.worker;
 
-
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
@@ -23,8 +22,8 @@ import io.javalin.Javalin;
 import org.apache.bookkeeper.stats.Stats;
 import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.stats.prometheus.PrometheusMetricsProvider;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,14 +75,13 @@ public class BenchmarkWorker {
         provider.start(conf);
 
         Runtime.getRuntime()
-                .addShutdownHook(new Thread(() -> provider.stop(), "benchmark-worker-shutdown-thread"));
+                .addShutdownHook(new Thread(provider::stop, "benchmark-worker-shutdown-thread"));
 
         // Dump configuration variables
         log.info("Starting benchmark with config: {}", writer.writeValueAsString(arguments));
 
         // Start web server
-        Javalin app = Javalin.start(arguments.httpPort);
-
+        Javalin app = Javalin.create().start(arguments.httpPort);
         new WorkerHandler(app, provider.getStatsLogger("benchmark"));
     }
 

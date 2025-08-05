@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.artemis;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -97,7 +96,8 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         try {
-            return CompletableFuture.completedFuture(new ArtemisBenchmarkProducer(topic, sessionFactory));
+            return CompletableFuture.completedFuture(
+                    ArtemisBenchmarkProducer.create(topic, sessionFactory));
         } catch (ActiveMQException e) {
             CompletableFuture<BenchmarkProducer> future = new CompletableFuture<>();
             future.completeExceptionally(e);
@@ -115,7 +115,7 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
                             try {
                                 String queueName = topic + "-" + subscriptionName;
                                 BenchmarkConsumer consumer =
-                                        new ArtemisBenchmarkConsumer(
+                                        ArtemisBenchmarkConsumer.create(
                                                 topic, queueName, sessionFactory, consumerCallback);
                                 future.complete(consumer);
                             } catch (ActiveMQException e) {
@@ -150,5 +150,5 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
     }
 
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
-    private static final Logger log = LoggerFactory.getLogger(ArtemisBenchmarkProducer.class);
+    private static final Logger log = LoggerFactory.getLogger(ArtemisBenchmarkDriver.class);
 }

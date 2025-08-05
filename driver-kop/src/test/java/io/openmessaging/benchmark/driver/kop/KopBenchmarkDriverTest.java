@@ -37,20 +37,20 @@ public class KopBenchmarkDriverTest {
         assertNotNull(url);
 
         final Config config = KopBenchmarkDriver.loadConfig(new File(url.toURI()));
-        assertEquals(config.producerType, ClientType.PULSAR);
-        assertEquals(config.consumerType, ClientType.KAFKA);
-        assertEquals(config.pollTimeoutMs, 100);
+        assertEquals(config.producerType(), ClientType.PULSAR);
+        assertEquals(config.consumerType(), ClientType.KAFKA);
+        assertEquals(config.pollTimeoutMs(), 100);
 
-        final PulsarConfig pulsarConfig = config.pulsarConfig;
-        assertEquals(pulsarConfig.serviceUrl, "pulsar://localhost:6650");
-        assertTrue(pulsarConfig.batchingEnabled);
-        assertEquals(pulsarConfig.batchingMaxPublishDelayMs, 1);
-        assertEquals(pulsarConfig.batchingMaxBytes, 131072);
-        assertTrue(pulsarConfig.blockIfQueueFull);
-        assertEquals(pulsarConfig.pendingQueueSize, 1000);
-        assertEquals(pulsarConfig.maxPendingMessagesAcrossPartitions, 50000);
-        assertEquals(pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions, 50000);
-        assertEquals(pulsarConfig.receiverQueueSize, 1000);
+        final PulsarConfig pulsarConfig = config.pulsarConfig();
+        assertEquals(pulsarConfig.serviceUrl(), "pulsar://localhost:6650");
+        assertTrue(pulsarConfig.batchingEnabled());
+        assertEquals(pulsarConfig.batchingMaxPublishDelayMs(), 1);
+        assertEquals(pulsarConfig.batchingMaxBytes(), 131072);
+        assertTrue(pulsarConfig.blockIfQueueFull());
+        assertEquals(pulsarConfig.pendingQueueSize(), 1000);
+        assertEquals(pulsarConfig.maxPendingMessagesAcrossPartitions(), 50000);
+        assertEquals(pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions(), 50000);
+        assertEquals(pulsarConfig.receiverQueueSize(), 1000);
 
         assertEquals(config.getKafkaProperties().get("bootstrap.servers"), "localhost:9092");
     }
@@ -61,20 +61,20 @@ public class KopBenchmarkDriverTest {
         assertNotNull(url);
 
         final Config config = KopBenchmarkDriver.loadConfig(new File(url.toURI()));
-        assertEquals(config.producerType, ClientType.KAFKA);
-        assertEquals(config.consumerType, ClientType.PULSAR);
-        assertEquals(config.pollTimeoutMs, 1000);
+        assertEquals(config.producerType(), ClientType.KAFKA);
+        assertEquals(config.consumerType(), ClientType.PULSAR);
+        assertEquals(config.pollTimeoutMs(), 1000);
 
-        final PulsarConfig pulsarConfig = config.pulsarConfig;
-        assertEquals(pulsarConfig.serviceUrl, "pulsar+ssl://localhost:6651");
-        assertFalse(pulsarConfig.batchingEnabled);
-        assertEquals(pulsarConfig.batchingMaxPublishDelayMs, 10);
-        assertEquals(pulsarConfig.batchingMaxBytes, 1310720);
-        assertFalse(pulsarConfig.blockIfQueueFull);
-        assertEquals(pulsarConfig.pendingQueueSize, 10000);
-        assertEquals(pulsarConfig.maxPendingMessagesAcrossPartitions, 500000);
-        assertEquals(pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions, 500000);
-        assertEquals(pulsarConfig.receiverQueueSize, 10000);
+        final PulsarConfig pulsarConfig = config.pulsarConfig();
+        assertEquals(pulsarConfig.serviceUrl(), "pulsar+ssl://localhost:6651");
+        assertFalse(pulsarConfig.batchingEnabled());
+        assertEquals(pulsarConfig.batchingMaxPublishDelayMs(), 10);
+        assertEquals(pulsarConfig.batchingMaxBytes(), 1310720);
+        assertFalse(pulsarConfig.blockIfQueueFull());
+        assertEquals(pulsarConfig.pendingQueueSize(), 10000);
+        assertEquals(pulsarConfig.maxPendingMessagesAcrossPartitions(), 500000);
+        assertEquals(pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions(), 500000);
+        assertEquals(pulsarConfig.receiverQueueSize(), 10000);
 
         final Properties props = config.getKafkaProperties();
         assertEquals(props.size(), 3);

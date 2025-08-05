@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -25,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -50,8 +48,8 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private static final String KAFKA_CLIENT_ID = "client.id";
     private Config config;
 
-    private List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
-    private List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
+    private final List<BenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
+    private final List<BenchmarkConsumer> consumers = Collections.synchronizedList(new ArrayList<>());
 
     private Properties topicProperties;
     private Properties producerProperties;
@@ -64,7 +62,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         config = mapper.readValue(configurationFile, Config.class);
 
         Properties commonProperties = new Properties();
-        commonProperties.load(new StringReader(config.commonConfig));
+        commonProperties.load(new StringReader(config.commonConfig()));
 
         if (commonProperties.containsKey(KAFKA_CLIENT_ID)) {
             commonProperties.put(
@@ -74,23 +72,23 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         }
 
         producerProperties = new Properties();
-        commonProperties.forEach((key, value) -> producerProperties.put(key, value));
-        producerProperties.load(new StringReader(config.producerConfig));
+        producerProperties.putAll(commonProperties);
+        producerProperties.load(new StringReader(config.producerConfig()));
         producerProperties.put(
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         producerProperties.put(
                 ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
 
         consumerProperties = new Properties();
-        commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
-        consumerProperties.load(new StringReader(config.consumerConfig));
+        consumerProperties.putAll(commonProperties);
+        consumerProperties.load(new StringReader(config.consumerConfig()));
         consumerProperties.put(
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProperties.put(
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
         topicProperties = new Properties();
-        topicProperties.load(new StringReader(config.topicConfig));
+        topicProperties.load(new StringReader(config.topicConfig()));
 
         admin = AdminClient.create(commonProperties);
     }
@@ -110,7 +108,7 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
         @SuppressWarnings({"unchecked", "rawtypes"})
         Map<String, String> topicConfigs = new HashMap<>((Map) topicProperties);
         KafkaTopicCreator topicCreator =
-                new KafkaTopicCreator(admin, topicConfigs, config.replicationFactor);
+                new KafkaTopicCreator(admin, topicConfigs, config.replicationFactor());
         return topicCreator.create(topicInfos);
     }
 
@@ -134,13 +132,16 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             String topic, String subscriptionName, ConsumerCallback consumerCallback) {
         Properties properties = new Properties();
-        consumerProperties.forEach((key, value) -> properties.put(key, value));
+        properties.putAll(consumerProperties);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);
         KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(properties);
         try {
-            consumer.subscribe(Arrays.asList(topic));
-            return CompletableFuture.completedFuture(
-                    new KafkaBenchmarkConsumer(consumer, consumerProperties, consumerCallback));
+            consumer.subscribe(Collections.singletonList(topic));
+            BenchmarkConsumer benchmarkConsumer =
+                    new KafkaBenchmarkConsumer(consumer, consumerProperties, consumerCallback);
+            // Add to consumer list to close later
+            consumers.add(benchmarkConsumer);
+            return CompletableFuture.completedFuture(benchmarkConsumer);
         } catch (Throwable t) {
             consumer.close();
             CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
@@ -162,6 +163,9 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     }
 
     private static String applyZoneId(String clientId, String zoneId) {
+        if (zoneId == null) {
+            return clientId;
+        }
         return clientId.replace(ZONE_ID_TEMPLATE, zoneId);
     }
 

@@ -96,7 +96,8 @@ public class HttpWorkerClient implements Worker {
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         log.debug(
-                "Setting worker assigned publish rate to {} msgs/sec", producerWorkAssignment.publishRate);
+                "Setting worker assigned publish rate to {} msgs/sec",
+                producerWorkAssignment.publishRate());
         sendPost(START_LOAD, writer.writeValueAsBytes(producerWorkAssignment));
     }
 

@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.artemis;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -24,23 +23,71 @@ import org.apache.activemq.artemis.api.core.client.ClientProducer;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.SendAcknowledgementHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class ArtemisBenchmarkProducer implements BenchmarkProducer {
+public final class ArtemisBenchmarkProducer implements BenchmarkProducer {
 
     private final ClientSession session;
     private final ClientProducer producer;
 
-    public ArtemisBenchmarkProducer(String address, ClientSessionFactory sessionFactory)
+    // Private constructor - cannot throw exceptions
+    private ArtemisBenchmarkProducer(ClientSession session, ClientProducer producer) {
+        this.session = session;
+        this.producer = producer;
+    }
+
+    /**
+     * Factory method to create ArtemisBenchmarkProducer safely. This method handles all the
+     * exception-throwing initialization logic.
+     *
+     * @param address the address to send messages to
+     * @param sessionFactory the client session factory
+     * @return a new ArtemisBenchmarkProducer instance
+     * @throws ActiveMQException if initialization fails
+     */
+    public static ArtemisBenchmarkProducer create(String address, ClientSessionFactory sessionFactory)
             throws ActiveMQException {
-        session = sessionFactory.createSession();
-        producer = session.createProducer(address);
-        session.start();
+
+        ClientSession tempSession = null;
+        ClientProducer tempProducer = null;
+
+        try {
+            tempSession = sessionFactory.createSession();
+            tempProducer = tempSession.createProducer(address);
+            tempSession.start();
+
+            // Create the producer instance only after all operations succeed
+            return new ArtemisBenchmarkProducer(tempSession, tempProducer);
+
+        } catch (ActiveMQException e) {
+            // Clean up resources if initialization fails
+            if (tempProducer != null) {
+                try {
+                    tempProducer.close();
+                } catch (ActiveMQException closeException) {
+                    log.warn("Failed to close producer during cleanup", closeException);
+                }
+            }
+            if (tempSession != null) {
+                try {
+                    tempSession.close();
+                } catch (ActiveMQException closeException) {
+                    log.warn("Failed to close session during cleanup", closeException);
+                }
+            }
+            throw e;
+        }
     }
 
     @Override
     public void close() throws Exception {
-        producer.close();
-        session.close();
+        if (producer != null) {
+            producer.close();
+        }
+        if (session != null) {
+            session.close();
+        }
     }
 
     @Override
@@ -70,4 +117,6 @@ public class ArtemisBenchmarkProducer implements BenchmarkProducer {
 
         return future;
     }
+
+    private static final Logger log = LoggerFactory.getLogger(ArtemisBenchmarkProducer.class);
 }

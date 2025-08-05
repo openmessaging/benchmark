@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.kop;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -64,7 +63,9 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
 
     private static final ObjectMapper mapper =
             new ObjectMapper(new YAMLFactory())
-                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, false)
+                    .configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
 
     private final List<BenchmarkProducer> producers = new CopyOnWriteArrayList<>();
     private final List<BenchmarkConsumer> consumers = new CopyOnWriteArrayList<>();
@@ -88,37 +89,38 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
         admin = AdminClient.create(commonProperties);
 
         producerProperties = new Properties();
-        commonProperties.forEach(producerProperties::put);
+        producerProperties.putAll(commonProperties);
         producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
 
         consumerProperties = new Properties();
-        commonProperties.forEach(consumerProperties::put);
+        consumerProperties.putAll(commonProperties);
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProperties.put(
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 
-        final PulsarConfig pulsarConfig = config.pulsarConfig;
-        if (config.producerType.equals(ClientType.PULSAR)) {
+        final PulsarConfig pulsarConfig = config.pulsarConfig();
+        if (config.producerType().equals(ClientType.PULSAR)) {
             producerBuilder =
-                    getPulsarClient(pulsarConfig.serviceUrl)
+                    getPulsarClient(pulsarConfig.serviceUrl())
                             .newProducer()
-                            .enableBatching(pulsarConfig.batchingEnabled)
-                            .blockIfQueueFull(pulsarConfig.blockIfQueueFull)
+                            .enableBatching(pulsarConfig.batchingEnabled())
+                            .blockIfQueueFull(pulsarConfig.blockIfQueueFull())
                             .batchingMaxPublishDelay(
-                                    pulsarConfig.batchingMaxPublishDelayMs, TimeUnit.MILLISECONDS)
-                            .batchingMaxBytes(pulsarConfig.batchingMaxBytes)
-                            .maxPendingMessages(pulsarConfig.pendingQueueSize)
-                            .maxPendingMessagesAcrossPartitions(pulsarConfig.maxPendingMessagesAcrossPartitions);
+                                    pulsarConfig.batchingMaxPublishDelayMs(), TimeUnit.MILLISECONDS)
+                            .batchingMaxBytes(pulsarConfig.batchingMaxBytes())
+                            .maxPendingMessages(pulsarConfig.pendingQueueSize())
+                            .maxPendingMessagesAcrossPartitions(
+                                    pulsarConfig.maxPendingMessagesAcrossPartitions());
         }
-        if (config.consumerType.equals(ClientType.PULSAR)) {
+        if (config.consumerType().equals(ClientType.PULSAR)) {
             consumerBuilder =
-                    getPulsarClient(pulsarConfig.serviceUrl)
+                    getPulsarClient(pulsarConfig.serviceUrl())
                             .newConsumer(Schema.BYTEBUFFER)
                             .subscriptionType(SubscriptionType.Failover)
-                            .receiverQueueSize(pulsarConfig.receiverQueueSize)
+                            .receiverQueueSize(pulsarConfig.receiverQueueSize())
                             .maxTotalReceiverQueueSizeAcrossPartitions(
-                                    pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions);
+                                    pulsarConfig.maxTotalReceiverQueueSizeAcrossPartitions());
         }
     }
 
@@ -148,19 +150,19 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
-        if (config.producerType.equals(ClientType.KAFKA)) {
+        if (config.producerType().equals(ClientType.KAFKA)) {
             final BenchmarkProducer producer =
                     new KafkaBenchmarkProducer(new KafkaProducer<>(producerProperties), topic);
             producers.add(producer);
             return CompletableFuture.completedFuture(producer);
-        } else if (config.consumerType.equals(ClientType.PULSAR)) {
+        } else if (config.consumerType().equals(ClientType.PULSAR)) {
             return producerBuilder
                     .clone()
                     .topic(topic)
                     .createAsync()
                     .thenApply(PulsarBenchmarkProducer::new);
         } else {
-            throw new IllegalArgumentException("producerType " + config.producerType + " is invalid");
+            throw new IllegalArgumentException("producerType " + config.producerType() + " is invalid");
         }
     }
 
@@ -168,19 +170,19 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             String topic, String subscriptionName, ConsumerCallback consumerCallback) {
-        if (config.consumerType.equals(ClientType.KAFKA)) {
+        if (config.consumerType().equals(ClientType.KAFKA)) {
             final Properties properties = new Properties();
-            consumerProperties.forEach(properties::put);
+            properties.putAll(consumerProperties);
             properties.put(ConsumerConfig.GROUP_ID_CONFIG, subscriptionName);
             properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
             final KafkaConsumer<String, byte[]> kafkaConsumer = new KafkaConsumer<>(properties);
             kafkaConsumer.subscribe(Collections.singleton(topic));
             final BenchmarkConsumer consumer =
                     new KafkaBenchmarkConsumer(
-                            kafkaConsumer, properties, consumerCallback, config.pollTimeoutMs);
+                            kafkaConsumer, properties, consumerCallback, config.pollTimeoutMs());
             consumers.add(consumer);
             return CompletableFuture.completedFuture(consumer);
-        } else if (config.consumerType.equals(ClientType.PULSAR)) {
+        } else if (config.consumerType().equals(ClientType.PULSAR)) {
             final List<CompletableFuture<Consumer<ByteBuffer>>> futures = new ArrayList<>();
             return client
                     .getPartitionsForTopic(topic)
@@ -197,7 +199,7 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
                                     new PulsarBenchmarkConsumer(
                                             futures.stream().map(CompletableFuture::join).collect(Collectors.toList())));
         } else {
-            throw new IllegalArgumentException("consumerType " + config.consumerType + " is invalid");
+            throw new IllegalArgumentException("consumerType " + config.consumerType() + " is invalid");
         }
     }
 

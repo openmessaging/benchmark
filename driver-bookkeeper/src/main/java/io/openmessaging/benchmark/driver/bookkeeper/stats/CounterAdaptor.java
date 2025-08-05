@@ -13,16 +13,9 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
-
 import org.apache.bookkeeper.stats.Counter;
 
-class CounterAdaptor implements dlshade.org.apache.bookkeeper.stats.Counter {
-
-    private final Counter counter;
-
-    CounterAdaptor(Counter counter) {
-        this.counter = counter;
-    }
+record CounterAdaptor(Counter counter) implements dlshade.org.apache.bookkeeper.stats.Counter {
 
     @Override
     public void clear() {
@@ -41,7 +34,7 @@ class CounterAdaptor implements dlshade.org.apache.bookkeeper.stats.Counter {
 
     @Override
     public void add(long delta) {
-        counter.add(delta);
+        counter.addCount(delta);
     }
 
     @Override

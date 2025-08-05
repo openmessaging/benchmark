@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.redis;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;

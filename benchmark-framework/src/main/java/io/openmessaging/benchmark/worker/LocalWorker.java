@@ -109,11 +109,11 @@ public class LocalWorker implements Worker, ConsumerCallback {
                 IntStream.range(0, topicsInfo.numberOfTopics)
                         .mapToObj(
                                 i -> new TopicInfo(generateTopicName(i), topicsInfo.numberOfPartitionsPerTopic))
-                        .collect(toList());
+                        .toList();
 
         benchmarkDriver.createTopics(topicInfos).join();
 
-        List<String> topics = topicInfos.stream().map(TopicInfo::getTopic).collect(toList());
+        List<String> topics = topicInfos.stream().map(TopicInfo::topic).collect(toList());
 
         log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
         return topics;
@@ -163,7 +163,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) {
         int processors = Runtime.getRuntime().availableProcessors();
 
-        updateMessageProducer(producerWorkAssignment.publishRate);
+        updateMessageProducer(producerWorkAssignment.publishRate());
 
         Map<Integer, List<BenchmarkProducer>> processorAssignment = new TreeMap<>();
 
@@ -182,8 +182,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
                         producers ->
                                 submitProducersToExecutor(
                                         producers,
-                                        KeyDistributor.build(producerWorkAssignment.keyDistributorType),
-                                        producerWorkAssignment.payloadData));
+                                        KeyDistributor.build(producerWorkAssignment.keyDistributorType()),
+                                        producerWorkAssignment.payloadData()));
     }
 
     @Override

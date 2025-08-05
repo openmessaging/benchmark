@@ -13,12 +13,11 @@
  */
 package io.openmessaging.benchmark.worker;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
-import io.javalin.Context;
 import io.javalin.Javalin;
+import io.javalin.http.Context;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
@@ -115,8 +114,8 @@ public class WorkerHandler {
 
         log.info(
                 "Start load publish-rate: {} msg/s -- payload-size: {}",
-                producerWorkAssignment.publishRate,
-                producerWorkAssignment.payloadData.get(0).length);
+                producerWorkAssignment.publishRate(),
+                producerWorkAssignment.payloadData().get(0).length);
 
         localWorker.startLoad(producerWorkAssignment);
     }

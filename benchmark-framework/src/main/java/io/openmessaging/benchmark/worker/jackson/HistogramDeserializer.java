@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.worker.jackson;
 
-
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;

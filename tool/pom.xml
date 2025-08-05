@@ -20,16 +20,12 @@
     <parent>
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.0.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>tool</artifactId>
 
     <dependencies>
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.openmessaging.benchmark</groupId>
             <artifactId>benchmark-framework</artifactId>
@@ -54,13 +50,13 @@
             <artifactId>assertj-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
+            <groupId>org.jcommander</groupId>
+            <artifactId>jcommander</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.9.0</version>
+            <version>5.9.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>

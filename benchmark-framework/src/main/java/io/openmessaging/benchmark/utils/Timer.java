@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.utils;
 
-
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 

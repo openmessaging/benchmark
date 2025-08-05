@@ -13,31 +13,80 @@
  */
 package io.openmessaging.benchmark.driver.pravega.config;
 
-public class PravegaConfig {
-    // By default, Stream auto-scaling is not configured. So the scaling thresholds are initialized
-    // with -1.
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+
+public record PravegaConfig(
+        boolean includeTimestampInEvent,
+        PravegaClientConfig client,
+        PravegaWriterConfig writer,
+        boolean createScope,
+        boolean deleteStreams,
+        boolean enableStreamAutoScaling,
+        int eventsPerSecond,
+        int kbytesPerSecond,
+        boolean enableTransaction,
+        int eventsPerTransaction) {
+
     public static final int DEFAULT_STREAM_AUTOSCALING_VALUE = -1;
 
-    public PravegaClientConfig client;
-    public PravegaWriterConfig writer;
+    @JsonCreator
+    public static PravegaConfig fromMap(Map<String, Object> properties) {
+        if (properties == null) {
+            properties = Collections.emptyMap();
+        }
+        // Jackson will deserialize nested objects into Maps, which we can use to create the nested
+        // records.
+        PravegaClientConfig clientConfig =
+                new PravegaClientConfig(
+                        (String)
+                                ((Map<String, Object>) properties.getOrDefault("client", Collections.emptyMap()))
+                                        .get("controllerURI"),
+                        (String)
+                                ((Map<String, Object>) properties.getOrDefault("client", Collections.emptyMap()))
+                                        .get("scopeName"));
+        PravegaWriterConfig writerConfig =
+                new PravegaWriterConfig(
+                        (Boolean)
+                                ((Map<String, Object>) properties.getOrDefault("writer", Collections.emptyMap()))
+                                        .get("enableConnectionPooling"));
 
-    // includeTimestampInEvent must be true to measure end-to-end latency.
-    public boolean includeTimestampInEvent = true;
-    public boolean enableTransaction = false;
-    // defines how many events the benchmark writes on each transaction prior
-    // committing it (only applies if transactional writers are enabled).
-    public int eventsPerTransaction = 1;
+        return new PravegaConfig(
+                getBoolean(properties, "includeTimestampInEvent").orElse(true),
+                clientConfig,
+                writerConfig,
+                getBoolean(properties, "createScope").orElse(true),
+                getBoolean(properties, "deleteStreams").orElse(true),
+                getBoolean(properties, "enableStreamAutoScaling").orElse(false),
+                getInt(properties, "eventsPerSecond").orElse(DEFAULT_STREAM_AUTOSCALING_VALUE),
+                getInt(properties, "kbytesPerSecond").orElse(DEFAULT_STREAM_AUTOSCALING_VALUE),
+                getBoolean(properties, "enableTransaction").orElse(false),
+                getInt(properties, "eventsPerTransaction").orElse(100));
+    }
 
-    // Enable the configuration of Streams with auto-scaling policies
-    public boolean enableStreamAutoScaling = false;
-    // Number of events/kbytes per second to trigger a Segment split in Pravega.
-    public int eventsPerSecond = DEFAULT_STREAM_AUTOSCALING_VALUE;
-    public int kbytesPerSecond = DEFAULT_STREAM_AUTOSCALING_VALUE;
+    // Default constructor
+    public PravegaConfig() {
+        this(
+                true,
+                new PravegaClientConfig(),
+                new PravegaWriterConfig(),
+                true,
+                true,
+                false,
+                DEFAULT_STREAM_AUTOSCALING_VALUE,
+                DEFAULT_STREAM_AUTOSCALING_VALUE,
+                false,
+                100);
+    }
 
-    // Create a Pravega scope. Must set to false in Streaming Data Platform.
-    public boolean createScope = true;
+    // Helper methods to safely extract values from the map
+    private static Optional<Boolean> getBoolean(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(v -> Boolean.parseBoolean(v.toString()));
+    }
 
-    // By default, streams created for benchmarking will be deleted at the end of the test.
-    // Set to false to keep the streams.
-    public boolean deleteStreams = true;
+    private static Optional<Integer> getInt(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(v -> Integer.parseInt(v.toString()));
+    }
 }

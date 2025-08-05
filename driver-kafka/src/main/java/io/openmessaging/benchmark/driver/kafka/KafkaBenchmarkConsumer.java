@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.time.Duration;
@@ -33,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
-
     private static final Logger log = LoggerFactory.getLogger(KafkaBenchmarkConsumer.class);
 
     private final KafkaConsumer<String, byte[]> consumer;
@@ -41,7 +39,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
     private final ExecutorService executor;
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
-    private boolean autoCommit;
+    private final boolean autoCommit;
 
     public KafkaBenchmarkConsumer(
             KafkaConsumer<String, byte[]> consumer,
@@ -58,7 +56,7 @@ public class KafkaBenchmarkConsumer implements BenchmarkConsumer {
         this.consumer = consumer;
         this.executor = Executors.newSingleThreadExecutor();
         this.autoCommit =
-                Boolean.valueOf(
+                Boolean.parseBoolean(
                         (String)
                                 consumerConfig.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"));
         this.consumerTask =

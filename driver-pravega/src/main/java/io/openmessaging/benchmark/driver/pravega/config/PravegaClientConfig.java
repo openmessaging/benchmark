@@ -13,7 +13,30 @@
  */
 package io.openmessaging.benchmark.driver.pravega.config;
 
-public class PravegaClientConfig {
-    public String controllerURI;
-    public String scopeName;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+
+public record PravegaClientConfig(String controllerURI, String scopeName) {
+
+    // Use a static factory method as the creator, which takes a map.
+    @JsonCreator
+    public static PravegaClientConfig fromMap(Map<String, Object> properties) {
+        if (properties == null) {
+            properties = Collections.emptyMap();
+        }
+        return new PravegaClientConfig(
+                getString(properties, "controllerURI").orElse("tcp://localhost:9090"),
+                getString(properties, "scopeName").orElse("openmessaging-benchmark"));
+    }
+
+    // Default constructor
+    public PravegaClientConfig() {
+        this("tcp://localhost:9090", "openmessaging-benchmark");
+    }
+
+    private static Optional<String> getString(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(Object::toString);
+    }
 }

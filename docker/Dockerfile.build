@@ -13,7 +13,7 @@
 #
 
 # Build the Project
-FROM maven:3.8.6-jdk-11 AS build
+FROM maven:3.9.11-amazoncorretto-24-al2023 AS build
 
 # Copy only pom files to cache dependencies
 COPY . /benchmark/
@@ -29,9 +29,9 @@ RUN mvn dependency:resolve-sources -B -Dexcludes="io.openmessaging.benchmark:*" 
 RUN mvn install
 
 # Create the benchmark image
-FROM openjdk:11-jdk
+FROM amazoncorretto:21
 
 COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz /
-RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1
-RUN rm /openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz
+RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1 \
+    rm /openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz
 WORKDIR /benchmark

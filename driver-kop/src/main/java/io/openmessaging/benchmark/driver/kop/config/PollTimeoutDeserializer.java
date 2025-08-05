@@ -11,20 +11,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.openmessaging.benchmark.utils.distributor;
+package io.openmessaging.benchmark.driver.kop.config;
 
-import javax.annotation.concurrent.NotThreadSafe;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import java.io.IOException;
 
-@NotThreadSafe
-public class KeyRoundRobin extends KeyDistributor {
-
-    private int currentIndex = 0;
-
+public class PollTimeoutDeserializer extends JsonDeserializer<Long> {
     @Override
-    public String next() {
-        if (++currentIndex >= getLength()) {
-            currentIndex = 0;
+    public Long deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+        if (p.currentToken().isNumeric()) {
+            return p.getLongValue();
         }
-        return get(currentIndex);
+        // Return default if not present or not numeric
+        return 100L;
     }
 }

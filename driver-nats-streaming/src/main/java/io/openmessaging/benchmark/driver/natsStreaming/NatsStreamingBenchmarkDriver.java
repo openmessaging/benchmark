@@ -39,7 +39,7 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.LoggerFactory;
 
 public class NatsStreamingBenchmarkDriver implements BenchmarkDriver {
-    private final String defaultClusterId = "test-cluster";
+    private static final String defaultClusterId = "test-cluster";
     private String clusterId;
     private NatsStreamingClientConfig config;
     private StreamingConnection natsStreamingPublisher;

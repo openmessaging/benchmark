@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
-
 import org.apache.bookkeeper.stats.Gauge;
 
 class GaugeAdaptor<T extends Number> implements Gauge<T> {

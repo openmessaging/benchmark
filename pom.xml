@@ -20,7 +20,7 @@
 
     <groupId>io.openmessaging.benchmark</groupId>
     <artifactId>messaging-benchmark</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Messaging Benchmark</name>
 
@@ -64,37 +64,35 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
 
-        <assertj.version>3.23.1</assertj.version>
-        <bookkeeper.version>4.14.4</bookkeeper.version>
-        <checkstyle.version>10.3.3</checkstyle.version>
-        <commons.lang3.version>3.12.0</commons.lang3.version>
-        <log4j.version>2.20.0</log4j.version>
-        <lombok.version>1.18.24</lombok.version>
-        <jackson.version>2.13.2</jackson.version>
-        <jcommander.version>1.48</jcommander.version>
-        <junit.jupiter.version>5.9.0</junit.jupiter.version>
-        <mockito.junit.jupiter.version>4.8.0</mockito.junit.jupiter.version>
-        <netty.version>4.1.65.Final</netty.version>
-        <slf4j.version>1.7.36</slf4j.version>
+        <assertj.version>3.25.1</assertj.version>
+        <bookkeeper.version>4.17.2</bookkeeper.version>
+        <checkstyle.version>10.12.4</checkstyle.version>
+        <jcommander.version>2.0</jcommander.version>
+        <junit.jupiter.version>5.10.1</junit.jupiter.version>
+        <mockito.junit.jupiter.version>5.8.0</mockito.junit.jupiter.version>
 
-        <checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
-        <jacoco.plugin.version>0.8.8</jacoco.plugin.version>
-        <license.plugin.version>4.1</license.plugin.version>
-        <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
-        <maven.enforcer.plugin.version>3.1.0</maven.enforcer.plugin.version>
-        <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
-        <spotbugs.plugin.version>4.7.2.0</spotbugs.plugin.version>
-        <spotless.plugin.version>2.25.0</spotless.plugin.version>
+        <commons.lang3.version>3.18.0</commons.lang3.version>
+        <jackson.version>2.16.1</jackson.version>
+        <netty.version>4.2.3.Final</netty.version>
+        <slf4j.version>2.0.17</slf4j.version>
+        <log4j.version>2.25.1</log4j.version>
+
+        <checkstyle.plugin.version>3.3.1</checkstyle.plugin.version>
+        <jacoco.plugin.version>0.8.11</jacoco.plugin.version>
+        <license.plugin.version>4.3</license.plugin.version>
+        <maven.compiler.plugin.version>3.12.1</maven.compiler.plugin.version>
+        <maven.enforcer.plugin.version>3.4.1</maven.enforcer.plugin.version>
+        <maven.surefire.plugin.version>3.2.2</maven.surefire.plugin.version>
+        <spotbugs.plugin.version>4.8.2.0</spotbugs.plugin.version>
+        <spotless.plugin.version>2.41.1</spotless.plugin.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>com.beust</groupId>
-                <artifactId>jcommander</artifactId>
-                <version>${jcommander.version}</version>
-            </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
@@ -141,10 +139,9 @@
                 <version>${log4j.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-                <scope>provided</scope>
+                <groupId>org.jcommander</groupId>
+                <artifactId>jcommander</artifactId>
+                <version>${jcommander.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>
@@ -266,7 +263,6 @@
                         <conf>SCRIPT_STYLE</conf>
                         <yaml>SCRIPT_STYLE</yaml>
                         <md>XML_STYLE</md>
-                        <lombok.config>SCRIPT_STYLE</lombok.config>
                         <puml>APOSTROPHE_STYLE</puml>
                     </mapping>
                 </configuration>
@@ -424,7 +420,7 @@
         <profile>
             <id>modern-java-compile</id>
             <activation>
-                <jdk>[9,)</jdk>
+                <jdk>[21,)</jdk>
             </activation>
             <build>
                 <pluginManagement>
@@ -432,11 +428,11 @@
                         <plugin>
                             <groupId>org.apache.maven.plugins</groupId>
                             <artifactId>maven-compiler-plugin</artifactId>
-                            <version>3.8.1</version>
+                            <version>${maven.compiler.plugin.version}</version>
                             <configuration>
-                                <source>8</source>
-                                <target>8</target>
-                                <release>8</release>
+                                <source>21</source>
+                                <target>21</target>
+                                <release>21</release>
                                 <encoding>${project.build.sourceEncoding}</encoding>
                                 <showDeprecation>true</showDeprecation>
                                 <showWarnings>true</showWarnings>
@@ -458,7 +454,7 @@
                         <plugin>
                             <groupId>org.apache.maven.plugins</groupId>
                             <artifactId>maven-compiler-plugin</artifactId>
-                            <version>3.8.1</version>
+                            <version>maven-compiler-plugin</version>
                             <configuration>
                                 <source>8</source>
                                 <target>8</target>

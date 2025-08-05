@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.utils;
 
-
 import com.google.common.io.BaseEncoding;
 import java.util.Random;
 

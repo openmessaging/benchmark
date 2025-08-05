@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.natsStreaming;
 
-
 import io.nats.streaming.AckHandler;
 import io.nats.streaming.StreamingConnection;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;

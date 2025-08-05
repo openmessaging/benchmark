@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.nats;
 
-
 import io.nats.client.JetStream;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;

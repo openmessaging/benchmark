@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark;
 
-
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
 
 public class Workload {
@@ -51,6 +50,7 @@ public class Workload {
      * has drained all the backlog and it's on par with the producer
      */
     public long consumerBacklogSizeGB = 0;
+
     /**
      * The ratio of the backlog that can remain and yet the backlog still be considered empty, and
      * thus the workload can complete at the end of the configured duration. In some systems it is not

@@ -13,14 +13,22 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-public class Config {
-    public short replicationFactor;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-    public String topicConfig;
+public record Config(
+        @JsonProperty("replicationFactor") short replicationFactor,
+        @JsonProperty("topicConfig") String topicConfig,
+        @JsonProperty("commonConfig") String commonConfig,
+        @JsonProperty("producerConfig") String producerConfig,
+        @JsonProperty("consumerConfig") String consumerConfig) {
+    @JsonCreator
+    public Config {
+        // Compact constructor body - validation can be added here if needed
+    }
 
-    public String commonConfig;
-
-    public String producerConfig;
-
-    public String consumerConfig;
+    // Default constructor for Jackson deserialization when no arguments are provided
+    public Config() {
+        this((short) 0, null, null, null, null);
+    }
 }

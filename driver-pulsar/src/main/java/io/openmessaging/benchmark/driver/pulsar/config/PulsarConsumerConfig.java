@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.pulsar.config;
 
-
 import org.apache.pulsar.client.api.SubscriptionType;
 
 public class PulsarConsumerConfig {

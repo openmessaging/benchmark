@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.rocketmq;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;

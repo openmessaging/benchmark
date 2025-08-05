@@ -13,20 +13,27 @@
  */
 package io.openmessaging.benchmark.worker.commands;
 
-public class CountersStats {
-    public long messagesSent;
-    public long messagesReceived;
-    public long messageSendErrors;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-    public CountersStats plus(CountersStats toAdd) {
-        CountersStats result = new CountersStats();
-        result.messagesSent += this.messagesSent;
-        result.messagesReceived += this.messagesReceived;
-        result.messageSendErrors += this.messageSendErrors;
+public record CountersStats(
+        @JsonProperty("messagesSent") long messagesSent,
+        @JsonProperty("messagesReceived") long messagesReceived,
+        @JsonProperty("messageSendErrors") long messageSendErrors) {
 
-        result.messagesSent += toAdd.messagesSent;
-        result.messagesReceived += toAdd.messagesReceived;
-        result.messageSendErrors += toAdd.messageSendErrors;
-        return result;
+    public CountersStats() {
+        this(0, 0, 0);
+    }
+
+    /**
+     * Combines this CountersStats with another, returning a new record with the summed values.
+     *
+     * @param other The other CountersStats to add.
+     * @return A new CountersStats instance with the combined values.
+     */
+    public CountersStats plus(CountersStats other) {
+        return new CountersStats(
+                this.messagesSent + other.messagesSent,
+                this.messagesReceived + other.messagesReceived,
+                this.messageSendErrors + other.messageSendErrors);
     }
 }

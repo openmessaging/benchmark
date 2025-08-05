@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.pravega;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.pravega.client.EventStreamClientFactory;
@@ -33,14 +32,37 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PravegaBenchmarkConsumer implements BenchmarkConsumer {
+public final class PravegaBenchmarkConsumer implements BenchmarkConsumer {
     private static final Logger log = LoggerFactory.getLogger(PravegaBenchmarkConsumer.class);
 
     private final ExecutorService executor;
     private final EventStreamReader<ByteBuffer> reader;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    public PravegaBenchmarkConsumer(
+    /**
+     * Private constructor that is safe from exceptions.
+     *
+     * @param reader The Pravega event stream reader.
+     * @param executor The executor service to run the reading task.
+     */
+    private PravegaBenchmarkConsumer(EventStreamReader<ByteBuffer> reader, ExecutorService executor) {
+        this.reader = reader;
+        this.executor = executor;
+    }
+
+    /**
+     * Factory method to safely create and initialize a PravegaBenchmarkConsumer.
+     *
+     * @param streamName The name of the stream to consume from.
+     * @param scopeName The name of the scope.
+     * @param subscriptionName The name of the subscription (reader group).
+     * @param consumerCallback The callback to invoke for each message received.
+     * @param clientFactory The Pravega client factory.
+     * @param readerGroupManager The manager for reader groups.
+     * @param includeTimestampInEvent Whether to expect a timestamp in the event payload.
+     * @return A new, initialized {@link PravegaBenchmarkConsumer} instance.
+     */
+    public static PravegaBenchmarkConsumer create(
             String streamName,
             String scopeName,
             String subscriptionName,
@@ -52,22 +74,28 @@ public class PravegaBenchmarkConsumer implements BenchmarkConsumer {
                 "PravegaBenchmarkConsumer: BEGIN: subscriptionName={}, streamName={}",
                 subscriptionName,
                 streamName);
+
         // Create reader group if it doesn't already exist.
         final ReaderGroupConfig readerGroupConfig =
                 ReaderGroupConfig.builder().stream(Stream.of(scopeName, streamName)).build();
         readerGroupManager.createReaderGroup(subscriptionName, readerGroupConfig);
+
         // Create reader.
-        reader =
+        final EventStreamReader<ByteBuffer> reader =
                 clientFactory.createReader(
                         UUID.randomUUID().toString(),
                         subscriptionName,
                         new ByteBufferSerializer(),
                         ReaderConfig.builder().disableTimeWindows(true).build());
+
+        // Create the executor and consumer instance *after* all risky operations are done.
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        PravegaBenchmarkConsumer consumer = new PravegaBenchmarkConsumer(reader, executor);
+
         // Start a thread to read events.
-        this.executor = Executors.newSingleThreadExecutor();
-        this.executor.submit(
+        executor.submit(
                 () -> {
-                    while (!closed.get()) {
+                    while (!consumer.closed.get()) {
                         try {
                             final ByteBuffer event = reader.readNextEvent(1000).getEvent();
                             if (event != null) {
@@ -86,6 +114,7 @@ public class PravegaBenchmarkConsumer implements BenchmarkConsumer {
                         }
                     }
                 });
+        return consumer;
     }
 
     @Override

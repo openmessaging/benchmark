@@ -53,6 +53,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     private RabbitMqConfig config;
     private final AtomicInteger uriIndex = new AtomicInteger();
+
     /**
      * Map of client's primary broker to the connection -- the connection may still be able to fall
      * back to secondary brokers.
@@ -130,7 +131,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                         "producer",
                         config.producerCreationBatchSize,
                         config.producerCreationDelay,
-                        ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.getTopic()))),
+                        ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.topic()))),
                         fc -> {
                             try {
                                 return new CreationResult<>(fc.get(), true);
@@ -151,16 +152,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                         "consumer",
                         config.consumerCreationBatchSize,
                         config.consumerCreationDelay,
-                        cs ->
-                                cs.stream()
-                                        .collect(
-                                                toMap(
-                                                        c -> c,
-                                                        c ->
-                                                                createConsumer(
-                                                                        c.getTopic(),
-                                                                        c.getSubscriptionName(),
-                                                                        c.getConsumerCallback()))),
+                        cs -> cs.stream().collect(toMap(c -> c, this::getConsumer)),
                         fc -> {
                             try {
                                 return new CreationResult<>(fc.get(), true);
@@ -173,6 +165,10 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                             }
                         })
                 .create(consumers);
+    }
+
+    private CompletableFuture<BenchmarkConsumer> getConsumer(ConsumerInfo c) {
+        return createConsumer(c.topic(), c.subscriptionName(), c.consumerCallback());
     }
 
     @Override
@@ -195,7 +191,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                                         queueName, true, false, false, config.queueType.queueOptions());
                                 channel.queueBind(queueName, exchange, "");
                                 future.complete(
-                                        new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
+                                        RabbitMqBenchmarkConsumer.create(channel, queueName, consumerCallback));
                             } catch (IOException e) {
                                 future.completeExceptionally(e);
                             }

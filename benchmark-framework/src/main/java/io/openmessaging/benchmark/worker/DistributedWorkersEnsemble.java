@@ -121,7 +121,7 @@ public class DistributedWorkersEnsemble implements Worker {
     @Override
     public void startLoad(ProducerWorkAssignment producerWorkAssignment) throws IOException {
         // Reduce the publish rate across all the brokers
-        double newRate = producerWorkAssignment.publishRate / numberOfUsedProducerWorkers;
+        double newRate = producerWorkAssignment.publishRate() / numberOfUsedProducerWorkers;
         log.debug("Setting worker assigned publish rate to {} msgs/sec", newRate);
         // Reduce the publish rate across all the brokers
         producerWorkers.parallelStream()

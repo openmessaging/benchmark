@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.utils;
 
-
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.FieldPosition;

@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -137,13 +136,13 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
         try {
             if (config.sendWithTransactions) {
                 return CompletableFuture.completedFuture(
-                        new JMSBenchmarkTransactionProducer(
+                        JMSBenchmarkTransactionProducer.create(
                                 connection, topic, config.use20api, config.properties));
             } else {
                 Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
                 Destination destination = session.createTopic(topic);
                 return CompletableFuture.completedFuture(
-                        new JMSBenchmarkProducer(session, destination, config.use20api, config.properties));
+                        JMSBenchmarkProducer.create(session, destination, config.use20api, config.properties));
             }
         } catch (Exception err) {
             CompletableFuture<BenchmarkProducer> res = new CompletableFuture<>();
@@ -173,7 +172,7 @@ public class JMSBenchmarkDriver implements BenchmarkDriver {
                 durableConsumer = session.createConsumer(destination, selector);
             }
             return CompletableFuture.completedFuture(
-                    new JMSBenchmarkConsumer(
+                    JMSBenchmarkConsumer.create(
                             connection, session, durableConsumer, consumerCallback, config.use20api));
         } catch (Exception err) {
             CompletableFuture<BenchmarkConsumer> res = new CompletableFuture<>();

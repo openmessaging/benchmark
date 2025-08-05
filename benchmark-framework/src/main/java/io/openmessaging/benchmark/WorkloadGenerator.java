@@ -97,10 +97,8 @@ public class WorkloadGenerator implements AutoCloseable {
 
         final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
 
-        ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
-        producerWorkAssignment.keyDistributorType = workload.keyDistributor;
-        producerWorkAssignment.publishRate = targetPublishRate;
-        producerWorkAssignment.payloadData = new ArrayList<>();
+        ProducerWorkAssignment producerWorkAssignment =
+                new ProducerWorkAssignment(new ArrayList<>(), targetPublishRate, workload.keyDistributor);
 
         if (workload.useRandomizedPayloads) {
             // create messages that are part random and part zeros
@@ -113,10 +111,10 @@ public class WorkloadGenerator implements AutoCloseable {
                 r.nextBytes(randArray);
                 byte[] zerodArray = new byte[zerodBytes];
                 byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
-                producerWorkAssignment.payloadData.add(combined);
+                producerWorkAssignment.payloadData().add(combined);
             }
         } else {
-            producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
+            producerWorkAssignment.payloadData().add(payloadReader.load(workload.payloadFile));
         }
 
         worker.startLoad(producerWorkAssignment);
@@ -165,9 +163,9 @@ public class WorkloadGenerator implements AutoCloseable {
 
             log.info(
                     "Waiting for topics to be ready -- Sent: {}, Received: {}",
-                    stats.messagesSent,
-                    stats.messagesReceived);
-            if (stats.messagesReceived < expectedMessages) {
+                    stats.messagesSent(),
+                    stats.messagesReceived());
+            if (stats.messagesReceived() < expectedMessages) {
                 try {
                     Thread.sleep(2_000);
                 } catch (InterruptedException e) {
@@ -216,7 +214,7 @@ public class WorkloadGenerator implements AutoCloseable {
 
             currentRate =
                     rateController.nextRate(
-                            currentRate, periodNanos, stats.messagesSent, stats.messagesReceived);
+                            currentRate, periodNanos, stats.messagesSent(), stats.messagesReceived());
             worker.adjustPublishRate(currentRate);
         }
     }
@@ -280,7 +278,7 @@ public class WorkloadGenerator implements AutoCloseable {
         while (true) {
             CountersStats stats = worker.getCountersStats();
             long currentBacklogSize =
-                    (workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived)
+                    (workload.subscriptionsPerTopic * stats.messagesSent() - stats.messagesReceived())
                             * workload.messageSize;
 
             if (currentBacklogSize >= requestedBacklogSize) {
@@ -307,7 +305,7 @@ public class WorkloadGenerator implements AutoCloseable {
         while (true) {
             CountersStats stats = worker.getCountersStats();
             long currentBacklog =
-                    workload.subscriptionsPerTopic * stats.messagesSent - stats.messagesReceived;
+                    workload.subscriptionsPerTopic * stats.messagesSent() - stats.messagesReceived();
             if (currentBacklog <= minBacklog) {
                 log.info("--- Completed backlog draining in {} s ---", timer.elapsedSeconds());
 
@@ -359,18 +357,18 @@ public class WorkloadGenerator implements AutoCloseable {
             long now = System.nanoTime();
             double elapsed = (now - oldTime) / 1e9;
 
-            double publishRate = stats.messagesSent / elapsed;
-            double publishThroughput = stats.bytesSent / elapsed / 1024 / 1024;
-            double errorRate = stats.messageSendErrors / elapsed;
+            double publishRate = stats.messagesSent() / elapsed;
+            double publishThroughput = stats.bytesSent() / elapsed / 1024 / 1024;
+            double errorRate = stats.messageSendErrors() / elapsed;
 
-            double consumeRate = stats.messagesReceived / elapsed;
-            double consumeThroughput = stats.bytesReceived / elapsed / 1024 / 1024;
+            double consumeRate = stats.messagesReceived() / elapsed;
+            double consumeThroughput = stats.bytesReceived() / elapsed / 1024 / 1024;
 
             long currentBacklog =
                     Math.max(
                             0L,
-                            workload.subscriptionsPerTopic * stats.totalMessagesSent
-                                    - stats.totalMessagesReceived);
+                            workload.subscriptionsPerTopic * stats.totalMessagesSent()
+                                    - stats.totalMessagesReceived());
 
             log.info(
                     "Pub rate {} msg/s / {} MB/s | Pub err {} err/s | Cons rate {} msg/s / {} MB/s | Backlog: {} K | Pub Latency (ms) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {} | Pub Delay Latency (us) avg: {} - 50%: {} - 99%: {} - 99.9%: {} - Max: {}",
@@ -380,55 +378,60 @@ public class WorkloadGenerator implements AutoCloseable {
                     rateFormat.format(consumeRate),
                     throughputFormat.format(consumeThroughput),
                     dec.format(currentBacklog / 1000.0), //
-                    dec.format(microsToMillis(stats.publishLatency.getMean())),
-                    dec.format(microsToMillis(stats.publishLatency.getValueAtPercentile(50))),
-                    dec.format(microsToMillis(stats.publishLatency.getValueAtPercentile(99))),
-                    dec.format(microsToMillis(stats.publishLatency.getValueAtPercentile(99.9))),
-                    throughputFormat.format(microsToMillis(stats.publishLatency.getMaxValue())),
-                    dec.format(stats.publishDelayLatency.getMean()),
-                    dec.format(stats.publishDelayLatency.getValueAtPercentile(50)),
-                    dec.format(stats.publishDelayLatency.getValueAtPercentile(99)),
-                    dec.format(stats.publishDelayLatency.getValueAtPercentile(99.9)),
-                    throughputFormat.format(stats.publishDelayLatency.getMaxValue()));
+                    dec.format(microsToMillis(stats.publishLatency().getMean())),
+                    dec.format(microsToMillis(stats.publishLatency().getValueAtPercentile(50))),
+                    dec.format(microsToMillis(stats.publishLatency().getValueAtPercentile(99))),
+                    dec.format(microsToMillis(stats.publishLatency().getValueAtPercentile(99.9))),
+                    throughputFormat.format(microsToMillis(stats.publishLatency().getMaxValue())),
+                    dec.format(stats.publishDelayLatency().getMean()),
+                    dec.format(stats.publishDelayLatency().getValueAtPercentile(50)),
+                    dec.format(stats.publishDelayLatency().getValueAtPercentile(99)),
+                    dec.format(stats.publishDelayLatency().getValueAtPercentile(99.9)),
+                    throughputFormat.format(stats.publishDelayLatency().getMaxValue()));
 
             result.publishRate.add(publishRate);
             result.publishErrorRate.add(errorRate);
             result.consumeRate.add(consumeRate);
             result.backlog.add(currentBacklog);
-            result.publishLatencyAvg.add(microsToMillis(stats.publishLatency.getMean()));
-            result.publishLatency50pct.add(microsToMillis(stats.publishLatency.getValueAtPercentile(50)));
-            result.publishLatency75pct.add(microsToMillis(stats.publishLatency.getValueAtPercentile(75)));
-            result.publishLatency95pct.add(microsToMillis(stats.publishLatency.getValueAtPercentile(95)));
-            result.publishLatency99pct.add(microsToMillis(stats.publishLatency.getValueAtPercentile(99)));
+            result.publishLatencyAvg.add(microsToMillis(stats.publishLatency().getMean()));
+            result.publishLatency50pct.add(
+                    microsToMillis(stats.publishLatency().getValueAtPercentile(50)));
+            result.publishLatency75pct.add(
+                    microsToMillis(stats.publishLatency().getValueAtPercentile(75)));
+            result.publishLatency95pct.add(
+                    microsToMillis(stats.publishLatency().getValueAtPercentile(95)));
+            result.publishLatency99pct.add(
+                    microsToMillis(stats.publishLatency().getValueAtPercentile(99)));
             result.publishLatency999pct.add(
-                    microsToMillis(stats.publishLatency.getValueAtPercentile(99.9)));
+                    microsToMillis(stats.publishLatency().getValueAtPercentile(99.9)));
             result.publishLatency9999pct.add(
-                    microsToMillis(stats.publishLatency.getValueAtPercentile(99.99)));
-            result.publishLatencyMax.add(microsToMillis(stats.publishLatency.getMaxValue()));
+                    microsToMillis(stats.publishLatency().getValueAtPercentile(99.99)));
+            result.publishLatencyMax.add(microsToMillis(stats.publishLatency().getMaxValue()));
 
-            result.publishDelayLatencyAvg.add(stats.publishDelayLatency.getMean());
-            result.publishDelayLatency50pct.add(stats.publishDelayLatency.getValueAtPercentile(50));
-            result.publishDelayLatency75pct.add(stats.publishDelayLatency.getValueAtPercentile(75));
-            result.publishDelayLatency95pct.add(stats.publishDelayLatency.getValueAtPercentile(95));
-            result.publishDelayLatency99pct.add(stats.publishDelayLatency.getValueAtPercentile(99));
-            result.publishDelayLatency999pct.add(stats.publishDelayLatency.getValueAtPercentile(99.9));
-            result.publishDelayLatency9999pct.add(stats.publishDelayLatency.getValueAtPercentile(99.99));
-            result.publishDelayLatencyMax.add(stats.publishDelayLatency.getMaxValue());
+            result.publishDelayLatencyAvg.add(stats.publishDelayLatency().getMean());
+            result.publishDelayLatency50pct.add(stats.publishDelayLatency().getValueAtPercentile(50));
+            result.publishDelayLatency75pct.add(stats.publishDelayLatency().getValueAtPercentile(75));
+            result.publishDelayLatency95pct.add(stats.publishDelayLatency().getValueAtPercentile(95));
+            result.publishDelayLatency99pct.add(stats.publishDelayLatency().getValueAtPercentile(99));
+            result.publishDelayLatency999pct.add(stats.publishDelayLatency().getValueAtPercentile(99.9));
+            result.publishDelayLatency9999pct.add(
+                    stats.publishDelayLatency().getValueAtPercentile(99.99));
+            result.publishDelayLatencyMax.add(stats.publishDelayLatency().getMaxValue());
 
-            result.endToEndLatencyAvg.add(microsToMillis(stats.endToEndLatency.getMean()));
+            result.endToEndLatencyAvg.add(microsToMillis(stats.endToEndLatency().getMean()));
             result.endToEndLatency50pct.add(
-                    microsToMillis(stats.endToEndLatency.getValueAtPercentile(50)));
+                    microsToMillis(stats.endToEndLatency().getValueAtPercentile(50)));
             result.endToEndLatency75pct.add(
-                    microsToMillis(stats.endToEndLatency.getValueAtPercentile(75)));
+                    microsToMillis(stats.endToEndLatency().getValueAtPercentile(75)));
             result.endToEndLatency95pct.add(
-                    microsToMillis(stats.endToEndLatency.getValueAtPercentile(95)));
+                    microsToMillis(stats.endToEndLatency().getValueAtPercentile(95)));
             result.endToEndLatency99pct.add(
-                    microsToMillis(stats.endToEndLatency.getValueAtPercentile(99)));
+                    microsToMillis(stats.endToEndLatency().getValueAtPercentile(99)));
             result.endToEndLatency999pct.add(
-                    microsToMillis(stats.endToEndLatency.getValueAtPercentile(99.9)));
+                    microsToMillis(stats.endToEndLatency().getValueAtPercentile(99.9)));
             result.endToEndLatency9999pct.add(
-                    microsToMillis(stats.endToEndLatency.getValueAtPercentile(99.99)));
-            result.endToEndLatencyMax.add(microsToMillis(stats.endToEndLatency.getMaxValue()));
+                    microsToMillis(stats.endToEndLatency().getValueAtPercentile(99.99)));
+            result.endToEndLatencyMax.add(microsToMillis(stats.endToEndLatency().getMaxValue()));
 
             if (now >= testEndTime && !needToWaitForBacklogDraining) {
                 CumulativeLatencies agg = worker.getCumulativeLatencies();

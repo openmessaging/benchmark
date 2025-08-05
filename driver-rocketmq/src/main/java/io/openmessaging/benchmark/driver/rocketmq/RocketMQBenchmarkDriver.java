@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.rocketmq;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -94,8 +93,11 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
 
     private synchronized Set<String> fetchMasterAndSlaveAddrByClusterName(
             final MQAdminExt adminExt, final String clusterName)
-            throws RemotingConnectException, RemotingSendRequestException, RemotingTimeoutException,
-                    MQBrokerException, InterruptedException {
+            throws RemotingConnectException,
+                    RemotingSendRequestException,
+                    RemotingTimeoutException,
+                    MQBrokerException,
+                    InterruptedException {
         Set<String> brokerList = cachedBrokerAddr.get(clusterName);
         if (brokerList == null) {
             brokerList =

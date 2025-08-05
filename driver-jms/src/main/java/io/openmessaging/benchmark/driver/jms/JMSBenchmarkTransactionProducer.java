@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 import java.util.Collections;
@@ -31,23 +30,46 @@ import javax.jms.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
+public final class JMSBenchmarkTransactionProducer implements BenchmarkProducer {
 
     private final String destination;
     private final boolean useAsyncSend;
     private final Connection connection;
     private final List<JMSConfig.AddProperty> properties;
 
-    public JMSBenchmarkTransactionProducer(
+    // Private constructor - cannot throw exceptions
+    private JMSBenchmarkTransactionProducer(
+            Connection connection,
+            String destination,
+            boolean useAsyncSend,
+            List<JMSConfig.AddProperty> properties) {
+        this.destination = destination;
+        this.useAsyncSend = useAsyncSend;
+        this.connection = connection;
+        this.properties = properties != null ? properties : Collections.emptyList();
+    }
+
+    /**
+     * Factory method to create JMSBenchmarkTransactionProducer safely. This method handles all the
+     * exception-throwing initialization logic.
+     *
+     * @param connection the JMS connection
+     * @param destination the destination topic name
+     * @param useAsyncSend whether to use asynchronous sending
+     * @param properties additional properties to set on messages
+     * @return a new JMSBenchmarkTransactionProducer instance
+     * @throws Exception if initialization fails
+     */
+    public static JMSBenchmarkTransactionProducer create(
             Connection connection,
             String destination,
             boolean useAsyncSend,
             List<JMSConfig.AddProperty> properties)
             throws Exception {
-        this.destination = destination;
-        this.useAsyncSend = useAsyncSend;
-        this.connection = connection;
-        this.properties = properties != null ? properties : Collections.emptyList();
+
+        // For transaction producer, we don't need to initialize anything that can throw exceptions
+        // in the constructor since sessions are created per-message in sendAsync()
+        return new JMSBenchmarkTransactionProducer(connection, destination, useAsyncSend, properties);
     }
 
     @Override

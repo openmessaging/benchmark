@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper;
 
-
 import dlshade.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;

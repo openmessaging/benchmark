@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.pravega;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -46,7 +45,6 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
             new ObjectMapper().writerWithDefaultPrettyPrinter();
 
     private PravegaConfig config;
-    private ClientConfig clientConfig;
     private String scopeName;
     private StreamManager streamManager;
     private ReaderGroupManager readerGroupManager;
@@ -58,9 +56,9 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
         config = readConfig(configurationFile);
         log.info("Pravega driver configuration: {}", objectWriter.writeValueAsString(config));
 
-        clientConfig =
-                ClientConfig.builder().controllerURI(URI.create(config.client.controllerURI)).build();
-        scopeName = config.client.scopeName;
+        ClientConfig clientConfig =
+                ClientConfig.builder().controllerURI(URI.create(config.client().controllerURI())).build();
+        scopeName = config.client().scopeName();
         streamManager = StreamManager.create(clientConfig);
         readerGroupManager = ReaderGroupManager.withScope(scopeName, clientConfig);
         clientFactory = EventStreamClientFactory.withScope(scopeName, clientConfig);
@@ -74,12 +72,6 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
         return mapper.readValue(configurationFile, PravegaConfig.class);
     }
 
-    /**
-     * Clean Pravega stream name to only allow alpha-numeric and "-".
-     *
-     * @param name
-     * @return the cleaned name
-     */
     private String cleanName(String name) {
         return name.replaceAll("[^A-Za-z0-9-]", "");
     }
@@ -96,18 +88,17 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
         synchronized (createdTopics) {
             createdTopics.add(topic);
         }
-        if (config.createScope) {
+        if (config.createScope()) {
             streamManager.createScope(scopeName);
         }
         ScalingPolicy scalingPolicy;
-        // Create a fixed or auto-scaling Stream based on user configuration.
-        if (config.enableStreamAutoScaling
-                && (config.eventsPerSecond != PravegaConfig.DEFAULT_STREAM_AUTOSCALING_VALUE
-                        || config.kbytesPerSecond != PravegaConfig.DEFAULT_STREAM_AUTOSCALING_VALUE)) {
+        if (config.enableStreamAutoScaling()
+                && (config.eventsPerSecond() != PravegaConfig.DEFAULT_STREAM_AUTOSCALING_VALUE
+                        || config.kbytesPerSecond() != PravegaConfig.DEFAULT_STREAM_AUTOSCALING_VALUE)) {
             scalingPolicy =
-                    config.eventsPerSecond != PravegaConfig.DEFAULT_STREAM_AUTOSCALING_VALUE
-                            ? ScalingPolicy.byEventRate(config.eventsPerSecond, 2, partitions)
-                            : ScalingPolicy.byDataRate(config.kbytesPerSecond, 2, partitions);
+                    config.eventsPerSecond() != PravegaConfig.DEFAULT_STREAM_AUTOSCALING_VALUE
+                            ? ScalingPolicy.byEventRate(config.eventsPerSecond(), 2, partitions)
+                            : ScalingPolicy.byDataRate(config.kbytesPerSecond(), 2, partitions);
         } else {
             scalingPolicy = ScalingPolicy.fixed(partitions);
         }
@@ -119,22 +110,22 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(String topic) {
         topic = cleanName(topic);
-        BenchmarkProducer producer = null;
-        if (config.enableTransaction) {
+        BenchmarkProducer producer;
+        if (config.enableTransaction()) {
             producer =
                     new PravegaBenchmarkTransactionProducer(
                             topic,
                             clientFactory,
-                            config.includeTimestampInEvent,
-                            config.writer.enableConnectionPooling,
-                            config.eventsPerTransaction);
+                            config.includeTimestampInEvent(),
+                            config.writer().enableConnectionPooling(),
+                            config.eventsPerTransaction());
         } else {
             producer =
                     new PravegaBenchmarkProducer(
                             topic,
                             clientFactory,
-                            config.includeTimestampInEvent,
-                            config.writer.enableConnectionPooling);
+                            config.includeTimestampInEvent(),
+                            config.writer().enableConnectionPooling());
         }
         return CompletableFuture.completedFuture(producer);
     }
@@ -144,15 +135,18 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
             String topic, String subscriptionName, ConsumerCallback consumerCallback) {
         topic = cleanName(topic);
         subscriptionName = cleanName(subscriptionName);
+
+        // Use the new static factory method here
         BenchmarkConsumer consumer =
-                new PravegaBenchmarkConsumer(
+                PravegaBenchmarkConsumer.create(
                         topic,
                         scopeName,
                         subscriptionName,
                         consumerCallback,
                         clientFactory,
                         readerGroupManager,
-                        config.includeTimestampInEvent);
+                        config.includeTimestampInEvent());
+
         return CompletableFuture.completedFuture(consumer);
     }
 
@@ -161,7 +155,7 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
             for (String topic : createdTopics) {
                 log.info("deleteTopics: topic={}", topic);
                 streamManager.sealStream(scopeName, topic);
-                if (config.deleteStreams) {
+                if (config.deleteStreams()) {
                     streamManager.deleteStream(scopeName, topic);
                 }
             }
@@ -170,7 +164,7 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
-        log.info("close: clientConfig={}", clientConfig);
+        log.info("close: Pravega driver is closing");
         if (clientFactory != null) {
             clientFactory.close();
         }

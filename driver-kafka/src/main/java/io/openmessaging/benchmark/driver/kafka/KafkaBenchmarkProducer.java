@@ -26,7 +26,6 @@
  */
 package io.openmessaging.benchmark.driver.kafka;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -45,12 +44,11 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
 
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
-        ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key.orElse(null), payload);
-
-        CompletableFuture<Void> future = new CompletableFuture<>();
+        var producerRecord = new ProducerRecord<>(topic, key.orElse(null), payload);
+        var future = new CompletableFuture<Void>();
 
         producer.send(
-                record,
+                producerRecord,
                 (metadata, exception) -> {
                     if (exception != null) {
                         future.completeExceptionally(exception);

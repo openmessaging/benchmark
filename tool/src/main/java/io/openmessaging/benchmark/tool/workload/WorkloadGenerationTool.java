@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.tool.workload;
 
-
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
@@ -25,12 +24,12 @@ import io.openmessaging.benchmark.Workload;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Generates a set of {@link Workload} definition files from a {@link WorkloadSetTemplate} file. */
-@Slf4j
 public class WorkloadGenerationTool {
-
+    public static final Logger log = LoggerFactory.getLogger(WorkloadGenerationTool.class);
     private static final ObjectMapper mapper =
             new ObjectMapper(
                             new YAMLFactory().configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false))

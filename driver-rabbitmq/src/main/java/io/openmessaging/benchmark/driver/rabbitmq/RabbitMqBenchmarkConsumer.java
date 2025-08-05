@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
-
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.Channel;
@@ -25,20 +24,39 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements BenchmarkConsumer {
+public final class RabbitMqBenchmarkConsumer extends DefaultConsumer implements BenchmarkConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkConsumer.class);
 
     private final Channel channel;
     private final ConsumerCallback callback;
 
-    public RabbitMqBenchmarkConsumer(Channel channel, String queueName, ConsumerCallback callback)
-            throws IOException {
+    /**
+     * Private constructor for the RabbitMQ consumer.
+     *
+     * @param channel The RabbitMQ channel.
+     * @param callback The callback to invoke on message receipt.
+     */
+    RabbitMqBenchmarkConsumer(Channel channel, ConsumerCallback callback) {
         super(channel);
-
         this.channel = channel;
         this.callback = callback;
-        channel.basicConsume(queueName, true, this);
+    }
+
+    /**
+     * Safely creates and starts a new RabbitMQ benchmark consumer.
+     *
+     * @param channel The RabbitMQ channel to use.
+     * @param queueName The name of the queue to consume from.
+     * @param callback The callback for handling received messages.
+     * @return A new, initialized {@link RabbitMqBenchmarkConsumer}.
+     * @throws IOException if the consumer cannot be started.
+     */
+    public static RabbitMqBenchmarkConsumer create(
+            Channel channel, String queueName, ConsumerCallback callback) throws IOException {
+        RabbitMqBenchmarkConsumer consumer = new RabbitMqBenchmarkConsumer(channel, callback);
+        channel.basicConsume(queueName, true, consumer);
+        return consumer;
     }
 
     @Override

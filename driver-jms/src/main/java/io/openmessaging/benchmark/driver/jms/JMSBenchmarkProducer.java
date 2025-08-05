@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.jms;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.jms.config.JMSConfig;
 import java.util.Collections;
@@ -30,7 +29,7 @@ import javax.jms.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JMSBenchmarkProducer implements BenchmarkProducer {
+public final class JMSBenchmarkProducer implements BenchmarkProducer {
 
     private final Session session;
     private final Destination destination;
@@ -38,17 +37,57 @@ public class JMSBenchmarkProducer implements BenchmarkProducer {
     private final boolean useAsyncSend;
     private final List<JMSConfig.AddProperty> properties;
 
-    public JMSBenchmarkProducer(
+    // Private constructor - cannot throw exceptions
+    private JMSBenchmarkProducer(
+            Session session,
+            Destination destination,
+            MessageProducer producer,
+            boolean useAsyncSend,
+            List<JMSConfig.AddProperty> properties) {
+        this.session = session;
+        this.destination = destination;
+        this.producer = producer;
+        this.useAsyncSend = useAsyncSend;
+        this.properties = properties != null ? properties : Collections.emptyList();
+    }
+
+    /**
+     * Factory method to create JMSBenchmarkProducer safely. This method handles all the
+     * exception-throwing initialization logic.
+     *
+     * @param session the JMS session
+     * @param destination the message destination
+     * @param useAsyncSend whether to use asynchronous sending
+     * @param properties additional properties to set on messages
+     * @return a new JMSBenchmarkProducer instance
+     * @throws Exception if initialization fails
+     */
+    public static JMSBenchmarkProducer create(
             Session session,
             Destination destination,
             boolean useAsyncSend,
             List<JMSConfig.AddProperty> properties)
             throws Exception {
-        this.session = session;
-        this.destination = destination;
-        this.useAsyncSend = useAsyncSend;
-        this.producer = session.createProducer(destination);
-        this.properties = properties != null ? properties : Collections.emptyList();
+
+        MessageProducer tempProducer = null;
+
+        try {
+            tempProducer = session.createProducer(destination);
+
+            // Create the producer instance only after all operations succeed
+            return new JMSBenchmarkProducer(session, destination, tempProducer, useAsyncSend, properties);
+
+        } catch (Exception e) {
+            // Clean up resources if initialization fails
+            if (tempProducer != null) {
+                try {
+                    tempProducer.close();
+                } catch (Exception closeException) {
+                    log.warn("Failed to close producer during cleanup", closeException);
+                }
+            }
+            throw e;
+        }
     }
 
     @Override

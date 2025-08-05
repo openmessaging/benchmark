@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
-
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.Channel;
@@ -37,6 +36,7 @@ public class RabbitMqBenchmarkProducer implements BenchmarkProducer {
     private final Channel channel;
     private final String exchange;
     private final ConfirmListener listener;
+
     /** To record msg and it's future structure. */
     volatile SortedSet<Long> ackSet = Collections.synchronizedSortedSet(new TreeSet<>());
 

@@ -13,6 +13,17 @@
  */
 package io.openmessaging.benchmark.driver.pravega.config;
 
-public class PravegaWriterConfig {
-    public boolean enableConnectionPooling = false;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record PravegaWriterConfig(boolean enableConnectionPooling) {
+    @JsonCreator
+    public PravegaWriterConfig(
+            @JsonProperty("enableConnectionPooling") Boolean enableConnectionPooling) {
+        this(enableConnectionPooling != null ? enableConnectionPooling : true);
+    }
+
+    public PravegaWriterConfig() {
+        this(true);
+    }
 }

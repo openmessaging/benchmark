@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.nsq;
 
-
 import com.github.brainlag.nsq.NSQProducer;
 import com.github.brainlag.nsq.exceptions.NSQException;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;

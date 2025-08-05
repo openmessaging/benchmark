@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.worker;
 
-
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.CountersStats;
 import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;

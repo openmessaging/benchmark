@@ -15,7 +15,6 @@ package io.openmessaging.benchmark.driver.kafka;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
@@ -30,22 +29,33 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.errors.TopicExistsException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
-@RequiredArgsConstructor
 class KafkaTopicCreator {
+    private static final Logger log = LoggerFactory.getLogger(KafkaTopicCreator.class);
+
     private static final int MAX_BATCH_SIZE = 500;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final AdminClient admin;
     private final Map<String, String> topicConfigs;
     private final short replicationFactor;
     private final int maxBatchSize;
+
+    KafkaTopicCreator(
+            AdminClient admin,
+            Map<String, String> topicConfigs,
+            short replicationFactor,
+            int maxBatchSize) {
+        this.admin = admin;
+        this.topicConfigs = topicConfigs;
+        this.replicationFactor = replicationFactor;
+        this.maxBatchSize = maxBatchSize;
+    }
 
     KafkaTopicCreator(AdminClient admin, Map<String, String> topicConfigs, short replicationFactor) {
         this(admin, topicConfigs, replicationFactor, MAX_BATCH_SIZE);
@@ -91,17 +101,14 @@ class KafkaTopicCreator {
 
     private Map<TopicInfo, Boolean> executeBatch(List<TopicInfo> batch) {
         log.debug("Executing batch, size: {}", batch.size());
-        Map<String, TopicInfo> lookup = batch.stream().collect(toMap(TopicInfo::getTopic, identity()));
-
-        List<NewTopic> newTopics = batch.stream().map(this::newTopic).collect(toList());
-
+        var lookup = batch.stream().collect(toMap(TopicInfo::topic, identity()));
+        var newTopics = batch.stream().map(this::newTopic).toList();
         return admin.createTopics(newTopics).values().entrySet().stream()
                 .collect(toMap(e -> lookup.get(e.getKey()), e -> isSuccess(e.getValue())));
     }
 
     private NewTopic newTopic(TopicInfo topicInfo) {
-        NewTopic newTopic =
-                new NewTopic(topicInfo.getTopic(), topicInfo.getPartitions(), replicationFactor);
+        var newTopic = new NewTopic(topicInfo.topic(), topicInfo.partitions(), replicationFactor);
         newTopic.configs(topicConfigs);
         return newTopic;
     }

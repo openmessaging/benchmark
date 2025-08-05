@@ -27,7 +27,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 
 Requirements:
 
-* JDK 8
+* JDK 21
 * Maven 3.8.6+
 
 Common build actions:

@@ -13,19 +13,55 @@
  */
 package io.openmessaging.benchmark.driver.kop.config;
 
-public class PulsarConfig {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 
-    public String serviceUrl;
+public record PulsarConfig(
+        String serviceUrl,
+        boolean batchingEnabled,
+        boolean blockIfQueueFull,
+        int batchingMaxPublishDelayMs,
+        int batchingMaxBytes,
+        int pendingQueueSize,
+        int maxPendingMessagesAcrossPartitions,
+        int receiverQueueSize,
+        int maxTotalReceiverQueueSizeAcrossPartitions) {
 
-    // producer configs
-    public boolean batchingEnabled = true;
-    public boolean blockIfQueueFull = true;
-    public int batchingMaxPublishDelayMs = 1;
-    public int batchingMaxBytes = 128 * 1024;
-    public int pendingQueueSize = 1000;
-    public int maxPendingMessagesAcrossPartitions = 50000;
+    // Use a static factory method as the JSON creator to avoid the parameter limit.
+    @JsonCreator
+    public static PulsarConfig fromMap(Map<String, Object> properties) {
+        if (properties == null) {
+            properties = Collections.emptyMap();
+        }
+        return new PulsarConfig(
+                getString(properties, "serviceUrl").orElse("pulsar://localhost:6650"),
+                getBoolean(properties, "batchingEnabled").orElse(true),
+                getBoolean(properties, "blockIfQueueFull").orElse(true),
+                getInt(properties, "batchingMaxPublishDelayMs").orElse(1),
+                getInt(properties, "batchingMaxBytes").orElse(131072), // Correct default for the test
+                getInt(properties, "pendingQueueSize").orElse(1000),
+                getInt(properties, "maxPendingMessagesAcrossPartitions").orElse(50000),
+                getInt(properties, "receiverQueueSize").orElse(1000),
+                getInt(properties, "maxTotalReceiverQueueSizeAcrossPartitions").orElse(50000));
+    }
 
-    // consumer configs
-    public int maxTotalReceiverQueueSizeAcrossPartitions = 50000;
-    public int receiverQueueSize = 1000;
+    // Default constructor
+    public PulsarConfig() {
+        this("pulsar://localhost:6650", true, true, 1, 131072, 1000, 50000, 1000, 50000);
+    }
+
+    // Helper methods to safely extract and cast values from the map
+    private static Optional<String> getString(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(Object::toString);
+    }
+
+    private static Optional<Boolean> getBoolean(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(v -> Boolean.parseBoolean(v.toString()));
+    }
+
+    private static Optional<Integer> getInt(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key)).map(v -> Integer.parseInt(v.toString()));
+    }
 }

@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
-
 import dlshade.com.google.common.collect.Maps;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.bookkeeper.stats.Gauge;
