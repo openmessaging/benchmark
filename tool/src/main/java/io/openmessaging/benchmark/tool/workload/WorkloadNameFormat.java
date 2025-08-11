@@ -16,7 +16,7 @@ package io.openmessaging.benchmark.tool.workload;
 import io.openmessaging.benchmark.Workload;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.commons.lang.text.StrSubstitutor;
+import org.apache.commons.text.StringSubstitutor;
 
 /**
  * Generates {@link Workload} names based on a template. Substitutes template place-holders of the
@@ -58,7 +58,7 @@ class WorkloadNameFormat {
         params.put("consumerBacklogSizeGB", countToDisplaySize(workload.consumerBacklogSizeGB));
         params.put("testDurationMinutes", workload.testDurationMinutes);
         params.put("warmupDurationMinutes", workload.warmupDurationMinutes);
-        return StrSubstitutor.replace(format, params, "${", "}");
+        return StringSubstitutor.replace(format, params, "${", "}");
     }
 
     private static String countToDisplaySize(long size) {

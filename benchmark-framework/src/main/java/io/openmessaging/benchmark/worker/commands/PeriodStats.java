@@ -29,8 +29,49 @@ public record PeriodStats(
         @JsonProperty("publishDelayLatency") Histogram publishDelayLatency,
         @JsonProperty("endToEndLatency") Histogram endToEndLatency) {
 
+    // Defensive copy constructor
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    public PeriodStats(
+            long messagesSent,
+            long messageSendErrors,
+            long bytesSent,
+            long messagesReceived,
+            long bytesReceived,
+            long totalMessagesSent,
+            long totalMessageSendErrors,
+            long totalMessagesReceived,
+            Histogram publishLatency,
+            Histogram publishDelayLatency,
+            Histogram endToEndLatency) {
+        this.messagesSent = messagesSent;
+        this.messageSendErrors = messageSendErrors;
+        this.bytesSent = bytesSent;
+        this.messagesReceived = messagesReceived;
+        this.bytesReceived = bytesReceived;
+        this.totalMessagesSent = totalMessagesSent;
+        this.totalMessageSendErrors = totalMessageSendErrors;
+        this.totalMessagesReceived = totalMessagesReceived;
+        this.publishLatency = publishLatency != null ? publishLatency.copy() : new Histogram(5);
+        this.publishDelayLatency =
+                publishDelayLatency != null ? publishDelayLatency.copy() : new Histogram(5);
+        this.endToEndLatency = endToEndLatency != null ? endToEndLatency.copy() : new Histogram(5);
+    }
+
     public PeriodStats() {
         this(0, 0, 0, 0, 0, 0, 0, 0, new Histogram(5), new Histogram(5), new Histogram(5));
+    }
+
+    // Return defensive copies in getters
+    public Histogram publishLatency() {
+        return publishLatency.copy();
+    }
+
+    public Histogram publishDelayLatency() {
+        return publishDelayLatency.copy();
+    }
+
+    public Histogram endToEndLatency() {
+        return endToEndLatency.copy();
     }
 
     /**

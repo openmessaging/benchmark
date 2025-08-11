@@ -14,10 +14,31 @@
 package io.openmessaging.benchmark.worker.commands;
 
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
+import java.util.ArrayList;
 import java.util.List;
 
 public record ProducerWorkAssignment(
         List<byte[]> payloadData, double publishRate, KeyDistributorType keyDistributorType) {
+
+    // Defensive copy constructor
+    public ProducerWorkAssignment(
+            List<byte[]> payloadData, double publishRate, KeyDistributorType keyDistributorType) {
+        this.payloadData =
+                payloadData != null
+                        ? new ArrayList<>(payloadData.stream().map(ProducerWorkAssignment::getBytes).toList())
+                        : new ArrayList<>();
+        this.publishRate = publishRate;
+        this.keyDistributorType = keyDistributorType;
+    }
+
+    private static byte[] getBytes(byte[] bytes) {
+        return bytes != null ? bytes.clone() : null;
+    }
+
+    // Return defensive copy in getter
+    public List<byte[]> payloadData() {
+        return new ArrayList<>(payloadData.stream().map(ProducerWorkAssignment::getBytes).toList());
+    }
 
     public ProducerWorkAssignment withPublishRate(double publishRate) {
         return new ProducerWorkAssignment(this.payloadData, publishRate, this.keyDistributorType);

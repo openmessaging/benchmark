@@ -14,6 +14,8 @@
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
 import dlshade.com.google.common.collect.Maps;
+import dlshade.org.apache.bookkeeper.stats.Counter;
+import dlshade.org.apache.bookkeeper.stats.OpStatsLogger;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -37,8 +39,18 @@ public class StatsLoggerAdaptor implements dlshade.org.apache.bookkeeper.stats.S
     }
 
     @Override
+    public OpStatsLogger getThreadScopedOpStatsLogger(String name) {
+        return null;
+    }
+
+    @Override
     public dlshade.org.apache.bookkeeper.stats.Counter getCounter(String name) {
         return new CounterAdaptor(statsLogger.getCounter(name));
+    }
+
+    @Override
+    public Counter getThreadScopedCounter(String name) {
+        return null;
     }
 
     @Override

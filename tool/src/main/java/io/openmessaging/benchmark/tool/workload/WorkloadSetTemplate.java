@@ -56,11 +56,52 @@ public record WorkloadSetTemplate(
         long consumerBacklogSizeGB,
         int testDurationMinutes,
         int warmupDurationMinutes) {
+
     public static final String DEFAULT_NAME_TEMPLATE =
             "${topics}-topics-${partitionsPerTopic}-partitions-${messageSize}b"
                     + "-${producersPerTopic}p-${consumerPerSubscription}c-${producerRate}";
 
-    // Default constructor with default values
+    // Defensive copy constructor
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    public WorkloadSetTemplate(
+            String nameFormat,
+            List<Integer> topics,
+            List<Integer> partitionsPerTopic,
+            List<Integer> messageSize,
+            List<Integer> subscriptionsPerTopic,
+            List<Integer> producersPerTopic,
+            List<Integer> consumerPerSubscription,
+            List<Integer> producerRate,
+            KeyDistributorType keyDistributor,
+            String payloadFile,
+            boolean useRandomizedPayloads,
+            double randomBytesRatio,
+            int randomizedPayloadPoolSize,
+            long consumerBacklogSizeGB,
+            int testDurationMinutes,
+            int warmupDurationMinutes) {
+        this.nameFormat = nameFormat;
+        this.topics = topics != null ? List.copyOf(topics) : List.of();
+        this.partitionsPerTopic =
+                partitionsPerTopic != null ? List.copyOf(partitionsPerTopic) : List.of();
+        this.messageSize = messageSize != null ? List.copyOf(messageSize) : List.of();
+        this.subscriptionsPerTopic =
+                subscriptionsPerTopic != null ? List.copyOf(subscriptionsPerTopic) : List.of();
+        this.producersPerTopic = producersPerTopic != null ? List.copyOf(producersPerTopic) : List.of();
+        this.consumerPerSubscription =
+                consumerPerSubscription != null ? List.copyOf(consumerPerSubscription) : List.of();
+        this.producerRate = producerRate != null ? List.copyOf(producerRate) : List.of();
+        this.keyDistributor = keyDistributor;
+        this.payloadFile = payloadFile;
+        this.useRandomizedPayloads = useRandomizedPayloads;
+        this.randomBytesRatio = randomBytesRatio;
+        this.randomizedPayloadPoolSize = randomizedPayloadPoolSize;
+        this.consumerBacklogSizeGB = consumerBacklogSizeGB;
+        this.testDurationMinutes = testDurationMinutes;
+        this.warmupDurationMinutes = warmupDurationMinutes;
+    }
+
+    @SuppressWarnings("checkstyle:ParameterNumber")
     public WorkloadSetTemplate() {
         this(
                 DEFAULT_NAME_TEMPLATE,
@@ -79,5 +120,34 @@ public record WorkloadSetTemplate(
                 0,
                 5,
                 1);
+    }
+
+    // Defensive copy getters for mutable List fields
+    public List<Integer> topics() {
+        return List.copyOf(topics);
+    }
+
+    public List<Integer> partitionsPerTopic() {
+        return List.copyOf(partitionsPerTopic);
+    }
+
+    public List<Integer> messageSize() {
+        return List.copyOf(messageSize);
+    }
+
+    public List<Integer> subscriptionsPerTopic() {
+        return List.copyOf(subscriptionsPerTopic);
+    }
+
+    public List<Integer> producersPerTopic() {
+        return List.copyOf(producersPerTopic);
+    }
+
+    public List<Integer> consumerPerSubscription() {
+        return List.copyOf(consumerPerSubscription);
+    }
+
+    public List<Integer> producerRate() {
+        return List.copyOf(producerRate);
     }
 }

@@ -68,7 +68,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
             Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
     private final WorkerStats stats;
     private boolean testCompleted = false;
-    private boolean consumersArePaused = false;
+    private volatile boolean consumersArePaused = false;
 
     public LocalWorker() {
         this(NullStatsLogger.INSTANCE);
@@ -132,9 +132,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         producers.addAll(
                 benchmarkDriver
                         .createProducers(
-                                topics.stream()
-                                        .map(t -> new ProducerInfo(index.getAndIncrement(), t))
-                                        .collect(toList()))
+                                topics.stream().map(t -> new ProducerInfo(index.getAndIncrement(), t)).toList())
                         .join());
 
         log.info("Created {} producers in {} ms", producers.size(), timer.elapsedMillis());
@@ -153,7 +151,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                                 c ->
                                                         new ConsumerInfo(
                                                                 index.getAndIncrement(), c.topic, c.subscription, this))
-                                        .collect(toList()))
+                                        .toList())
                         .join());
 
         log.info("Created {} consumers in {} ms", consumers.size(), timer.elapsedMillis());
@@ -261,7 +259,9 @@ public class LocalWorker implements Worker, ConsumerCallback {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Thread.currentThread().interrupt(); // Restore interrupt status
+                log.warn("Thread interrupted while consumers paused", e);
+                break; // Exit the loop if interrupted
             }
         }
     }

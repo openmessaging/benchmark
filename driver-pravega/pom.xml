@@ -20,14 +20,16 @@
     <parent>
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
-        <version>0.0.2-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
     <artifactId>driver-pravega</artifactId>
 
     <properties>
         <!--Specify pravegaVersion in properties or use default: 0.10.0-->
         <!--Provide Pravega version for build: mvn clean install  "-DpravegaVersion=0.9.0-2766.2515791-SNAPSHOT" -DskipTests=true -Dlicense.skip=true-->
-        <pravegaVersion>0.12.0</pravegaVersion>
+        <pravegaVersion>0.13.0</pravegaVersion>
+        <protobuf.version>4.31.1</protobuf.version>
+        <grpc.version>1.74.0</grpc.version>
     </properties>
 
     <dependencies>
@@ -39,12 +41,12 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
-            <version>3.21.5</version>
+            <version>${protobuf.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-all</artifactId>
-            <version>1.49.0</version>
+            <version>${grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>

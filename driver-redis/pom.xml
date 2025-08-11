@@ -20,10 +20,14 @@
     <parent>
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
-        <version>0.0.2-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>driver-redis</artifactId>
+
+    <properties>
+        <redis.version>6.1.0</redis.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -38,7 +42,7 @@
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
-            <version>5.0.0</version>
+            <version>${redis.version}</version>
         </dependency>
     </dependencies>
 

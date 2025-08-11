@@ -38,7 +38,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,14 +60,14 @@ public class WorkloadGenerator implements AutoCloseable {
         this.driverName = driverName;
         this.workload = workload;
         this.worker = worker;
+    }
 
+    public TestResult run() throws Exception {
         if (workload.consumerBacklogSizeGB > 0 && workload.producerRate == 0) {
             throw new IllegalArgumentException(
                     "Cannot probe producer sustainable rate when building backlog");
         }
-    }
 
-    public TestResult run() throws Exception {
         Timer timer = new Timer();
         List<String> topics =
                 worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));

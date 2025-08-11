@@ -20,7 +20,7 @@
 
     <groupId>io.openmessaging.benchmark</groupId>
     <artifactId>messaging-benchmark</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
     <name>Messaging Benchmark</name>
 
@@ -62,18 +62,21 @@
     </modules>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <revision>0.0.3-SNAPSHOT</revision>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>24</maven.compiler.source>
+        <maven.compiler.target>24</maven.compiler.target>
+        <maven.compiler.release>24</maven.compiler.release>
+        <guava.version>33.4.8-jre</guava.version>
 
         <assertj.version>3.25.1</assertj.version>
         <bookkeeper.version>4.17.2</bookkeeper.version>
         <checkstyle.version>10.12.4</checkstyle.version>
         <jcommander.version>2.0</jcommander.version>
-        <junit.jupiter.version>5.10.1</junit.jupiter.version>
-        <mockito.junit.jupiter.version>5.8.0</mockito.junit.jupiter.version>
+        <junit.jupiter.version>5.13.4</junit.jupiter.version>
+        <mockito.junit.jupiter.version>5.18.0</mockito.junit.jupiter.version>
+        <bytebuddy.version>1.17.6</bytebuddy.version>
 
         <commons.lang3.version>3.18.0</commons.lang3.version>
         <jackson.version>2.16.1</jackson.version>
@@ -87,7 +90,7 @@
         <maven.compiler.plugin.version>3.12.1</maven.compiler.plugin.version>
         <maven.enforcer.plugin.version>3.4.1</maven.enforcer.plugin.version>
         <maven.surefire.plugin.version>3.2.2</maven.surefire.plugin.version>
-        <spotbugs.plugin.version>4.8.2.0</spotbugs.plugin.version>
+        <spotbugs.plugin.version>4.9.3.2</spotbugs.plugin.version>
         <spotless.plugin.version>2.41.1</spotless.plugin.version>
     </properties>
 
@@ -144,6 +147,19 @@
                 <version>${jcommander.version}</version>
             </dependency>
             <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${bytebuddy.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy-agent</artifactId>
+                <version>${bytebuddy.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
@@ -157,10 +173,17 @@
             </dependency>
             <dependency>
                 <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
                 <artifactId>mockito-junit-jupiter</artifactId>
                 <version>${mockito.junit.jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -430,9 +453,9 @@
                             <artifactId>maven-compiler-plugin</artifactId>
                             <version>${maven.compiler.plugin.version}</version>
                             <configuration>
-                                <source>21</source>
-                                <target>21</target>
-                                <release>21</release>
+                                <source>24</source>
+                                <target>24</target>
+                                <release>24</release>
                                 <encoding>${project.build.sourceEncoding}</encoding>
                                 <showDeprecation>true</showDeprecation>
                                 <showWarnings>true</showWarnings>

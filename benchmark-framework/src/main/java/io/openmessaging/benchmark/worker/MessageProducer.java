@@ -25,8 +25,8 @@ import org.slf4j.LoggerFactory;
 public class MessageProducer {
 
     private final WorkerStats stats;
-    private UniformRateLimiter rateLimiter;
-    private Supplier<Long> nanoClock;
+    private final UniformRateLimiter rateLimiter;
+    private final Supplier<Long> nanoClock;
 
     MessageProducer(UniformRateLimiter rateLimiter, WorkerStats stats) {
         this(System::nanoTime, rateLimiter, stats);

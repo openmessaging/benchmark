@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper.stats;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.stats.Counter;
 
 record CounterAdaptor(Counter counter) implements dlshade.org.apache.bookkeeper.stats.Counter {
@@ -33,9 +34,12 @@ record CounterAdaptor(Counter counter) implements dlshade.org.apache.bookkeeper.
     }
 
     @Override
-    public void add(long delta) {
+    public void addCount(long delta) {
         counter.addCount(delta);
     }
+
+    @Override
+    public void addLatency(long eventLatency, TimeUnit unit) {}
 
     @Override
     public Long get() {

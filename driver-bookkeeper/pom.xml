@@ -20,10 +20,14 @@
     <parent>
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
-        <version>0.0.2-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>driver-bookkeeper</artifactId>
+
+    <properties>
+        <distributedlog.version>4.17.2</distributedlog.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -37,7 +41,7 @@
         <dependency>
             <groupId>org.apache.distributedlog</groupId>
             <artifactId>distributedlog-core-shaded</artifactId>
-            <version>4.14.4</version>
+            <version>${distributedlog.version}</version>
         </dependency>
     </dependencies>
 </project>

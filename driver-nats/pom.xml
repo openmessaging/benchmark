@@ -20,10 +20,14 @@
     <parent>
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
-        <version>0.0.2-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>driver-nats</artifactId>
+
+    <properties>
+        <nats.version>2.21.4</nats.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -34,7 +38,7 @@
         <dependency>
             <groupId>io.nats</groupId>
             <artifactId>jnats</artifactId>
-            <version>2.16.3</version>
+            <version>${nats.version}</version>
         </dependency>
     </dependencies>
 

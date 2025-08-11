@@ -17,8 +17,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record CountersStats(
         @JsonProperty("messagesSent") long messagesSent,
-        @JsonProperty("messagesReceived") long messagesReceived,
-        @JsonProperty("messageSendErrors") long messageSendErrors) {
+        @JsonProperty("messageSendErrors") long messageSendErrors,
+        @JsonProperty("messagesReceived") long messagesReceived) {
 
     public CountersStats() {
         this(0, 0, 0);
@@ -33,7 +33,7 @@ public record CountersStats(
     public CountersStats plus(CountersStats other) {
         return new CountersStats(
                 this.messagesSent + other.messagesSent,
-                this.messagesReceived + other.messagesReceived,
-                this.messageSendErrors + other.messageSendErrors);
+                this.messageSendErrors + other.messageSendErrors,
+                this.messagesReceived + other.messagesReceived);
     }
 }

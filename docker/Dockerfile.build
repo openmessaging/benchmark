@@ -13,7 +13,7 @@
 #
 
 # Build the Project
-FROM maven:3.9.11-amazoncorretto-24-al2023 AS build
+FROM maven:3.9.11-amazoncorretto-24-alpine AS build
 
 # Copy only pom files to cache dependencies
 COPY . /benchmark/
@@ -21,7 +21,7 @@ WORKDIR /benchmark
 
 # Download all possible dependencies and plugins
 RUN mvn dependency:go-offline -B -Dexcludes="io.openmessaging.benchmark:*" || true
-RUN mvn dependency:resolve -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true  
+RUN mvn dependency:resolve -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
 RUN mvn dependency:resolve-plugins -B || true
 RUN mvn dependency:resolve-sources -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
 
@@ -29,7 +29,7 @@ RUN mvn dependency:resolve-sources -B -Dexcludes="io.openmessaging.benchmark:*" 
 RUN mvn install
 
 # Create the benchmark image
-FROM amazoncorretto:21
+FROM amazoncorretto:24-alpine
 
 COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz /
 RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1 \

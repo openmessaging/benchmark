@@ -13,12 +13,12 @@
  */
 package io.openmessaging.benchmark.driver.bookkeeper;
 
+import dlshade.org.apache.distributedlog.LogRecord;
+import dlshade.org.apache.distributedlog.api.AsyncLogWriter;
+import dlshade.org.apache.distributedlog.util.TimeSequencer;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.apache.distributedlog.LogRecord;
-import org.apache.distributedlog.api.AsyncLogWriter;
-import org.apache.distributedlog.util.TimeSequencer;
 
 public class DlogBenchmarkProducer implements BenchmarkProducer {
 

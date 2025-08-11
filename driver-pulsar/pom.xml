@@ -20,12 +20,12 @@
     <parent>
         <groupId>io.openmessaging.benchmark</groupId>
         <artifactId>messaging-benchmark</artifactId>
-        <version>0.0.2-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>driver-pulsar</artifactId>
     <properties>
-        <pulsar.version>2.11.0</pulsar.version>
+        <pulsar.version>4.0.6</pulsar.version>
     </properties>
 
     <dependencies>

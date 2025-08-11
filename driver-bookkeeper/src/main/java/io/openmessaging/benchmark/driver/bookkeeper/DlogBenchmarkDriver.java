@@ -17,6 +17,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import dlshade.org.apache.bookkeeper.stats.CachingStatsLogger;
+import dlshade.org.apache.distributedlog.DistributedLogConfiguration;
+import dlshade.org.apache.distributedlog.api.DistributedLogManager;
+import dlshade.org.apache.distributedlog.api.namespace.Namespace;
+import dlshade.org.apache.distributedlog.api.namespace.NamespaceBuilder;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
@@ -28,12 +32,9 @@ import java.io.StringReader;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.PropertiesConfiguration;
-import org.apache.distributedlog.DistributedLogConfiguration;
-import org.apache.distributedlog.api.DistributedLogManager;
-import org.apache.distributedlog.api.namespace.Namespace;
-import org.apache.distributedlog.api.namespace.NamespaceBuilder;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,10 +53,10 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, Config.class);
 
-        PropertiesConfiguration propsConf = new PropertiesConfiguration();
         DistributedLogConfiguration conf = new DistributedLogConfiguration();
         try {
-            propsConf.load(new StringReader(config.dlogConf));
+            PropertiesConfiguration propsConf =
+                    new Configurations().properties(new StringReader(config.dlogConf).toString());
             conf.loadConf(propsConf);
         } catch (ConfigurationException e) {
             log.error("Failed to load dlog configuration : \n{}\n", config.dlogConf, e);
@@ -113,7 +114,7 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
                             }
                         })
                 .thenCompose(dlm -> dlm.openAsyncLogWriter())
-                .thenApply(writer -> new DlogBenchmarkProducer(writer));
+                .thenApply(DlogBenchmarkProducer::new);
     }
 
     @Override
