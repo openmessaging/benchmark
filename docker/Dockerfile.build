@@ -32,6 +32,7 @@ RUN mvn install
 FROM amazoncorretto:24-alpine
 
 COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz /
-RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1 \
+RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1 && \
     rm /openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz
+
 WORKDIR /benchmark
