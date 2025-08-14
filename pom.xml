@@ -80,8 +80,8 @@
 
         <commons.lang3.version>3.18.0</commons.lang3.version>
         <jackson.version>2.16.1</jackson.version>
-        <netty.version>4.2.3.Final</netty.version>
-        <slf4j.version>2.0.17</slf4j.version>
+        <!--        <netty.version>4.2.4.Final</netty.version>-->
+        <netty.version>4.1.121.Final</netty.version>
         <log4j.version>2.25.1</log4j.version>
 
         <checkstyle.plugin.version>3.3.1</checkstyle.plugin.version>
@@ -96,6 +96,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
@@ -131,20 +138,29 @@
                 <artifactId>commons-lang3</artifactId>
                 <version>${commons.lang3.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-core</artifactId>
                 <version>${log4j.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-slf4j-impl</artifactId>
+                <artifactId>log4j-slf4j2-impl</artifactId>
                 <version>${log4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.jcommander</groupId>
                 <artifactId>jcommander</artifactId>
                 <version>${jcommander.version}</version>
+            </dependency>
+
+            <!-- Force SLF4J API 2.x across the build -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>2.0.17</version>
             </dependency>
             <dependency>
                 <groupId>net.bytebuddy</groupId>

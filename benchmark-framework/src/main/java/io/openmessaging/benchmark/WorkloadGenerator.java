@@ -96,13 +96,8 @@ public class WorkloadGenerator implements AutoCloseable {
         }
 
         final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
-
-        ProducerWorkAssignment producerWorkAssignment =
-                new ProducerWorkAssignment(new ArrayList<>(), targetPublishRate, workload.keyDistributor);
-
+        List<byte[]> payloads = new ArrayList<>();
         if (workload.useRandomizedPayloads) {
-            // create messages that are part random and part zeros
-            // better for testing effects of compression
             Random r = new Random();
             int randomBytes = (int) (workload.messageSize * workload.randomBytesRatio);
             int zerodBytes = workload.messageSize - randomBytes;
@@ -111,12 +106,20 @@ public class WorkloadGenerator implements AutoCloseable {
                 r.nextBytes(randArray);
                 byte[] zerodArray = new byte[zerodBytes];
                 byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
-                producerWorkAssignment.payloadData().add(combined);
+                payloads.add(combined);
             }
         } else {
-            producerWorkAssignment.payloadData().add(payloadReader.load(workload.payloadFile));
+            payloads.add(payloadReader.load(workload.payloadFile));
         }
 
+        ProducerWorkAssignment producerWorkAssignment =
+                new ProducerWorkAssignment(payloads, targetPublishRate, workload.keyDistributor);
+
+        log.info(
+                "Loaded {} payloads from file {} in {} ms",
+                producerWorkAssignment.payloadData().size(),
+                workload.payloadFile,
+                timer.elapsedMillis());
         worker.startLoad(producerWorkAssignment);
 
         if (workload.warmupDurationMinutes > 0) {

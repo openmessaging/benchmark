@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.worker;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
@@ -23,6 +24,7 @@ import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
 import io.openmessaging.benchmark.worker.jackson.ObjectMappers;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
@@ -108,14 +110,20 @@ public class WorkerHandler {
         localWorker.resumeConsumers();
     }
 
-    private void handleStartLoad(Context ctx) throws Exception {
-        ProducerWorkAssignment producerWorkAssignment =
-                mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
+    private void handleStartLoad(Context ctx) throws IOException {
+        ProducerWorkAssignment producerWorkAssignment;
+        try {
+            producerWorkAssignment = mapper.readValue(ctx.body(), ProducerWorkAssignment.class);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse ProducerWorkAssignment", e);
+            throw e;
+        }
 
+        log.info("Info received:{}", producerWorkAssignment.payloadData());
         log.info(
                 "Start load publish-rate: {} msg/s -- payload-size: {}",
                 producerWorkAssignment.publishRate(),
-                producerWorkAssignment.payloadData().get(0).length);
+                producerWorkAssignment.payloadData().getFirst().length);
 
         localWorker.startLoad(producerWorkAssignment);
     }

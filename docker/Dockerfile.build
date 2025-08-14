@@ -20,16 +20,24 @@ COPY . /benchmark/
 WORKDIR /benchmark
 
 # Download all possible dependencies and plugins
-RUN mvn dependency:go-offline -B -Dexcludes="io.openmessaging.benchmark:*" || true
-RUN mvn dependency:resolve -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
-RUN mvn dependency:resolve-plugins -B || true
-RUN mvn dependency:resolve-sources -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -B -Dexcludes="io.openmessaging.benchmark:*" || true
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:resolve -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:resolve-plugins -B || true
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:resolve-sources -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
+
+#RUN mvn dependency:go-offline -B -Dexcludes="io.openmessaging.benchmark:*" || true
+#RUN mvn dependency:resolve -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
+#RUN mvn dependency:resolve-plugins -B || true
+#RUN mvn dependency:resolve-sources -B -Dexcludes="io.openmessaging.benchmark:*" -DincludeScope=test || true
 
 # Now do the actual build
-RUN mvn install
+RUN --mount=type=cache,target=/root/.m2 mvn install
+# RUN mvn install
 
 # Create the benchmark image
 FROM amazoncorretto:24-alpine
+
+RUN apk add --no-cache bash
 
 COPY --from=build /benchmark/package/target/openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz /
 RUN mkdir /benchmark && tar -xzf openmessaging-benchmark-*-SNAPSHOT-bin.tar.gz -C /benchmark --strip=1 && \

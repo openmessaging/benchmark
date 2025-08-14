@@ -177,7 +177,9 @@ public class HttpWorkerClient implements Worker {
                                         path,
                                         response.getStatusCode());
                             }
-                            Preconditions.checkArgument(response.getStatusCode() == HTTP_OK);
+                            Preconditions.checkArgument(
+                                    response.getStatusCode() == HTTP_OK,
+                                    "Failed to do HTTP post request to -- code:");
                             return (Void) null;
                         })
                 .join();

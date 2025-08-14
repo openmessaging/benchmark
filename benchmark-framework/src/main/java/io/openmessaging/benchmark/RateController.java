@@ -17,9 +17,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.openmessaging.benchmark.utils.Env;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class RateController {
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(RateController.class);
+    private static final Logger log = LoggerFactory.getLogger(RateController.class);
 
     private static final long ONE_SECOND_IN_NANOS = SECONDS.toNanos(1);
     private final long publishBacklogLimit;

@@ -1,0 +1,77 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+version: "3.9"
+
+services:
+  kafka:
+    image: bitnami/kafka:3.9
+    container_name: kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    networks:
+      - ombnet
+
+  omb-worker-1:
+    image: mihkels/open-messaging-benchmark:0.0.3-kafka-3.9-java24
+    container_name: omb-worker-1
+    command: ["bash","-lc","bin/benchmark-worker -p 8080 -sp 8081"]
+    ports:
+      - "18081:8080"   # HTTP
+      - "18091:8081"   # metrics (optional)
+    networks:
+      - ombnet
+
+  omb-worker-2:
+    image: mihkels/open-messaging-benchmark:0.0.3-kafka-3.9-java24
+    container_name: omb-worker-2
+    command: ["bash","-lc","bin/benchmark-worker -p 8080 -sp 8081"]
+    ports:
+      - "18082:8080"
+      - "18092:8081"
+    networks:
+      - ombnet
+
+  omb-driver:
+    image: mihkels/open-messaging-benchmark:0.0.3-kafka-3.9-java24
+    container_name: omb-driver
+    depends_on:
+      - kafka
+      - omb-worker-1
+      - omb-worker-2
+    #    volumes:
+    #      - ./drivers:/drivers:ro
+    #      - ./workloads:/workloads:ro
+    #      - ./payload:/payload:ro
+    command:
+      [
+        "bash","-lc",
+        "cat > /root/.bashrc << 'EOF'\necho\necho 'Run the benchmark with:'\necho '  bin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml'\necho 'Optionally with heap tuning:'\necho '  HEAP_OPTS=\"-Xms4G -Xmx4G\" bin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml'\necho\nEOF\nprintf '#!/usr/bin/env bash\nset -euo pipefail\n${HEAP_OPTS:+export HEAP_OPTS}\nbin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml\n' > /usr/local/bin/run-benchmark && chmod +x /usr/local/bin/run-benchmark\nexec tail -f /dev/null"
+      ]
+    networks:
+      - ombnet
+
+networks:
+  ombnet:
+    driver: bridge

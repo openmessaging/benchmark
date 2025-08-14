@@ -26,7 +26,8 @@
     <artifactId>benchmark-framework</artifactId>
 
     <properties>
-        <jetty.version>12.0.24</jetty.version>
+        <jetty.version>9.4.57.v20241219</jetty.version>
+        <hdrhistogram.version>2.2.2</hdrhistogram.version>
         <async.client.version>3.0.2</async.client.version>
     </properties>
 
@@ -105,7 +106,16 @@
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
-            <version>6.7.0</version>
+            <version>4.6.8</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.bookkeeper.stats</groupId>
@@ -114,14 +124,13 @@
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
         </dependency>
         <dependency>
             <groupId>org.asynchttpclient</groupId>
             <artifactId>async-http-client</artifactId>
             <version>${async.client.version}</version>
         </dependency>
-        <!-- set jetty version to be consistent across all transitive dependencies  -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
@@ -135,7 +144,7 @@
         <dependency>
             <groupId>org.hdrhistogram</groupId>
             <artifactId>HdrHistogram</artifactId>
-            <version>2.1.12</version>
+            <version>${hdrhistogram.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jcommander</groupId>
