@@ -12,8 +12,6 @@
 # limitations under the License.
 #
 
-version: "3.9"
-
 services:
   kafka:
     image: bitnami/kafka:3.9
@@ -36,6 +34,8 @@ services:
   omb-worker-1:
     image: mihkels/open-messaging-benchmark:0.0.3-kafka-3.9-java24
     container_name: omb-worker-1
+    environment:
+      - HEAP_OPTS=-Xms512m -Xmx512m
     command: ["bash","-lc","bin/benchmark-worker -p 8080 -sp 8081"]
     ports:
       - "18081:8080"   # HTTP
@@ -46,6 +46,8 @@ services:
   omb-worker-2:
     image: mihkels/open-messaging-benchmark:0.0.3-kafka-3.9-java24
     container_name: omb-worker-2
+    environment:
+      - HEAP_OPTS=-Xms512m -Xmx512m
     command: ["bash","-lc","bin/benchmark-worker -p 8080 -sp 8081"]
     ports:
       - "18082:8080"
@@ -56,18 +58,20 @@ services:
   omb-driver:
     image: mihkels/open-messaging-benchmark:0.0.3-kafka-3.9-java24
     container_name: omb-driver
+    environment:
+      - HEAP_OPTS=-Xms512m -Xmx512m
     depends_on:
       - kafka
       - omb-worker-1
       - omb-worker-2
-    #    volumes:
-    #      - ./drivers:/drivers:ro
-    #      - ./workloads:/workloads:ro
-    #      - ./payload:/payload:ro
+    volumes:
+      - ./drivers:/drivers:ro
+      - ./workloads:/workloads:ro
+      - ./payload:/payload:ro
     command:
       [
         "bash","-lc",
-        "cat > /root/.bashrc << 'EOF'\necho\necho 'Run the benchmark with:'\necho '  bin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml'\necho 'Optionally with heap tuning:'\necho '  HEAP_OPTS=\"-Xms4G -Xmx4G\" bin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml'\necho\nEOF\nprintf '#!/usr/bin/env bash\nset -euo pipefail\n${HEAP_OPTS:+export HEAP_OPTS}\nbin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml\n' > /usr/local/bin/run-benchmark && chmod +x /usr/local/bin/run-benchmark\nexec tail -f /dev/null"
+        "cat > /root/.bashrc << 'EOF'\necho\necho 'Run the benchmark with:'\necho 'HEAP_OPTS=\"-Xms512m -Xmx512m\"  bin/benchmark --drivers /drivers/kafka.yaml --workers http://omb-worker-1:8080,http://omb-worker-2:8080 /workloads/simple.yaml'\necho 'Optionally with heap tuning:'\necho '  HEAP_OPTS=\"-Xms4G -Xmx4G\" bin/benchmark --drivers /drivers/kafka.yaml --workers http://omb-worker-1:8080,http://omb-worker-2:8080 /workloads/simple.yaml'\necho\nEOF\nprintf '#!/usr/bin/env bash\nset -euo pipefail\n${HEAP_OPTS:+export HEAP_OPTS}\nbin/benchmark --drivers /drivers/kafka.yaml --workers omb-worker-1:8080,omb-worker-2:8080 /workloads/1-topic-16-partitions-1kb.yaml\n' > /usr/local/bin/run-benchmark && chmod +x /usr/local/bin/run-benchmark\nexec tail -f /dev/null"
       ]
     networks:
       - ombnet
