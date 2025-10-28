@@ -36,6 +36,7 @@ import io.openmessaging.benchmark.utils.distributor.KeyDistributor;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.CountersStats;
 import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
+import io.openmessaging.benchmark.worker.commands.Payload;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicsInfo;
@@ -194,7 +195,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     private void submitProducersToExecutor(
-            List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
+            List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<Payload> payloads) {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         int payloadCount = payloads.size();
         executor.submit(

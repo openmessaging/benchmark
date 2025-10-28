@@ -1,0 +1,5 @@
+data: # You can send in structured data as well
+    fooz: baz
+headers:
+    header1: "value1"
+    header2: "value2"

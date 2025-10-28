@@ -1,0 +1,4 @@
+# Pass in a base64-encoded if you want to send non-JSON data along with custom headers.
+data: b2JzY3VyZV9zdHJpbmcK
+headers:
+  cool: beans

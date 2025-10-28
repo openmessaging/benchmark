@@ -19,12 +19,12 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.openmessaging.benchmark.utils.PaddingDecimalFormat;
 import io.openmessaging.benchmark.utils.RandomGenerator;
 import io.openmessaging.benchmark.utils.Timer;
-import io.openmessaging.benchmark.utils.payload.FilePayloadReader;
 import io.openmessaging.benchmark.utils.payload.PayloadReader;
 import io.openmessaging.benchmark.worker.Worker;
 import io.openmessaging.benchmark.worker.commands.ConsumerAssignment;
 import io.openmessaging.benchmark.worker.commands.CountersStats;
 import io.openmessaging.benchmark.worker.commands.CumulativeLatencies;
+import io.openmessaging.benchmark.worker.commands.Payload;
 import io.openmessaging.benchmark.worker.commands.PeriodStats;
 import io.openmessaging.benchmark.worker.commands.ProducerWorkAssignment;
 import io.openmessaging.benchmark.worker.commands.TopicSubscription;
@@ -95,8 +95,6 @@ public class WorkloadGenerator implements AutoCloseable {
                     });
         }
 
-        final PayloadReader payloadReader = new FilePayloadReader(workload.messageSize);
-
         ProducerWorkAssignment producerWorkAssignment = new ProducerWorkAssignment();
         producerWorkAssignment.keyDistributorType = workload.keyDistributor;
         producerWorkAssignment.publishRate = targetPublishRate;
@@ -113,10 +111,11 @@ public class WorkloadGenerator implements AutoCloseable {
                 r.nextBytes(randArray);
                 byte[] zerodArray = new byte[zerodBytes];
                 byte[] combined = ArrayUtils.addAll(randArray, zerodArray);
-                producerWorkAssignment.payloadData.add(combined);
+                producerWorkAssignment.payloadData.add(new Payload(combined));
             }
         } else {
-            producerWorkAssignment.payloadData.add(payloadReader.load(workload.payloadFile));
+            final PayloadReader payloadReader = new PayloadReader(workload.messageSize);
+            producerWorkAssignment.payloadData = payloadReader.load(workload.payloadFile);
         }
 
         worker.startLoad(producerWorkAssignment);
