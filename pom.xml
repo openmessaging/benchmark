@@ -70,7 +70,7 @@
         <checkstyle.version>10.3.3</checkstyle.version>
         <commons.lang3.version>3.12.0</commons.lang3.version>
         <log4j.version>2.20.0</log4j.version>
-        <lombok.version>1.18.24</lombok.version>
+        <lombok.version>1.18.36</lombok.version>
         <jackson.version>2.13.2</jackson.version>
         <jcommander.version>1.48</jcommander.version>
         <junit.jupiter.version>5.9.0</junit.jupiter.version>
@@ -81,7 +81,7 @@
         <checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
         <jacoco.plugin.version>0.8.8</jacoco.plugin.version>
         <license.plugin.version>4.1</license.plugin.version>
-        <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
+        <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <maven.enforcer.plugin.version>3.1.0</maven.enforcer.plugin.version>
         <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
         <spotbugs.plugin.version>4.7.2.0</spotbugs.plugin.version>
@@ -432,15 +432,19 @@
                         <plugin>
                             <groupId>org.apache.maven.plugins</groupId>
                             <artifactId>maven-compiler-plugin</artifactId>
-                            <version>3.8.1</version>
+                            <version>3.13.0</version>
                             <configuration>
-                                <source>8</source>
-                                <target>8</target>
-                                <release>8</release>
+                                <release>17</release>
                                 <encoding>${project.build.sourceEncoding}</encoding>
                                 <showDeprecation>true</showDeprecation>
                                 <showWarnings>true</showWarnings>
-                                <optimize>true</optimize>
+                                <annotationProcessorPaths>
+                                    <path>
+                                        <groupId>org.projectlombok</groupId>
+                                        <artifactId>lombok</artifactId>
+                                        <version>${lombok.version}</version>
+                                    </path>
+                                </annotationProcessorPaths>
                             </configuration>
                         </plugin>
                     </plugins>
@@ -466,6 +470,13 @@
                                 <showDeprecation>true</showDeprecation>
                                 <showWarnings>true</showWarnings>
                                 <optimize>true</optimize>
+                                <annotationProcessorPaths>
+                                    <path>
+                                        <groupId>org.projectlombok</groupId>
+                                        <artifactId>lombok</artifactId>
+                                        <version>${lombok.version}</version>
+                                    </path>
+                                </annotationProcessorPaths>
                             </configuration>
                         </plugin>
                     </plugins>

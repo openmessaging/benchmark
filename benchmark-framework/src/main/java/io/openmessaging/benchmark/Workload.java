@@ -15,6 +15,7 @@ package io.openmessaging.benchmark;
 
 
 import io.openmessaging.benchmark.utils.distributor.KeyDistributorType;
+import java.util.Map;
 
 public class Workload {
     public String name;
@@ -28,6 +29,23 @@ public class Workload {
     public KeyDistributorType keyDistributor = KeyDistributorType.NO_KEY;
 
     public int messageSize;
+
+    /**
+     * Message size distribution for variable-sized payloads.
+     * Keys are size ranges (e.g., "0-256", "256-1024", "1KB-4KB"),
+     * values are relative weights.
+     * Mutually exclusive with messageSize - if set, messageSize is ignored.
+     */
+    public Map<String, Integer> messageSizeDistribution;
+
+    /**
+     * Returns true if this workload uses a size distribution instead of fixed size.
+     *
+     * @return true if messageSizeDistribution is configured, false otherwise
+     */
+    public boolean usesDistribution() {
+        return messageSizeDistribution != null && !messageSizeDistribution.isEmpty();
+    }
 
     public boolean useRandomizedPayloads;
     public double randomBytesRatio;

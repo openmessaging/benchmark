@@ -43,6 +43,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -183,7 +184,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                 submitProducersToExecutor(
                                         producers,
                                         KeyDistributor.build(producerWorkAssignment.keyDistributorType),
-                                        producerWorkAssignment.payloadData));
+                                        producerWorkAssignment.payloadData,
+                                        producerWorkAssignment.payloadWeights));
     }
 
     @Override
@@ -194,19 +196,54 @@ public class LocalWorker implements Worker, ConsumerCallback {
     }
 
     private void submitProducersToExecutor(
-            List<BenchmarkProducer> producers, KeyDistributor keyDistributor, List<byte[]> payloads) {
-        ThreadLocalRandom r = ThreadLocalRandom.current();
-        int payloadCount = payloads.size();
+            List<BenchmarkProducer> producers,
+            KeyDistributor keyDistributor,
+            List<byte[]> payloads,
+            int[] weights) {
+
+        // Build cumulative weights for O(log n) weighted selection if weights are provided
+        final int[] cumulative;
+        final int totalWeight;
+        if (weights != null && weights.length > 0) {
+            cumulative = new int[weights.length];
+            int sum = 0;
+            for (int i = 0; i < weights.length; i++) {
+                sum += weights[i];
+                cumulative[i] = sum;
+            }
+            totalWeight = sum;
+        } else {
+            cumulative = null;
+            totalWeight = payloads.size();
+        }
+
+        final int payloadCount = payloads.size();
+
         executor.submit(
                 () -> {
                     try {
+                        ThreadLocalRandom r = ThreadLocalRandom.current();
                         while (!testCompleted) {
                             producers.forEach(
-                                    p ->
-                                            messageProducer.sendMessage(
-                                                    p,
-                                                    Optional.ofNullable(keyDistributor.next()),
-                                                    payloads.get(r.nextInt(payloadCount))));
+                                    p -> {
+                                        int idx;
+                                        if (cumulative != null) {
+                                            // Weighted selection via binary search
+                                            int target = r.nextInt(totalWeight);
+                                            idx = Arrays.binarySearch(cumulative, target + 1);
+                                            if (idx < 0) {
+                                                idx = -idx - 1;
+                                            }
+                                            idx = Math.min(idx, payloadCount - 1);
+                                        } else {
+                                            // Uniform selection (backward compatible)
+                                            idx = r.nextInt(payloadCount);
+                                        }
+                                        messageProducer.sendMessage(
+                                                p,
+                                                Optional.ofNullable(keyDistributor.next()),
+                                                payloads.get(idx));
+                                    });
                         }
                     } catch (Throwable t) {
                         log.error("Got error", t);
