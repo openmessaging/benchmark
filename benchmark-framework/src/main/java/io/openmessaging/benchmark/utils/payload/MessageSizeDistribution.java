@@ -147,6 +147,20 @@ public class MessageSizeDistribution {
     }
 
     /**
+     * Returns list of max sizes, one per bucket (for payload generation).
+     * Using max sizes ensures the system is tested with the largest messages in each bucket range.
+     *
+     * @return list of max sizes per bucket
+     */
+    public List<Integer> getBucketMaxSizes() {
+        List<Integer> sizes = new ArrayList<>();
+        for (Bucket b : buckets) {
+            sizes.add(b.maxSize);
+        }
+        return sizes;
+    }
+
+    /**
      * Returns weights array matching bucket order (for runtime selection).
      *
      * @return array of weights for each bucket

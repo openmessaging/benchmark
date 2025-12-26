@@ -104,11 +104,11 @@ public class WorkloadGenerator implements AutoCloseable {
         if (workload.usesDistribution()) {
             // Distribution mode: create one payload per bucket with weighted selection at runtime
             MessageSizeDistribution dist = new MessageSizeDistribution(workload.messageSizeDistribution);
-            List<Integer> sizes = dist.getBucketSizes();
+            List<Integer> sizes = dist.getBucketMaxSizes();
             Random r = new Random();
 
             log.info(
-                    "Creating {} payloads for size distribution (sizes: {}, avg: {} bytes)",
+                    "Creating {} payloads for size distribution (max sizes: {}, weighted avg: {} bytes)",
                     sizes.size(),
                     sizes,
                     dist.getAvgSize());
