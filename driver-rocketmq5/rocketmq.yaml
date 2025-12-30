@@ -1,0 +1,32 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+name: RocketMQ5
+driverClass: io.openmessaging.benchmark.driver.rocketmq.RocketMQ5BenchmarkDriver
+
+# The RocketMQ nameserver address
+namesrvAddr: x.x.x.x:9876
+# The RocketMQ broker cluster name
+clusterName: rocketmq-broker-xxxx
+# The proxy address to connect for grpc client.
+grpcEndpoint: 127.0.0.1:8081
+# 是否生产定时消息，否：生产普通消息，是：生产定时/延时消息且通过delayTimeInSec设置延迟时间
+sendDelayMsg: false
+delayTimeInSec: 60
+# (Optional) The admin credential
+adminAccessKey: xxxx
+adminSecretKey: xxxx
+# (Optional) The credential that clients connect to proxy.
+accessKey: xxxxxx
+secretKey: xxxxx
