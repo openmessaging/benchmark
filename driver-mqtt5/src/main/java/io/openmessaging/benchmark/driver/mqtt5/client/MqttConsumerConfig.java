@@ -14,18 +14,12 @@
 package io.openmessaging.benchmark.driver.mqtt5.client;
 
 public class MqttConsumerConfig {
-    /**
-     * Consume in clean session mode or not.
-     */
+    /** Consume in clean session mode or not. */
     public Boolean cleanSession = true;
 
-    /**
-     * The session expiry interval in seconds when cleanSession is false.
-     */
+    /** The session expiry interval in seconds when cleanSession is false. */
     public Integer sessionExpiryInterval = 3 * 24 * 60 * 60;
 
-    /**
-     * The maximum number of unacknowledged QoS 1 and 2 messages.
-     */
+    /** The maximum number of unacknowledged QoS 1 and 2 messages. */
     public Integer receiveMaximum = 256;
 }

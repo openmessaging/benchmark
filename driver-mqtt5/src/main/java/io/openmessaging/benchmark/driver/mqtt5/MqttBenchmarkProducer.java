@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.mqtt5;
 
+
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.datatypes.MqttUtf8String;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
@@ -41,28 +42,33 @@ public class MqttBenchmarkProducer implements BenchmarkProducer {
     @Override
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
 
-        Mqtt5UserProperties properties = Mqtt5UserProperties.builder()
-            .add(MqttBenchmarkDriver.USER_PROPERTY_KEY_PUBLISH_TIMESTAMP,
-                MqttUtf8String.of(String.valueOf(System.currentTimeMillis())))
-            .build();
-        Mqtt5Publish message = Mqtt5Publish.builder()
-            .topic(topic)
-            .payload(payload)
-            .qos(qos)
-            .userProperties(properties)
-            .build();
+        Mqtt5UserProperties properties =
+                Mqtt5UserProperties.builder()
+                        .add(
+                                MqttBenchmarkDriver.USER_PROPERTY_KEY_PUBLISH_TIMESTAMP,
+                                MqttUtf8String.of(String.valueOf(System.currentTimeMillis())))
+                        .build();
+        Mqtt5Publish message =
+                Mqtt5Publish.builder()
+                        .topic(topic)
+                        .payload(payload)
+                        .qos(qos)
+                        .userProperties(properties)
+                        .build();
 
         CompletableFuture<Void> future = new CompletableFuture<>();
-        this.client.publish(message)
-            .whenComplete(((result, ex) -> {
-                if (ex != null || result.getError().isPresent()) {
-                    Throwable error = ex != null ? ex : result.getError().get();
-                    future.completeExceptionally(error);
-                    log.error("Client[{}] failed to publish MQTT message, topic={}", topic, error);
-                } else {
-                    future.complete(null);
-                }
-            }));
+        this.client
+                .publish(message)
+                .whenComplete(
+                        ((result, ex) -> {
+                            if (ex != null || result.getError().isPresent()) {
+                                Throwable error = ex != null ? ex : result.getError().get();
+                                future.completeExceptionally(error);
+                                log.error("Client[{}] failed to publish MQTT message, topic={}", topic, error);
+                            } else {
+                                future.complete(null);
+                            }
+                        }));
 
         return future;
     }

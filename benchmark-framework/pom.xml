@@ -68,6 +68,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>driver-mqtt5</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>driver-nats</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -99,11 +104,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>driver-rocketmq</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>driver-mqtt5</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

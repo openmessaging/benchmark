@@ -14,28 +14,18 @@
 package io.openmessaging.benchmark.driver.mqtt5.client;
 
 public class MqttClientConfig {
-    /**
-     * The MQTT server URI.
-     */
+    /** The MQTT server URI. */
     public String serverUri = "tcp://localhost:1883";
 
-    /**
-     * The username used for MQTT server-side authentication.
-     */
+    /** The username used for MQTT server-side authentication. */
     public String username = "";
 
-    /**
-     * The password that matches the username.
-     */
+    /** The password that matches the username. */
     public String password = "";
 
-    /**
-     * The Quality of Service level for message delivery (0, 1, or 2).
-     */
+    /** The Quality of Service level for message delivery (0, 1, or 2). */
     public int qos = 1;
 
-    /**
-     * The topic prefix for topics used in the benchmark. No need to add a trailing slash.
-     */
+    /** The topic prefix for topics used in the benchmark. No need to add a trailing slash. */
     public String topicPrefix = "benchmark";
 }

@@ -13,15 +13,15 @@
  */
 package io.openmessaging.benchmark.driver.mqtt5;
 
+
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 
 public class MqttBenchmarkConsumer implements BenchmarkConsumer {
-    private  Mqtt5AsyncClient client;
+    private Mqtt5AsyncClient client;
     private volatile boolean closed = false;
 
-    public MqttBenchmarkConsumer() {
-    }
+    public MqttBenchmarkConsumer() {}
 
     @Override
     public void close() throws Exception {

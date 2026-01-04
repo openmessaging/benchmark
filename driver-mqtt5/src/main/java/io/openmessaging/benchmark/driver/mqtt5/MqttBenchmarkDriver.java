@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.mqtt5;
 
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -63,18 +64,21 @@ import org.slf4j.LoggerFactory;
 public class MqttBenchmarkDriver implements BenchmarkDriver {
 
     private static final Logger log = LoggerFactory.getLogger(MqttBenchmarkDriver.class);
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper mapper =
+            new ObjectMapper(new YAMLFactory())
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
     private static final Random random = new Random();
-    private static final Pattern server_uri_pattern = Pattern.compile("(?:[^:]*://)?([^:]+)(?::(\\w+))?");
+    private static final Pattern server_uri_pattern =
+            Pattern.compile("(?:[^:]*://)?([^:]+)(?::(\\w+))?");
     public static final MqttUtf8String USER_PROPERTY_KEY_PUBLISH_TIMESTAMP =
-        MqttUtf8String.of("benchmark-publish-timestamp");
+            MqttUtf8String.of("benchmark-publish-timestamp");
 
     private MqttConfig config;
 
     @Override
-    public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException, InterruptedException {
+    public void initialize(File configurationFile, StatsLogger statsLogger)
+            throws IOException, InterruptedException {
         this.config = readConfig(configurationFile);
         log.info("MqttBenchmarkDriver configuration: {}", writer.writeValueAsString(config));
     }
@@ -95,106 +99,139 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
         CompletableFuture<BenchmarkProducer> future = new CompletableFuture<>();
 
         MqttBenchmarkProducer producer = new MqttBenchmarkProducer(topic, config.client.qos);
-        Mqtt5ClientBuilder clientBuilder = getClientBuilder(buildPublisherClientId(), producer::isClosed);
+        Mqtt5ClientBuilder clientBuilder =
+                getClientBuilder(buildPublisherClientId(), producer::isClosed);
         Mqtt5AsyncClient client = clientBuilder.buildAsync();
-        client.connect().whenComplete(((connAck, ex) -> {
-            if (handleConnResult(client, connAck, ex, future)) {
-                return;
-            }
-            producer.setClient(client);
-            future.complete(producer);
-        }));
+        client
+                .connect()
+                .whenComplete(
+                        ((connAck, ex) -> {
+                            if (handleConnResult(client, connAck, ex, future)) {
+                                return;
+                            }
+                            producer.setClient(client);
+                            future.complete(producer);
+                        }));
 
         return future;
     }
 
     @Override
-    public CompletableFuture<BenchmarkConsumer> createConsumer(String topic, String subscriptionName,
-        ConsumerCallback consumerCallback) {
+    public CompletableFuture<BenchmarkConsumer> createConsumer(
+            String topic, String subscriptionName, ConsumerCallback consumerCallback) {
         CompletableFuture<BenchmarkConsumer> future = new CompletableFuture<>();
 
         MqttQos qos = intToQoS(config.client.qos);
         List<Mqtt5Subscription> subscriptions = new ArrayList<>();
-        Splitter.on(",").split(topic).forEach(topicFilter -> {
-            topicFilter = topicFilter.trim();
-            if (StringUtils.isNotEmpty(topicFilter)) {
-                Mqtt5Subscription subscription = Mqtt5Subscription.builder()
-                    // Use subscriptionName as shared subscription group name
-                    .topicFilter(toSharedSubscription(topicFilter, subscriptionName))
-                    .qos(qos)
-                    .build();
-                subscriptions.add(subscription);
-            }
-        });
+        Splitter.on(",")
+                .split(topic)
+                .forEach(
+                        topicFilter -> {
+                            topicFilter = topicFilter.trim();
+                            if (StringUtils.isNotEmpty(topicFilter)) {
+                                Mqtt5Subscription subscription =
+                                        Mqtt5Subscription.builder()
+                                                // Use subscriptionName as shared subscription group name
+                                                .topicFilter(toSharedSubscription(topicFilter, subscriptionName))
+                                                .qos(qos)
+                                                .build();
+                                subscriptions.add(subscription);
+                            }
+                        });
 
         MqttBenchmarkConsumer consumer = new MqttBenchmarkConsumer();
-        Mqtt5ClientBuilder clientBuilder = getClientBuilder(buildSubscriberClientId(), consumer::isClosed);
+        Mqtt5ClientBuilder clientBuilder =
+                getClientBuilder(buildSubscriberClientId(), consumer::isClosed);
         Mqtt5AsyncClient client = clientBuilder.buildAsync();
-        client.subscribeWith()
-            .addSubscriptions(subscriptions)
-            .callback(message -> {
-                long publishTime = extractPublishTimestamp(message.getUserProperties());
-                consumerCallback.messageReceived(message.getPayloadAsBytes(), publishTime);
-                message.acknowledge();
-            })
-            .manualAcknowledgement(true)
-            .send()
-            .whenComplete(((subAck, ex) -> {
-                String clientId = extractClientId(client.getConfig());
-                if (ex != null) {
-                    log.error("Client[{}] failed to subscribe, subscriptions={}", clientId, subscriptions, ex);
-                } else if (subAck == null || subAck.getReasonCodes().size() != subscriptions.size()) {
-                    log.error("Client[{}] received invalid subAck={}, subscriptions={}",
-                        clientId, subAck, subscriptions);
-                } else {
-                    int size = subAck.getReasonCodes().size();
-                    for (int i = 0; i < size; i++) {
-                        Mqtt5SubAckReasonCode reasonCode = subAck.getReasonCodes().get(i);
-                        Mqtt5Subscription subscription = subscriptions.get(i);
-                        if (reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_0
-                            || reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_1
-                            || reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_2) {
-                            log.info("Client[{}] subscribed topic-filters={}, qos={}, granted-qos={}",
-                                clientId, subscription.getTopicFilter(), subscription.getQos().getCode(),
-                                reasonCode.getCode());
-                        } else {
-                            log.warn("Client[{}] failed to subscribe topic-filters={}, qos={}, reasonCode={}",
-                                clientId, subscription.getTopicFilter(), subscription.getQos().getCode(),
-                                reasonCode.name());
-                        }
-                    }
-                }
-            }));
+        client
+                .subscribeWith()
+                .addSubscriptions(subscriptions)
+                .callback(
+                        message -> {
+                            long publishTime = extractPublishTimestamp(message.getUserProperties());
+                            consumerCallback.messageReceived(message.getPayloadAsBytes(), publishTime);
+                            message.acknowledge();
+                        })
+                .manualAcknowledgement(true)
+                .send()
+                .whenComplete(
+                        ((subAck, ex) -> {
+                            String clientId = extractClientId(client.getConfig());
+                            if (ex != null) {
+                                log.error(
+                                        "Client[{}] failed to subscribe, subscriptions={}",
+                                        clientId,
+                                        subscriptions,
+                                        ex);
+                            } else if (subAck == null || subAck.getReasonCodes().size() != subscriptions.size()) {
+                                log.error(
+                                        "Client[{}] received invalid subAck={}, subscriptions={}",
+                                        clientId,
+                                        subAck,
+                                        subscriptions);
+                            } else {
+                                int size = subAck.getReasonCodes().size();
+                                for (int i = 0; i < size; i++) {
+                                    Mqtt5SubAckReasonCode reasonCode = subAck.getReasonCodes().get(i);
+                                    Mqtt5Subscription subscription = subscriptions.get(i);
+                                    if (reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_0
+                                            || reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_1
+                                            || reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_2) {
+                                        log.info(
+                                                "Client[{}] subscribed topic-filters={}, qos={}, granted-qos={}",
+                                                clientId,
+                                                subscription.getTopicFilter(),
+                                                subscription.getQos().getCode(),
+                                                reasonCode.getCode());
+                                    } else {
+                                        log.warn(
+                                                "Client[{}] failed to subscribe topic-filters={}, qos={}, "
+                                                        + "reason-code={}",
+                                                clientId,
+                                                subscription.getTopicFilter(),
+                                                subscription.getQos().getCode(),
+                                                reasonCode.name());
+                                    }
+                                }
+                            }
+                        }));
 
-        client.connectWith()
-            .cleanStart(config.consumer.cleanSession)
-            .sessionExpiryInterval(config.consumer.cleanSession ? 0 : config.consumer.sessionExpiryInterval)
-            .restrictions()
-            .receiveMaximum(config.consumer.receiveMaximum)
-            .applyRestrictions()
-            .send().whenComplete(((connAck, ex) -> {
-                if (handleConnResult(client, connAck, ex, future)) {
-                    return;
-                }
-                consumer.setClient(client);
-                future.complete(consumer);
-            }));
+        client
+                .connectWith()
+                .cleanStart(config.consumer.cleanSession)
+                .sessionExpiryInterval(
+                        config.consumer.cleanSession ? 0 : config.consumer.sessionExpiryInterval)
+                .restrictions()
+                .receiveMaximum(config.consumer.receiveMaximum)
+                .applyRestrictions()
+                .send()
+                .whenComplete(
+                        ((connAck, ex) -> {
+                            if (handleConnResult(client, connAck, ex, future)) {
+                                return;
+                            }
+                            consumer.setClient(client);
+                            future.complete(consumer);
+                        }));
 
         return future;
     }
 
-    private boolean handleConnResult(Mqtt5AsyncClient client, Mqtt5ConnAck connAck, Throwable ex,
-        CompletableFuture<?> future) {
+    private boolean handleConnResult(
+            Mqtt5AsyncClient client, Mqtt5ConnAck connAck, Throwable ex, CompletableFuture<?> future) {
         if (ex != null) {
             future.completeExceptionally(ex);
-            log.error("Client[{}] failed to connect to MQTT broker", extractClientId(client.getConfig()), ex);
+            log.error(
+                    "Client[{}] failed to connect to MQTT broker", extractClientId(client.getConfig()), ex);
             return true;
         }
         if (connAck.getReasonCode() != Mqtt5ConnAckReasonCode.SUCCESS) {
-            future.completeExceptionally(new RuntimeException("ConnAck-ReasonCode: " + connAck.getReasonCode()));
-            log.warn("Client[{}] was rejected by MQTT broker, ConnAck-ReasonCode={}",
-                extractClientId(client.getConfig()),
-                connAck.getReasonCode());
+            future.completeExceptionally(
+                    new RuntimeException("ConnAck-ReasonCode: " + connAck.getReasonCode()));
+            log.warn(
+                    "Client[{}] was rejected by MQTT broker, ConnAck-ReasonCode={}",
+                    extractClientId(client.getConfig()),
+                    connAck.getReasonCode());
             return true;
         }
         return false;
@@ -202,58 +239,70 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
 
     private Mqtt5ClientBuilder getClientBuilder(String clientId, Supplier<Boolean> closed) {
         HostAndPort hostAndPort = parseServerUri(this.config.client.serverUri);
-        Mqtt5ClientBuilder clientBuilder = Mqtt5Client.builder()
-            .identifier(clientId)
-            .transportConfig(MqttClientTransportConfig.builder()
-                .serverHost(hostAndPort.getHost())
-                .serverPort(hostAndPort.getPort())
-                .socketConnectTimeout(3, TimeUnit.SECONDS)
-                .mqttConnectTimeout(3, TimeUnit.SECONDS)
-                .build());
+        Mqtt5ClientBuilder clientBuilder =
+                Mqtt5Client.builder()
+                        .identifier(clientId)
+                        .transportConfig(
+                                MqttClientTransportConfig.builder()
+                                        .serverHost(hostAndPort.getHost())
+                                        .serverPort(hostAndPort.getPort())
+                                        .socketConnectTimeout(3, TimeUnit.SECONDS)
+                                        .mqttConnectTimeout(3, TimeUnit.SECONDS)
+                                        .build());
 
         // Simple Auth with username and password
         if (StringUtils.isNotEmpty(this.config.client.username)
-            && StringUtils.isNotEmpty(this.config.client.password)) {
-            clientBuilder = clientBuilder
-                .simpleAuth()
-                .username(this.config.client.username)
-                .password(this.config.client.password.getBytes(StandardCharsets.UTF_8))
-                .applySimpleAuth();
+                && StringUtils.isNotEmpty(this.config.client.password)) {
+            clientBuilder =
+                    clientBuilder
+                            .simpleAuth()
+                            .username(this.config.client.username)
+                            .password(this.config.client.password.getBytes(StandardCharsets.UTF_8))
+                            .applySimpleAuth();
         }
 
         // Auto reconnect with initial delay 100 mills, max delay 10 seconds
-        clientBuilder = clientBuilder
-            .automaticReconnect(MqttClientAutoReconnect.builder()
-                .initialDelay(100, TimeUnit.MILLISECONDS)
-                .maxDelay(10, TimeUnit.SECONDS)
-                .build());
+        clientBuilder =
+                clientBuilder.automaticReconnect(
+                        MqttClientAutoReconnect.builder()
+                                .initialDelay(100, TimeUnit.MILLISECONDS)
+                                .maxDelay(10, TimeUnit.SECONDS)
+                                .build());
 
         // Listen to connection events
-        clientBuilder = clientBuilder
-            .addConnectedListener(new MqttClientConnectedListener() {
-                @Override
-                public void onConnected(MqttClientConnectedContext context) {
-                    log.info("Client[{}] connected to MQTT broker {}",
-                        extractClientId(context.getClientConfig()),
-                        context.getClientConfig().getServerAddress());
-                }
-            })
-            .addDisconnectedListener(new MqttClientDisconnectedListener() {
-                @Override
-                public void onDisconnected(MqttClientDisconnectedContext context) {
-                    String clientId = extractClientId(context.getClientConfig());
-                    log.warn("Client[{}] lost connection to MQTT broker {}, by {}",
-                        clientId,
-                        context.getClientConfig().getServerAddress(),
-                        context.getSource().name(),
-                        context.getCause());
-                    if (closed.get()) {
-                        log.warn("Client[{}] stops reconnecting to MQTT broker since the client wasn't created "
-                            + "successfully or has been stopped already", clientId);
-                        context.getReconnector().reconnect(false);
-                    }
-                }
-            });
+        clientBuilder =
+                clientBuilder
+                        .addConnectedListener(
+                                new MqttClientConnectedListener() {
+                                    @Override
+                                    public void onConnected(MqttClientConnectedContext context) {
+                                        log.info(
+                                                "Client[{}] connected to MQTT broker {}",
+                                                extractClientId(context.getClientConfig()),
+                                                context.getClientConfig().getServerAddress());
+                                    }
+                                })
+                        .addDisconnectedListener(
+                                new MqttClientDisconnectedListener() {
+                                    @Override
+                                    public void onDisconnected(MqttClientDisconnectedContext context) {
+                                        String clientId = extractClientId(context.getClientConfig());
+                                        log.warn(
+                                                "Client[{}] lost connection to MQTT broker {}, by {}",
+                                                clientId,
+                                                context.getClientConfig().getServerAddress(),
+                                                context.getSource().name(),
+                                                context.getCause());
+                                        if (closed.get()) {
+                                            log.warn(
+                                                    "Client[{}] stops reconnecting to MQTT broker since the client"
+                                                            + " wasn't created successfully or has been stopped"
+                                                            + " already",
+                                                    clientId);
+                                            context.getReconnector().reconnect(false);
+                                        }
+                                    }
+                                });
 
         return clientBuilder;
     }
@@ -286,13 +335,11 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
     }
 
     private static String buildPublisherClientId() {
-        return Joiner.on("_").join("benchmark", "pub", getRandomString(),
-            System.currentTimeMillis());
+        return Joiner.on("_").join("benchmark", "pub", getRandomString(), System.currentTimeMillis());
     }
 
     private static String buildSubscriberClientId() {
-        return Joiner.on("_").join("benchmark", "sub", getRandomString(),
-            System.currentTimeMillis());
+        return Joiner.on("_").join("benchmark", "sub", getRandomString(), System.currentTimeMillis());
     }
 
     private static String extractClientId(MqttClientConfig clientConfig) {
@@ -341,10 +388,13 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
         if (client != null) {
             String clientId = String.valueOf(client.getConfig().getClientIdentifier());
             log.info("Client[{}] disconnecting...", clientId);
-            client.disconnect().exceptionally(ex -> {
-                log.error("Client[{}] failed to disconnect", clientId, ex);
-                return null;
-            });
+            client
+                    .disconnect()
+                    .exceptionally(
+                            ex -> {
+                                log.error("Client[{}] failed to disconnect", clientId, ex);
+                                return null;
+                            });
         }
     }
 }
