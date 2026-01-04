@@ -68,7 +68,8 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
     private static final ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
     private static final Random random = new Random();
     private static final Pattern server_uri_pattern = Pattern.compile("(?:[^:]*://)?([^:]+)(?::(\\w+))?");
-    public static final MqttUtf8String USER_PROPERTY_KEY_PUBLISH_TIMESTAMP = MqttUtf8String.of("benchmark-publish-timestamp");
+    public static final MqttUtf8String USER_PROPERTY_KEY_PUBLISH_TIMESTAMP =
+        MqttUtf8String.of("benchmark-publish-timestamp");
 
     private MqttConfig config;
 
@@ -132,7 +133,8 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
         client.subscribeWith()
             .addSubscriptions(subscriptions)
             .callback(message -> {
-                consumerCallback.messageReceived(message.getPayloadAsBytes(), extractPublishTimestamp(message.getUserProperties()));
+                long publishTime = extractPublishTimestamp(message.getUserProperties());
+                consumerCallback.messageReceived(message.getPayloadAsBytes(), publishTime);
                 message.acknowledge();
             })
             .manualAcknowledgement(true)
@@ -142,7 +144,8 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
                 if (ex != null) {
                     log.error("Client[{}] failed to subscribe, subscriptions={}", clientId, subscriptions, ex);
                 } else if (subAck == null || subAck.getReasonCodes().size() != subscriptions.size()) {
-                    log.error("Client[{}] received invalid subAck={}, subscriptions={}", clientId, subAck, subscriptions);
+                    log.error("Client[{}] received invalid subAck={}, subscriptions={}",
+                        clientId, subAck, subscriptions);
                 } else {
                     int size = subAck.getReasonCodes().size();
                     for (int i = 0; i < size; i++) {
@@ -152,10 +155,12 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
                             || reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_1
                             || reasonCode == Mqtt5SubAckReasonCode.GRANTED_QOS_2) {
                             log.info("Client[{}] subscribed topic-filters={}, qos={}, granted-qos={}",
-                                clientId, subscription.getTopicFilter(), subscription.getQos().getCode(), reasonCode.getCode());
+                                clientId, subscription.getTopicFilter(), subscription.getQos().getCode(),
+                                reasonCode.getCode());
                         } else {
                             log.warn("Client[{}] failed to subscribe topic-filters={}, qos={}, reasonCode={}",
-                                clientId, subscription.getTopicFilter(), subscription.getQos().getCode(), reasonCode.name());
+                                clientId, subscription.getTopicFilter(), subscription.getQos().getCode(),
+                                reasonCode.name());
                         }
                     }
                 }
@@ -178,7 +183,8 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
         return future;
     }
 
-    private boolean handleConnResult(Mqtt5AsyncClient client, Mqtt5ConnAck connAck, Throwable ex, CompletableFuture<?> future) {
+    private boolean handleConnResult(Mqtt5AsyncClient client, Mqtt5ConnAck connAck, Throwable ex,
+        CompletableFuture<?> future) {
         if (ex != null) {
             future.completeExceptionally(ex);
             log.error("Client[{}] failed to connect to MQTT broker", extractClientId(client.getConfig()), ex);
@@ -241,8 +247,8 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
                         context.getSource().name(),
                         context.getCause());
                     if (closed.get()) {
-                        log.warn("Client[{}] stops reconnecting to MQTT broker " +
-                            "since the client wasn't created successfully or has been stopped already", clientId);
+                        log.warn("Client[{}] stops reconnecting to MQTT broker since the client wasn't created "
+                            + "successfully or has been stopped already", clientId);
                         context.getReconnector().reconnect(false);
                     }
                 }
@@ -279,11 +285,13 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
     }
 
     private static String buildPublisherClientId() {
-        return Joiner.on("_").join("benchmark", "pub", getRandomString(), System.currentTimeMillis());
+        return Joiner.on("_").join("benchmark", "pub", getRandomString(),
+            System.currentTimeMillis());
     }
 
     private static String buildSubscriberClientId() {
-        return Joiner.on("_").join("benchmark", "sub", getRandomString(), System.currentTimeMillis());
+        return Joiner.on("_").join("benchmark", "sub", getRandomString(),
+            System.currentTimeMillis());
     }
 
     private static String extractClientId(MqttClientConfig clientConfig) {
@@ -309,13 +317,14 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
     private static long extractPublishTimestamp(Mqtt5UserProperties userProperties) {
         List<? extends Mqtt5UserProperty> propertyList = userProperties.asList();
         for (Mqtt5UserProperty property : propertyList) {
-            if (USER_PROPERTY_KEY_PUBLISH_TIMESTAMP.equals(property.getName()))
+            if (USER_PROPERTY_KEY_PUBLISH_TIMESTAMP.equals(property.getName())) {
                 try {
                     return Long.parseLong(property.getValue().toString());
                 } catch (NumberFormatException ignore) {
                     return System.currentTimeMillis();
                 }
             }
+        }
         return System.currentTimeMillis();
     }
 

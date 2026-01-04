@@ -42,7 +42,8 @@ public class MqttBenchmarkProducer implements BenchmarkProducer {
     public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
 
         Mqtt5UserProperties properties = Mqtt5UserProperties.builder()
-            .add(MqttBenchmarkDriver.USER_PROPERTY_KEY_PUBLISH_TIMESTAMP, MqttUtf8String.of(String.valueOf(System.currentTimeMillis())))
+            .add(MqttBenchmarkDriver.USER_PROPERTY_KEY_PUBLISH_TIMESTAMP,
+                MqttUtf8String.of(String.valueOf(System.currentTimeMillis())))
             .build();
         Mqtt5Publish message = Mqtt5Publish.builder()
             .topic(topic)
@@ -61,7 +62,7 @@ public class MqttBenchmarkProducer implements BenchmarkProducer {
                 } else {
                     future.complete(null);
                 }
-        }));
+            }));
 
         return future;
     }
