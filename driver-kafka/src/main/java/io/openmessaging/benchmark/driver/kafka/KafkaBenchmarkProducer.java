@@ -28,6 +28,8 @@ package io.openmessaging.benchmark.driver.kafka;
 
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.Producer;
@@ -44,9 +46,12 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
     }
 
     @Override
-    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+    public CompletableFuture<Void> sendAsync(
+            Optional<String> key, byte[] payload, Map<String, String> headers) {
         ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key.orElse(null), payload);
-
+        if (headers != null) {
+            headers.forEach((k, v) -> record.headers().add(k, v.getBytes(StandardCharsets.UTF_8)));
+        }
         CompletableFuture<Void> future = new CompletableFuture<>();
 
         producer.send(
@@ -60,6 +65,11 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
                 });
 
         return future;
+    }
+
+    @Override
+    public CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload) {
+        return sendAsync(key, payload, null);
     }
 
     @Override

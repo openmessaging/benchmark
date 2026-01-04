@@ -13,26 +13,17 @@
 #
 
 
-name: Kafka
-driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+name: Simple Workload 1 producer on 1 topic
 
-# Kafka client-specific configuration
-replicationFactor: 3
+topics: 1
+partitionsPerTopic: 10
+messageSize: 16
+payloadFile: "payload/multiple"
+subscriptionsPerTopic: 1
+producersPerTopic: 1
+consumerPerSubscription: 1
+producerRate: 10000
+consumerBacklogSizeGB: 0
+testDurationMinutes: 5
 
-topicConfig: |
-  min.insync.replicas=2
-
-commonConfig: |
-  bootstrap.servers=localhost:19092
-
-producerConfig: |
-  acks=all
-  linger.ms=1
-  batch.size=1048576
-  compression.type=lz4
-
-consumerConfig: |
-  auto.offset.reset=earliest
-  enable.auto.commit=false
-  max.partition.fetch.bytes=10485760
 

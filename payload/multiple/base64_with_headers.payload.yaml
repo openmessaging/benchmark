@@ -1,0 +1,4 @@
+# Pass in a base64-encoded if you want JSON data along with custom headers.
+data: eyJiaW0iOiJiYXIiLCAiYmFtIjoiYm9tIn0K
+headers:
+  cool: beans

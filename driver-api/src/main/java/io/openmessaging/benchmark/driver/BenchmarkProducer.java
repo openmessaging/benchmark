@@ -14,6 +14,7 @@
 package io.openmessaging.benchmark.driver;
 
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -27,4 +28,18 @@ public interface BenchmarkProducer extends AutoCloseable {
      * @return a future that will be triggered when the message is successfully published
      */
     CompletableFuture<Void> sendAsync(Optional<String> key, byte[] payload);
+
+    /**
+     * Same as sendAsync but can add headers to the message when supported by the driver. When not
+     * supported, the default implementation ignores the headers.
+     *
+     * @param key the key associated with this message
+     * @param payload the message payload
+     * @param headers the message headers
+     * @return a future that will be triggered when the message is successfully published
+     */
+    default CompletableFuture<Void> sendAsync(
+            Optional<String> key, byte[] payload, Map<String, String> headers) {
+        return sendAsync(key, payload);
+    }
 }

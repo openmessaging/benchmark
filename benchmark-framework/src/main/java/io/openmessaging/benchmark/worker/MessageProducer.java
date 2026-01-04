@@ -17,6 +17,7 @@ import static io.openmessaging.benchmark.utils.UniformRateLimiter.uninterruptibl
 
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.utils.UniformRateLimiter;
+import io.openmessaging.benchmark.worker.commands.Payload;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -38,13 +39,13 @@ public class MessageProducer {
         this.stats = stats;
     }
 
-    public void sendMessage(BenchmarkProducer producer, Optional<String> key, byte[] payload) {
+    public void sendMessage(BenchmarkProducer producer, Optional<String> key, Payload payload) {
         final long intendedSendTime = rateLimiter.acquire();
         uninterruptibleSleepNs(intendedSendTime);
         final long sendTime = nanoClock.get();
         producer
-                .sendAsync(key, payload)
-                .thenRun(() -> success(payload.length, intendedSendTime, sendTime))
+                .sendAsync(key, payload.data, payload.headers)
+                .thenRun(() -> success(payload.data.length, intendedSendTime, sendTime))
                 .exceptionally(this::failure);
     }
 
