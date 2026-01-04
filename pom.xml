@@ -59,6 +59,7 @@
         <module>docker</module>
         <module>driver-kop</module>
         <module>tool</module>
+        <module>driver-mqtt5</module>
     </modules>
 
     <properties>
