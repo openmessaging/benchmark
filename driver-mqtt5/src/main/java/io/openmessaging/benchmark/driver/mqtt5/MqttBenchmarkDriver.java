@@ -212,7 +212,8 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
                 .build());
 
         // Simple Auth with username and password
-        if (StringUtils.isNotEmpty(this.config.client.username) && StringUtils.isNotEmpty(this.config.client.password)) {
+        if (StringUtils.isNotEmpty(this.config.client.username)
+            && StringUtils.isNotEmpty(this.config.client.password)) {
             clientBuilder = clientBuilder
                 .simpleAuth()
                 .username(this.config.client.username)
