@@ -27,10 +27,6 @@ import com.hivemq.client.mqtt.MqttClientTransportConfig;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.datatypes.MqttUtf8String;
 import com.hivemq.client.mqtt.lifecycle.MqttClientAutoReconnect;
-import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedContext;
-import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedListener;
-import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedContext;
-import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedListener;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5Client;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5ClientBuilder;
@@ -273,34 +269,26 @@ public class MqttBenchmarkDriver implements BenchmarkDriver {
         clientBuilder =
                 clientBuilder
                         .addConnectedListener(
-                                new MqttClientConnectedListener() {
-                                    @Override
-                                    public void onConnected(MqttClientConnectedContext context) {
+                                context ->
                                         log.info(
                                                 "Client[{}] connected to MQTT broker {}",
                                                 extractClientId(context.getClientConfig()),
-                                                context.getClientConfig().getServerAddress());
-                                    }
-                                })
+                                                context.getClientConfig().getServerAddress()))
                         .addDisconnectedListener(
-                                new MqttClientDisconnectedListener() {
-                                    @Override
-                                    public void onDisconnected(MqttClientDisconnectedContext context) {
-                                        String clientId = extractClientId(context.getClientConfig());
+                                context -> {
+                                    String clientId1 = extractClientId(context.getClientConfig());
+                                    log.warn(
+                                            "Client[{}] lost connection to MQTT broker {}, by {}",
+                                            clientId1,
+                                            context.getClientConfig().getServerAddress(),
+                                            context.getSource().name(),
+                                            context.getCause());
+                                    if (closed.get()) {
                                         log.warn(
-                                                "Client[{}] lost connection to MQTT broker {}, by {}",
-                                                clientId,
-                                                context.getClientConfig().getServerAddress(),
-                                                context.getSource().name(),
-                                                context.getCause());
-                                        if (closed.get()) {
-                                            log.warn(
-                                                    "Client[{}] stops reconnecting to MQTT broker since the client"
-                                                            + " wasn't created successfully or has been stopped"
-                                                            + " already",
-                                                    clientId);
-                                            context.getReconnector().reconnect(false);
-                                        }
+                                                "Client[{}] stops reconnecting to MQTT broker since the client"
+                                                        + " wasn't created successfully or has been stopped already",
+                                                clientId1);
+                                        context.getReconnector().reconnect(false);
                                     }
                                 });
 
