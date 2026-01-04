@@ -21,6 +21,13 @@ public class ProducerWorkAssignment {
 
     public List<byte[]> payloadData;
 
+    /**
+     * Weights for weighted payload selection. If null, uniform random selection is used.
+     * Each weight corresponds to the payload at the same index in payloadData.
+     * Used for message size distribution feature.
+     */
+    public int[] payloadWeights;
+
     public double publishRate;
 
     public KeyDistributorType keyDistributorType;
@@ -29,6 +36,7 @@ public class ProducerWorkAssignment {
         ProducerWorkAssignment copy = new ProducerWorkAssignment();
         copy.keyDistributorType = this.keyDistributorType;
         copy.payloadData = this.payloadData;
+        copy.payloadWeights = this.payloadWeights;
         copy.publishRate = publishRate;
         return copy;
     }
