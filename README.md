@@ -23,6 +23,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 * [Pravega](https://pravega.io/)
 * [RabbitMQ](https://www.rabbitmq.com/)
 * [Redis](https://redis.com/)
+* [MQTT](https://mqtt.org/)
 
 > More details could be found at the [official documentation](http://openmessaging.cloud/docs/benchmarks/).
 
