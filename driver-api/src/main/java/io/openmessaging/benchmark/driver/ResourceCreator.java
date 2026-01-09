@@ -83,6 +83,10 @@ public class ResourceCreator<R, C> {
         return created;
     }
 
+    public void close() {
+        executor.shutdown();
+    }
+
     @SneakyThrows
     private Map<R, CreationResult<C>> executeBatch(List<R> batch) {
         log.debug("Executing batch, size: {}", batch.size());

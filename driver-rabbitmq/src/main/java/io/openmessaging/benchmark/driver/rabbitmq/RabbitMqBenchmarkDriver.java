@@ -46,6 +46,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,47 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
      * back to secondary brokers.
      */
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
+    private final ResourceCreator<ProducerInfo, BenchmarkProducer> producerResourceCreator = new ResourceCreator<>(
+            "producer",
+            config.producerCreationBatchSize,
+            config.producerCreationDelay,
+            ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.getTopic()))),
+            fc -> {
+                try {
+                    return new CreationResult<>(fc.get(), true);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    log.debug(e.getMessage());
+                    return new CreationResult<>(null, false);
+                }
+            });
+    private final ResourceCreator<ConsumerInfo, BenchmarkConsumer> consumerResourceCreator = new ResourceCreator<>(
+            "consumer",
+            config.consumerCreationBatchSize,
+            config.consumerCreationDelay,
+            cs ->
+                    cs.stream()
+                            .collect(
+                                    toMap(
+                                            c -> c,
+                                            c ->
+                                                    createConsumer(
+                                                            c.getTopic(),
+                                                            c.getSubscriptionName(),
+                                                            c.getConsumerCallback()))),
+            fc -> {
+                try {
+                    return new CreationResult<>(fc.get(), true);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    log.debug(e.getMessage());
+                    return new CreationResult<>(null, false);
+                }
+            });
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
@@ -78,6 +120,8 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
             }
             it.remove();
         }
+        producerResourceCreator.close();
+        consumerResourceCreator.close();
     }
 
     @Override
@@ -126,53 +170,12 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<List<BenchmarkProducer>> createProducers(List<ProducerInfo> producers) {
-        return new ResourceCreator<ProducerInfo, BenchmarkProducer>(
-                        "producer",
-                        config.producerCreationBatchSize,
-                        config.producerCreationDelay,
-                        ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.getTopic()))),
-                        fc -> {
-                            try {
-                                return new CreationResult<>(fc.get(), true);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                throw new RuntimeException(e);
-                            } catch (ExecutionException e) {
-                                log.debug(e.getMessage());
-                                return new CreationResult<>(null, false);
-                            }
-                        })
-                .create(producers);
+        return producerResourceCreator.create(producers);
     }
 
     @Override
     public CompletableFuture<List<BenchmarkConsumer>> createConsumers(List<ConsumerInfo> consumers) {
-        return new ResourceCreator<ConsumerInfo, BenchmarkConsumer>(
-                        "consumer",
-                        config.consumerCreationBatchSize,
-                        config.consumerCreationDelay,
-                        cs ->
-                                cs.stream()
-                                        .collect(
-                                                toMap(
-                                                        c -> c,
-                                                        c ->
-                                                                createConsumer(
-                                                                        c.getTopic(),
-                                                                        c.getSubscriptionName(),
-                                                                        c.getConsumerCallback()))),
-                        fc -> {
-                            try {
-                                return new CreationResult<>(fc.get(), true);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                throw new RuntimeException(e);
-                            } catch (ExecutionException e) {
-                                log.debug(e.getMessage());
-                                return new CreationResult<>(null, false);
-                            }
-                        })
-                .create(consumers);
+        return consumerResourceCreator.create(consumers);
     }
 
     @Override
@@ -228,11 +231,19 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                     try {
                         ConnectionFactory connectionFactory = new ConnectionFactory();
                         connectionFactory.setAutomaticRecoveryEnabled(true);
-                        String userInfo = newURI(primaryBrokerUri).getUserInfo();
+                        URI uri = newURI(primaryBrokerUri);
+                        String userInfo = uri.getUserInfo();
                         if (userInfo != null) {
                             String[] userInfoElems = userInfo.split(":");
                             connectionFactory.setUsername(userInfoElems[0]);
                             connectionFactory.setPassword(userInfoElems[1]);
+                        }
+                        String path = uri.getPath();
+                        if (!StringUtils.isBlank(path)) {
+                            if (path.startsWith("/")) {
+                                path = path.substring(1);
+                            }
+                            connectionFactory.setVirtualHost(path);
                         }
                         return connectionFactory.newConnection(addresses);
                     } catch (Exception e) {
