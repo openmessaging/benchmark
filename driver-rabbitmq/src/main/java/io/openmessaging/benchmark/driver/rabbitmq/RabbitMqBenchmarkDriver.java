@@ -59,51 +59,53 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
      * back to secondary brokers.
      */
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
-    private final ResourceCreator<ProducerInfo, BenchmarkProducer> producerResourceCreator = new ResourceCreator<>(
-            "producer",
-            config.producerCreationBatchSize,
-            config.producerCreationDelay,
-            ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.getTopic()))),
-            fc -> {
-                try {
-                    return new CreationResult<>(fc.get(), true);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    log.debug(e.getMessage());
-                    return new CreationResult<>(null, false);
-                }
-            });
-    private final ResourceCreator<ConsumerInfo, BenchmarkConsumer> consumerResourceCreator = new ResourceCreator<>(
-            "consumer",
-            config.consumerCreationBatchSize,
-            config.consumerCreationDelay,
-            cs ->
-                    cs.stream()
-                            .collect(
-                                    toMap(
-                                            c -> c,
-                                            c ->
-                                                    createConsumer(
-                                                            c.getTopic(),
-                                                            c.getSubscriptionName(),
-                                                            c.getConsumerCallback()))),
-            fc -> {
-                try {
-                    return new CreationResult<>(fc.get(), true);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    log.debug(e.getMessage());
-                    return new CreationResult<>(null, false);
-                }
-            });
+    private ResourceCreator<ProducerInfo, BenchmarkProducer> producerResourceCreator;
+    private ResourceCreator<ConsumerInfo, BenchmarkConsumer> consumerResourceCreator;
 
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
         config = mapper.readValue(configurationFile, RabbitMqConfig.class);
+        producerResourceCreator = new ResourceCreator<>(
+                "producer",
+                config.producerCreationBatchSize,
+                config.producerCreationDelay,
+                ps -> ps.stream().collect(toMap(p -> p, p -> createProducer(p.getTopic()))),
+                fc -> {
+                    try {
+                        return new CreationResult<>(fc.get(), true);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
+                    } catch (ExecutionException e) {
+                        log.debug(e.getMessage());
+                        return new CreationResult<>(null, false);
+                    }
+                });
+        consumerResourceCreator = new ResourceCreator<>(
+                "consumer",
+                config.consumerCreationBatchSize,
+                config.consumerCreationDelay,
+                cs ->
+                        cs.stream()
+                                .collect(
+                                        toMap(
+                                                c -> c,
+                                                c ->
+                                                        createConsumer(
+                                                                c.getTopic(),
+                                                                c.getSubscriptionName(),
+                                                                c.getConsumerCallback()))),
+                fc -> {
+                    try {
+                        return new CreationResult<>(fc.get(), true);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
+                    } catch (ExecutionException e) {
+                        log.debug(e.getMessage());
+                        return new CreationResult<>(null, false);
+                    }
+                });
     }
 
     @Override
@@ -120,8 +122,12 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
             }
             it.remove();
         }
-        producerResourceCreator.close();
-        consumerResourceCreator.close();
+        if (producerResourceCreator != null) {
+            producerResourceCreator.close();
+        }
+        if (consumerResourceCreator != null) {
+            consumerResourceCreator.close();
+        }
     }
 
     @Override
