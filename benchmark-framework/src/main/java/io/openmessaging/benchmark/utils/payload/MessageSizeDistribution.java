@@ -212,8 +212,4 @@ public class MessageSizeDistribution {
     public int getBucketCount() {
         return buckets.size();
     }
-
-    public List<Bucket> getBuckets() {
-        return buckets;
-    }
 }
