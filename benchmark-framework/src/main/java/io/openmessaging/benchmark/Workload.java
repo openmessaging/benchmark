@@ -31,10 +31,9 @@ public class Workload {
     public int messageSize;
 
     /**
-     * Message size distribution for variable-sized payloads.
-     * Keys are size ranges (e.g., "0-256", "256-1024", "1KB-4KB"),
-     * values are relative weights.
-     * Mutually exclusive with messageSize - if set, messageSize is ignored.
+     * Message size distribution for variable-sized payloads. Keys are size ranges (e.g., "0-256",
+     * "256-1024", "1KB-4KB"), values are relative weights. Mutually exclusive with messageSize - if
+     * set, messageSize is ignored.
      */
     public Map<String, Integer> messageSizeDistribution;
 
