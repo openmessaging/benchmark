@@ -240,9 +240,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                             idx = r.nextInt(payloadCount);
                                         }
                                         messageProducer.sendMessage(
-                                                p,
-                                                Optional.ofNullable(keyDistributor.next()),
-                                                payloads.get(idx));
+                                                p, Optional.ofNullable(keyDistributor.next()), payloads.get(idx));
                                     });
                         }
                     } catch (Throwable t) {

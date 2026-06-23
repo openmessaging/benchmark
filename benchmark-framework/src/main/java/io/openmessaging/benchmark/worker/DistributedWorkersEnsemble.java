@@ -17,6 +17,9 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.joining;
 
 import com.beust.jcommander.internal.Maps;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -36,6 +39,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DistributedWorkersEnsemble implements Worker {
+    private static final String KAFKA_BENCHMARK_DRIVER_CLASS =
+            "io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver";
     private final Thread shutdownHook = new Thread(this::stopAll);
     private final List<Worker> workers;
     private final List<Worker> producerWorkers;
@@ -43,6 +48,7 @@ public class DistributedWorkersEnsemble implements Worker {
     private final Worker leader;
 
     private int numberOfUsedProducerWorkers;
+    private volatile boolean stopLeaderLast;
 
     public DistributedWorkersEnsemble(List<Worker> workers, boolean extraConsumerWorkers) {
         Preconditions.checkArgument(workers.size() > 1);
@@ -75,6 +81,7 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void initializeDriver(File configurationFile) throws IOException {
+        stopLeaderLast = shouldStopLeaderLast(configurationFile);
         workers.parallelStream()
                 .forEach(
                         w -> {
@@ -165,7 +172,39 @@ public class DistributedWorkersEnsemble implements Worker {
 
     @Override
     public void stopAll() {
-        workers.parallelStream().forEach(Worker::stopAll);
+        if (!stopLeaderLast) {
+            workers.parallelStream().forEach(Worker::stopAll);
+            return;
+        }
+
+        RuntimeException stopError = null;
+
+        try {
+            // The leader owns topic lifecycle, so stop it after every other worker is done.
+            workers.parallelStream().filter(worker -> worker != leader).forEach(Worker::stopAll);
+        } catch (RuntimeException e) {
+            stopError = e;
+        }
+
+        try {
+            leader.stopAll();
+        } catch (RuntimeException e) {
+            if (stopError != null) {
+                stopError.addSuppressed(e);
+            } else {
+                stopError = e;
+            }
+        }
+
+        if (stopError != null) {
+            throw stopError;
+        }
+    }
+
+    static boolean shouldStopLeaderLast(File configurationFile) throws IOException {
+        JsonNode configuration = mapper.readTree(configurationFile);
+        return KAFKA_BENCHMARK_DRIVER_CLASS.equals(configuration.path("driverClass").asText())
+                && configuration.path("deleteTopicsOnClose").asBoolean(false);
     }
 
     @Override
@@ -290,4 +329,5 @@ public class DistributedWorkersEnsemble implements Worker {
     }
 
     private static final Logger log = LoggerFactory.getLogger(DistributedWorkersEnsemble.class);
+    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 }
