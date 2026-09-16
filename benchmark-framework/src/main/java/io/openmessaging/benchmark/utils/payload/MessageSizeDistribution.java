@@ -13,15 +13,17 @@
  */
 package io.openmessaging.benchmark.utils.payload;
 
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Parses and represents a message size distribution from workload config.
- * Creates one payload size per bucket and provides weights for runtime selection.
+ * Parses and represents a message size distribution from workload config. Creates one payload size
+ * per bucket and provides weights for runtime selection.
  *
  * <p>Example configuration:
+ *
  * <pre>
  * messageSizeDistribution:
  *   "0-256": 234
@@ -34,9 +36,7 @@ public class MessageSizeDistribution {
     private final List<Bucket> buckets;
     private final int totalWeight;
 
-    /**
-     * Represents a single size bucket with min/max range and weight.
-     */
+    /** Represents a single size bucket with min/max range and weight. */
     public static class Bucket {
         public final int minSize;
         public final int maxSize;
@@ -147,8 +147,8 @@ public class MessageSizeDistribution {
     }
 
     /**
-     * Returns list of max sizes, one per bucket (for payload generation).
-     * Using max sizes ensures the system is tested with the largest messages in each bucket range.
+     * Returns list of max sizes, one per bucket (for payload generation). Using max sizes ensures the
+     * system is tested with the largest messages in each bucket range.
      *
      * @return list of max sizes per bucket
      */
@@ -217,4 +217,3 @@ public class MessageSizeDistribution {
         return buckets;
     }
 }
-
