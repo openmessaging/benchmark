@@ -1,0 +1,173 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+- name: Format and mount the instance-store disks of the Queen hosts
+  hosts: queen
+  connection: ssh
+  become: true
+  tasks:
+    - command: >
+        tuned-adm profile latency-performance
+    - name: Install mdadm and podman
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - mdadm
+        - podman
+    # One RAID 0 over the NVMe disks: the raft log and the queue logs are one directory.
+    - name: RAID 0 over the NVMe disks
+      shell: mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/nvme1n1 /dev/nvme2n1 --run
+      args:
+        creates: /dev/md0
+    - name: Format the array
+      filesystem:
+        fstype: xfs
+        dev: /dev/md0
+    - name: Mount the array
+      mount:
+        path: /mnt/queen
+        src: /dev/md0
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+    - name: Increase hard file descriptor limit
+      pam_limits:
+        domain: '*'
+        limit_type: 'hard'
+        limit_item: nofile
+        value: 1048576
+    - name: Increase soft file descriptor limit
+      pam_limits:
+        domain: '*'
+        limit_type: 'soft'
+        limit_item: nofile
+        value: 1048576
+    # Start writeback early: a broker that fsyncs its log pays for every dirty page the
+    # kernel lets pile up. Our runs set the same on the Kafka brokers.
+    - name: set vm.dirty_background_bytes
+      sysctl:
+        name: vm.dirty_background_bytes
+        value: '1073741824'
+        state: present
+        reload: yes
+
+- name: Set up the Queen cluster
+  hosts: queen
+  connection: ssh
+  become: true
+  tasks:
+    - set_fact:
+        queenVersion: "2.5.0"
+        nodeId: "{{ groups['queen'].index(inventory_hostname) + 1 }}"
+        privateIp: "{{ hostvars[inventory_hostname]['private_ip'] }}"
+        # Every voter as id=raft_address/http_address, the same list on every node.
+        peers: "{% for h in groups['queen'] %}{{ loop.index }}={{ hostvars[h].private_ip }}:7400/{{ hostvars[h].private_ip }}:6632{% if not loop.last %},{% endif %}{% endfor %}"
+        # The secret every raft RPC carries: made once on the control machine, the same on every node.
+        raftToken: "{{ lookup('password', '/tmp/queen-omb-raft-token chars=hexdigits length=32') }}"
+    - file: path=/mnt/queen/raft state=directory
+    - template:
+        src: templates/queen.env
+        dest: /etc/queen.env
+        mode: '0600'
+    - template:
+        src: templates/queen.service
+        dest: /etc/systemd/system/queen.service
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: queen
+      tags: [restart-queen]
+
+- name: Chrony setup
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Set up chronyd
+      template:
+        src: "templates/chrony.conf"
+        dest: "/etc/chrony.conf"
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "chronyd"
+
+- name: Set up the benchmark clients
+  hosts: client
+  connection: ssh
+  become: true
+  tasks:
+    - name: Install RPM packages
+      yum: pkg={{ item }} state=latest
+      with_items:
+        - java-17-openjdk
+        - sysstat
+        - chrony
+    - file: path=/opt/benchmark state=absent
+      tags: [client-code]
+    - name: Copy benchmark code
+      unarchive:
+        src: ../../../package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz
+        dest: /opt
+      tags: [client-code]
+    - shell: mv /opt/openmessaging-benchmark-0.0.1-SNAPSHOT /opt/benchmark
+      tags: [client-code]
+    - shell: tuned-adm profile latency-performance
+    # The driver's profiles keep their own settings; only their broker URLs change.
+    - name: The driver profiles, pointed at the three brokers
+      replace:
+        path: "/opt/benchmark/driver-queen/{{ item }}"
+        regexp: '^urls:\n(?:  - .*\n)+'
+        replace: "urls:\n{% for h in groups['queen'] %}  - http://{{ hostvars[h].private_ip }}:6632\n{% endfor %}"
+      with_items:
+        - queen.yaml
+        - queen-throughput.yaml
+        - queen-many-topics.yaml
+      tags: [client-code]
+    - name: Configure memory
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark-worker
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xms16G -Xmx16G -XX:+UseG1GC"'
+      tags: [client-code]
+    - name: Configure memory
+      lineinfile:
+        dest: /opt/benchmark/bin/benchmark
+        regexp: '^JVM_MEM='
+        line: 'JVM_MEM="-Xmx4G"'
+      tags: [client-code]
+    - template:
+        src: "templates/workers.yaml"
+        dest: "/opt/benchmark/workers.yaml"
+      tags: [client-code]
+    - name: Install benchmark systemd service
+      template:
+        src: "templates/benchmark-worker.service"
+        dest: "/etc/systemd/system/benchmark-worker.service"
+      tags: [client-code]
+    - systemd:
+        state: restarted
+        daemon_reload: yes
+        name: "benchmark-worker"
+      tags: [client-code]
+
+- name: Hosts addresses
+  hosts: localhost
+  become: false
+  tasks:
+    - debug:
+        msg: "Queen brokers {{ item }}"
+      with_items: "{{ groups['queen'] }}"
+    - debug:
+        msg: "Benchmark clients {{ item }}"
+      with_items: "{{ groups['client'] }}"

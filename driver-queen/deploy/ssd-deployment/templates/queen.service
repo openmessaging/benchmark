@@ -1,0 +1,16 @@
+[Unit]
+Description=Queen MQ broker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStartPre=-/usr/bin/podman rm -f queen
+ExecStart=/usr/bin/podman run --rm --name queen --network host --ulimit nofile=1048576:1048576 -v /mnt/queen/raft:/var/lib/queen/raft:Z --env-file /etc/queen.env ghcr.io/queen-mq/queen:{{ queenVersion }}
+# On SIGTERM a node hands its leadership to a peer and lets the long polls in flight finish.
+ExecStop=/usr/bin/podman stop -t 60 queen
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target
