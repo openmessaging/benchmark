@@ -219,4 +219,3 @@ class MessageSizeDistributionTest {
         assertThat(ratio1).isBetween(0.49, 0.51);
     }
 }
-

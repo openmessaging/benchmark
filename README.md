@@ -21,6 +21,7 @@ This repository houses user-friendly, cloud-ready benchmarking suites for the fo
 * [NATS Streaming (STAN)](https://docs.nats.io/legacy/stan/intro)
 * [NSQ](https://nsq.io)
 * [Pravega](https://pravega.io/)
+* [Queen MQ](https://queenmq.com)
 * [RabbitMQ](https://www.rabbitmq.com/)
 * [Redis](https://redis.com/)
 * [MQTT](https://mqtt.org/)

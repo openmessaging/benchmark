@@ -1,0 +1,78 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# A three-node Queen MQ cluster on one machine, for trying the driver locally:
+#
+#   QUEEN_RAFT_TOKEN=$(openssl rand -hex 16) docker compose -f driver-queen/deploy/docker/compose.yaml up -d
+#   bin/benchmark --drivers driver-queen/queen-local.yaml workloads/simple-workload.yaml
+#   docker compose -f driver-queen/deploy/docker/compose.yaml down -v
+#
+# Every node serves every queue (a follower forwards writes to the raft leader), so the driver
+# spreads its producers and pollers over the three HTTP ports. Numbers taken on one machine say
+# nothing about a cluster's; see ../README.md for the multi-machine deployment.
+
+name: queen-omb
+
+x-node: &node
+  image: ghcr.io/queen-mq/queen:${QUEEN_VERSION:-2.5.0}
+  restart: unless-stopped
+  # On SIGTERM a node hands its leadership to a peer and lets the long polls in flight finish.
+  stop_grace_period: 60s
+  ulimits:
+    nofile: 1048576
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:6632/health"]
+    interval: 5s
+    timeout: 3s
+    retries: 3
+    start_period: 60s
+
+x-env: &env
+  QUEEN_RAFT_REPLICATOR: openraft
+  # Every voter as id=raft_address/http_address, the same list on every node.
+  QUEEN_RAFT_PEERS: "1=queen-1:7400/queen-1:6632,2=queen-2:7400/queen-2:6632,3=queen-3:7400/queen-3:6632"
+  # The secret every raft RPC carries. The raft port is not published.
+  QUEEN_RAFT_TOKEN: ${QUEEN_RAFT_TOKEN:?set QUEEN_RAFT_TOKEN, see the header}
+  QUEEN_RAFT_DIR: /var/lib/queen/raft
+
+services:
+  queen-1:
+    <<: *node
+    hostname: queen-1
+    environment:
+      <<: *env
+      QUEEN_RAFT_NODE_ID: "1"
+    ports: ["127.0.0.1:${QUEEN_PORT_1:-16632}:6632"]
+    volumes: ["queen-1:/var/lib/queen/raft"]
+  queen-2:
+    <<: *node
+    hostname: queen-2
+    environment:
+      <<: *env
+      QUEEN_RAFT_NODE_ID: "2"
+    ports: ["127.0.0.1:${QUEEN_PORT_2:-26632}:6632"]
+    volumes: ["queen-2:/var/lib/queen/raft"]
+  queen-3:
+    <<: *node
+    hostname: queen-3
+    environment:
+      <<: *env
+      QUEEN_RAFT_NODE_ID: "3"
+    ports: ["127.0.0.1:${QUEEN_PORT_3:-36632}:6632"]
+    volumes: ["queen-3:/var/lib/queen/raft"]
+
+volumes:
+  queen-1:
+  queen-2:
+  queen-3:

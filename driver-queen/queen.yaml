@@ -1,0 +1,59 @@
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Queen MQ over its native HTTP protocol: binary push, framed pop, pop autopilot. These are the
+# settings we benchmark with; README.md gives the driver's defaults for every key, and
+# queen-throughput.yaml and queen-many-topics.yaml change one setting each.
+name: Queen
+driverClass: io.openmessaging.benchmark.driver.queen.QueenBenchmarkDriver
+
+# Broker base URLs. Producers and pollers are spread over them round-robin
+# (followers forward to the raft leader).
+urls:
+  - http://localhost:6632
+# token: ...                 # optional, sent as "Authorization: Bearer <token>"
+
+# Queue setup: POST /api/v1/configure with the queue defaults plus this dedup window.
+dedupWindowSeconds: 60
+# queueOptions: {}           # optional further queue options, passed as they are
+
+# Producer: the worker's producers share lanes (Kafka-style accumulators; one push carries every
+# topic and partition of its lane). A batch goes out after lingerMs, or as soon as it holds
+# batchMaxBytes; at most maxInFlight pushes per lane; sendAsync blocks above bufferMaxBytes per lane.
+# No key: one partition per batch, the next partition for the next batch (sticky).
+lingerMs: 1
+batchMaxBytes: 1048576
+maxInFlight: 5
+bufferMaxBytes: 67108864
+compression: none            # none = binary push (QPB1); zstd = client-framed groups (flag 8)
+# producerLanes: 0           # 0 = one per producer, at most one per core
+
+# Consumer: one pool of pops per worker (no thread per consumer). A subscription gets
+# pollers x its consumers here pops (at most one per partition), scaled down to fit maxPops;
+# past maxPops the pops rotate over the subscriptions, waiting rotationWaitMs on each.
+# Acks of one consumer group share requests; at most ackMaxInFlight per group.
+pollers: 8                   # the driver's default is 2
+maxPops: 4096                # each pop in flight is one HTTP connection
+popTimeoutMs: 1000
+ackMaxInFlight: 16
+leaseSeconds: 30             # a lost pop answer costs one lease; the queue's own is 300 s
+# popBatch: 0               # N > 0: pops ask batch=N (max 10,000) without autopilot; one ack item per claim
+# rotationWaitMs: 200
+# renewLeases: true          # extend a batch's lease while OMB holds the callback (backlog pauses)
+# verify: false              # count duplicate deliveries and holes per partition, logged at close
+
+# Also: token, queueOptions, topicPrefix (omb), partitionsPerTopic (0), maxBlockMs (60000),
+# compressionThreads (0 = half the cores), subscriptionMode (all), ioThreads (0 = 2 x cores),
+# deliveryThreads (0 = cores), ackBatchMax (8192), setupConcurrency (64),
+# requestTimeoutMs (30000), connectTimeoutMs (10000). See README.md.
